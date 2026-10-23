@@ -357,8 +357,9 @@ async fn exact_repository_pool_before_forward() {
     let server = HttpFixture::start(FixtureMode::GarmPool)
         .await
         .expect("HTTP fixture");
-    let settings =
+    let mut settings =
         ingress_settings(&directory, "http://127.0.0.1:1/", &server.origin).expect("settings");
+    settings.garm_api_origin = server.origin.trim_end_matches('/').to_owned();
     let journal = directory.journal().expect("journal");
     let document = outrider::github::SnapshotDocument {
         base_repository: RepositoryRef {

@@ -291,6 +291,33 @@ async fn unavailable_garm_restart() {
 }
 
 #[tokio::test]
+async fn retained_pool_origin_cannot_change_destination() {
+    let directory = TestDirectory::new().expect("temp directory");
+    let server = HttpFixture::start(FixtureMode::GarmPool)
+        .await
+        .expect("GARM fixture");
+    let settings =
+        ingress_settings(&directory, "http://127.0.0.1:1/", &server.origin).expect("settings");
+    let mut retained = settings.clone();
+    retained.garm_api_origin = "http://127.0.0.1:9/".into();
+    let snapshot = draining_pool_snapshot(&retained);
+    let journal = directory.journal().expect("journal");
+    journal.save_pool_snapshot(&snapshot).expect("snapshot");
+    let garm = GarmClient::from_settings(&settings, Duration::from_secs(3)).expect("GARM client");
+    assert!(matches!(
+        garm.disable_request_pool(&snapshot).await,
+        Err(PoolError::Configuration)
+    ));
+    let ingress =
+        IngressService::new(config_with_ingress(settings), journal).expect("active ingress");
+    assert!(matches!(
+        ingress.drain_expired_pools(1).await,
+        Err(outrider::github::IngressError::Configuration)
+    ));
+    assert!(server.requests().is_empty());
+}
+
+#[tokio::test]
 async fn restart_after_remote_pool_delete_reconciles_exact_not_found() {
     let directory = TestDirectory::new().expect("temp directory");
     let server = HttpFixture::start(FixtureMode::GarmPool)

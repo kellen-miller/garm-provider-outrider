@@ -401,12 +401,17 @@ pub(super) fn handle_garm_request(
             } else if state.force_empty_pool_inventory.load(Ordering::SeqCst) {
                 (200, json!([]))
             } else {
-                let pool = state
+                let mut pool = state
                     .created_pool
                     .lock()
                     .ok()
                     .and_then(|pool| pool.clone())
                     .unwrap_or_else(pool_response);
+                // GARM v0.2.1 lists omit extra_specs; only the detail endpoint returns it.
+                if let Some(fields) = pool.as_object_mut() {
+                    fields.remove("extra_specs");
+                }
+
                 (200, json!([pool]))
             }
         }
@@ -523,6 +528,8 @@ pub(super) fn snapshot_id() -> String {
 }
 
 pub(super) fn draining_pool_snapshot(settings: &IngressSettings) -> PoolSnapshot {
+    let mut retained = settings.clone();
+    retained.garm_api_origin = retained.garm_api_origin.trim_end_matches('/').to_owned();
     let document = outrider::github::SnapshotDocument {
         base_repository: RepositoryRef {
             id: REPOSITORY_ID,
@@ -538,7 +545,7 @@ pub(super) fn draining_pool_snapshot(settings: &IngressSettings) -> PoolSnapshot
         run_attempt: 1,
         job_id: 301,
         commit_sha: SHA.into(),
-        central: config_with_ingress(settings.clone()),
+        central: config_with_ingress(retained),
         repository: ConfigPatch::default(),
         resolved_profile: profile(),
         image_catalogs: vec![],
