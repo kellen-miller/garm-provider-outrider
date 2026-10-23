@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "source_ids": [
+    "common-install-hook",
+    "common-cloud-init",
+    "common-install-templates",
+    "common-runner-defaults",
+    "common-runner-artifact",
+    "qualified-aws-spec",
+    "qualified-azure-client",
+    "qualified-gcp-client",
+    "azure-customdata-model",
+    "qualified-azure-spec",
+    "qualified-gcp-spec"
+  ],
+  "common_contract": {
+    "extra_specs": {
+      "runner_install_template": "base64 byte[] script template, not complete cloud-init YAML",
+      "extra_context": "map[string]string; trusted checksum may be passed here; InstallRunnerParams has no checksum field"
+    },
+    "runner_user": "runner",
+    "linux_execution": "cloud-init runcmd: su -l -c /install_runner.sh runner",
+    "linux_privilege": "runner default user has ALL=(ALL) NOPASSWD:ALL. Hook must explicitly obtain root for root operations or prefix individual privileged operations; standalone root script cannot be dropped in unchanged.",
+    "linux_wrapper": "GetCloudConfig -> GetRunnerInstallScript -> GetCloudInitConfig, base64 write_files + SSH/CA/package config",
+    "windows_wrapper": "GetCloudConfig returns rendered install script",
+    "template_boundary": "Go text/template; safely emit trusted rendered script as literal, including literal {{, quotes and Unicode. Never allow repo/job Go template injection.",
+    "macos": "provider spec GetTools rejects unsupported OS before rendering hooks; GARM OS validation and AWS host lifecycle also unavailable.",
+    "package_defaults": "NewDefaultCloudInitConfig installs curl/tar only; DisableUpdatesOnBoot clears that list before ExtraPackages are added. Hook dependency packages must be explicit, including python3/sudo/coreutils."
+  },
+  "transport": {
+    "aws": {
+      "linux": "base64(raw cloud-init or Go gzip if >=16384 bytes)",
+      "windows": "base64(<powershell>script</powershell> or Go zip if >=16384 bytes)",
+      "api_payload_limit_bytes": 16384,
+      "out_rider_gate": "Bound complete delivered bytes before Create spawn. A strict conservative uncompressed bound is acceptable if explicit; qualify against actual pinned Go composition, never count only script bytes."
+    },
+    "azure": {
+      "linux": "base64 cloud-init customData",
+      "linux_decoded_limit_bytes": 65535,
+      "windows": "base64 PowerShell script in OSProfile.CustomData, then existing fixed CustomScriptExtension command reads C:/AzureData/CustomData.bin and runs /run.ps1",
+      "windows_command_bound": "Fixed windowsRunScriptTemplate is UTF16/base64 in commandToExecute; qualify its constant size and include actual CustomData script under same65535 decoded-byte cap. Qualified spec.go42,388-405,480-552.",
+      "windows_decoded_limit_bytes": 65535
+    },
+    "gcp": {
+      "linux": "metadata user-data cloud-init",
+      "windows": "metadata sysprep-specialize-script-ps1",
+      "per_value_limit_bytes": 262144,
+      "combined_metadata_limit_bytes": 524288,
+      "bound": "Include runner_name/ssh-keys/other selected metadata, escaping and provider wrapper."
+    }
+  },
+  "required_runtime_evidence": [
+    "actual pinned Go helpers render supplied hook, not hand-written imitation",
+    "rendered hook is script inside one wrapper, not nested full cloud-init",
+    "validate resulting shell/cloud-init/PowerShell syntax with installed validators",
+    "Linux hook works with common runner user / explicit root transition",
+    "checksum/CA/callback/JIT/token-only label behavior preserved",
+    "quotes, percent, literal template delimiters, Unicode and byte/base64 round-trip",
+    "oversized script/CA/SSH/packages rejected before child launch",
+    "macOS explicitly rejected before child launch"
+  ],
+  "qualification_limit": "Source and local rendering/syntax contract only; no guest, CSE handler or cloud runtime proof.",
+  "provider_option_mapping": {
+    "aws": "ComposeUserData replaces all three user_data_options from native extra_specs: extra_packages, disable_updates, enable_boot_debug. Send normalized packages and original flags through those supported extra fields.",
+    "azure": "Same replacement of packages/disable/debug through native extra_specs; do not rely on bootstrap-only fields.",
+    "gcp": "ComposeUserData replaces disable_updates/enable_boot_debug from native extras, preserves bootstrap extra_packages. Strict extra schema has no extra_packages: keep packages in normalized bootstrap user_data_options only.",
+    "boot_debug": "Trusted literal hook never activates common template xtrace; secrets remain redacted."
+  }
+}

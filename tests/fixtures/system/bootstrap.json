@@ -1,0 +1,28 @@
+{
+  "name": "runner-old-image",
+  "tools": [{
+    "os": "linux",
+    "architecture": "x64",
+    "download_url": "https://example.invalid/runner.tar.gz",
+    "filename": "runner.tar.gz",
+    "temp_download_token": "synthetic-download-token",
+    "sha256_checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }],
+  "repo_url": "https://github.com/base-owner/base-repo",
+  "callback-url": "https://example.invalid/callback",
+  "metadata-url": "http://127.0.0.1/metadata",
+  "instance-token": "synthetic-callback-token",
+  "ssh-keys": [],
+  "extra_specs": {},
+  "user_data_options": {
+    "extra_packages": []
+  },
+  "github-runner-group": "",
+  "arch": "amd64",
+  "os_type": "linux",
+  "flavor": "synthetic",
+  "image": "synthetic",
+  "pool_id": "pool-system-201",
+  "labels": [],
+  "jit_config_enabled": true
+}

@@ -1,0 +1,123 @@
+{
+  "synthetic": true,
+  "api_version": "2024-04-01",
+  "note": "Fields source-derived; values/IDs synthetic. ARG id exact child path shape not established by public ARG example, used solely as synthetic unique dedupe ID. No post-delete retention or generation guarantee.",
+  "request": {
+    "subscriptions": [
+      "11111111-1111-4111-8111-111111111111"
+    ],
+    "query": "HealthResources | where type =~ 'microsoft.resourcehealth/resourceannotations' | project id, name, type, subscriptionId, properties",
+    "options": {
+      "resultFormat": "objectArray",
+      "$top": 1000
+    }
+  },
+  "response": {
+    "count": 1,
+    "totalRecords": 1,
+    "resultTruncated": "false",
+    "data": [
+      {
+        "id": "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/outrider/providers/Microsoft.Compute/virtualMachines/runner-1/providers/Microsoft.ResourceHealth/resourceAnnotations/synthetic-event-1",
+        "name": "synthetic-event-1",
+        "type": "microsoft.resourcehealth/resourceannotations",
+        "subscriptionId": "11111111-1111-4111-8111-111111111111",
+        "properties": {
+          "targetResourceType": "Microsoft.Compute/virtualMachines",
+          "targetResourceId": "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/outrider/providers/Microsoft.Compute/virtualMachines/runner-1",
+          "occurredTime": "2026-10-21T16:00:00Z",
+          "annotationName": "VirtualMachinePreempted",
+          "reason": "Synthetic capacity or price preemption",
+          "summary": "Synthetic contract record",
+          "context": "Platform-Initiated",
+          "category": "Unplanned"
+        }
+      }
+    ]
+  },
+  "allocation": {
+    "arm_path": "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/outrider/providers/Microsoft.Compute/virtualMachines/runner-1",
+    "vm_id": "22222222-2222-4222-8222-222222222222",
+    "created_at": "2026-10-21T15:50:00Z",
+    "teardown_intent_at": null,
+    "known_generation_count": 1
+  },
+  "cases": [
+    {
+      "name": "exact_unique_generation_in_interval",
+      "change": {},
+      "expected": "verified"
+    },
+    {
+      "name": "resource_path_reused",
+      "change": {
+        "known_generation_count": 2
+      },
+      "expected": "unknown"
+    },
+    {
+      "name": "missing_generation_history",
+      "change": {
+        "known_generation_count": null
+      },
+      "expected": "unknown"
+    },
+    {
+      "name": "event_before_create",
+      "change": {
+        "occurredTime": "2026-10-21T15:40:00Z"
+      },
+      "expected": "unknown"
+    },
+    {
+      "name": "teardown_before_event",
+      "change": {
+        "teardown_intent_at": "2026-10-21T15:59:00Z"
+      },
+      "expected": "not_eligible"
+    },
+    {
+      "name": "cleanup_after_event",
+      "change": {
+        "teardown_intent_at": "2026-10-21T16:01:00Z"
+      },
+      "expected": "verified"
+    },
+    {
+      "name": "same_name_foreign_resource_group",
+      "change": {
+        "targetResourceId": "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/foreign/providers/Microsoft.Compute/virtualMachines/runner-1"
+      },
+      "expected": "unknown"
+    },
+    {
+      "name": "generic_deallocation",
+      "change": {
+        "annotationName": "VirtualMachineDeallocationInitiated",
+        "context": "User-initiated"
+      },
+      "expected": "unknown"
+    },
+    {
+      "name": "truncated_without_token",
+      "change": {
+        "resultTruncated": "true"
+      },
+      "expected": "unknown"
+    },
+    {
+      "name": "missing_after_delete",
+      "change": {
+        "data": []
+      },
+      "expected": "unknown"
+    },
+    {
+      "name": "page_two_failed",
+      "change": {
+        "next_page_http_status": 403
+      },
+      "expected": "unknown"
+    }
+  ]
+}

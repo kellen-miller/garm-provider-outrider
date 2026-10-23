@@ -1,0 +1,26 @@
+[package]
+name = "outrider-xtask"
+version = "0.1.0"
+edition = "2024"
+license-file = "../LICENSE"
+publish = false
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+clap = { version = "4.5", features = ["derive"] }
+hex = "0.4"
+libc = "0.2"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
+
+[[bin]]
+name = "outrider-xtask"
+path = "src/main.rs"
+
+[[bin]]
+name = "outrider-provider-fixture"
+path = "src/provider_fixture/main.rs"

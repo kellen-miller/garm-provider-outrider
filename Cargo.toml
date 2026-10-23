@@ -1,0 +1,59 @@
+[package]
+name = "outrider"
+version = "0.1.0"
+edition = "2024"
+license-file = "LICENSE"
+
+[dependencies]
+axum = "0.8"
+aws-config = "1.8"
+aws-credential-types = "1"
+aws-sdk-ec2 = "1.225"
+aws-sdk-pricing = "1.89"
+aws-sdk-sts = { version = "1.120", default-features = false, features = ["rustls", "default-https-client", "rt-tokio"] }
+aws-types = "1.7"
+azure_core = "1.0"
+azure_identity = "1.0"
+async-trait = "0.1"
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+clap = { version = "4.5", features = ["derive"] }
+google-cloud-auth = "1.4"
+google-cloud-compute-v1 = { version = "3.2", default-features = false, features = ["default-rustls-provider", "instances", "zone-operations", "machine-types"] }
+google-cloud-billing-v1 = "1.2"
+hmac = "0.12"
+hex = "0.4"
+libc = "0.2"
+fs2 = "0.4"
+reqwest = { version = "0.12", features = ["json"] }
+rusqlite = { version = "0.38", features = ["bundled"] }
+rust_decimal = { version = "1.37", features = ["serde"] }
+secrecy = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml_ng = "0.10"
+sha2 = "0.10"
+thiserror = "2"
+toml_edit = { version = "0.25.17", features = ["serde"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "net", "io-util", "sync", "process", "fs"] }
+tracing = "0.1"
+urlencoding = "2"
+
+[dev-dependencies]
+outrider-xtask = { path = "xtask" }
+bytes = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["http1", "server", "tokio"] }
+jsonschema = "0.59"
+
+[profile.dev]
+debug = 0
+
+[profile.test]
+debug = 0
+
+[workspace]
+members = ["xtask"]
+default-members = ["."]
+resolver = "3"

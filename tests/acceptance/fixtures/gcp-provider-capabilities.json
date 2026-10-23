@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "source_ids": [
+    "gcp-gpu-create",
+    "gcp-discovery",
+    "qualified-gcp-spec",
+    "qualified-gcp-client",
+    "qualified-gcp-config"
+  ],
+  "cases": [
+    {
+      "name": "general_purpose_gpu_attachment",
+      "machine_type": "n1-standard-2",
+      "requires_guest_accelerators": true,
+      "eligible": false,
+      "reason": "qualified child has no guestAccelerators extra/request mapping"
+    },
+    {
+      "name": "pre_attached_gpu_spot",
+      "machine_type": "a2-highgpu-1g",
+      "actual_machine_type_accelerators": [
+        {
+          "guestAcceleratorType": "nvidia-tesla-a100",
+          "guestAcceleratorCount": 1
+        }
+      ],
+      "purchasing": "spot",
+      "scheduling_on_host_maintenance": "TERMINATE",
+      "eligible_when": "image, accelerator shape/licensing, disk and billing evidence independently satisfy all requirements"
+    },
+    {
+      "name": "pre_attached_gpu_on_demand",
+      "machine_type": "a2-highgpu-1g",
+      "purchasing": "on_demand",
+      "child_scheduling": null,
+      "api_default_on_host_maintenance": "MIGRATE",
+      "eligible": false,
+      "reason": "GPU instance needs TERMINATE, not expressible on current on-demand child path"
+    },
+    {
+      "name": "additional_local_ssd",
+      "requires_extra_scratch_disks": true,
+      "eligible": false,
+      "reason": "qualified child initializes boot disk only; no extra local-disk request mapping"
+    }
+  ],
+  "metadata_rules": [
+    "machineType accelerators describes attached accelerator type/count; do not fabricate an attachment extra",
+    "GPU vendor/model/VRAM and driver-ready image require trusted explicit facts, not machine-name guesses",
+    "actual immutable image diskSizeGb is a boot-volume minimum",
+    "exact provisioned disk and VM limits must satisfy requested performance; missing facts remain unknown",
+    "fixed zonal offer cannot use a child config whose regional placement can select another zone"
+  ],
+  "pricing_rules": [
+    "preserve fractional GiB and unitPrice units+nanos exactly",
+    "displayQuantity does not divide or multiply actual unit price",
+    "do not double-count CPU/RAM/GPU when a selected billing product already bundles them",
+    "math-only GPU/license fixture is not a claim that an unsupported child launch is eligible"
+  ]
+}

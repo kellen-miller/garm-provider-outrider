@@ -1,0 +1,244 @@
+{
+  "version": 1,
+  "purpose": "Immutable source and observed host-binary pins for delegated provisioning; no mutable branch or PR-head installation.",
+  "interface_version": "v0.1.0",
+  "providers": [
+    {
+      "cloud": "aws",
+      "upstream_repository": "cloudbase/garm-provider-aws",
+      "upstream_base_revision": "4572ed3b7cb575b1dc9993affcd030f97c77c81e",
+      "fork_repository": "kellen-miller/garm-provider-aws",
+      "source_revision": "3c0e79dddd58ea04b95b163014061dd240d52308",
+      "expected_version": "3c0e79d",
+      "license": {
+        "spdx": "Apache-2.0",
+        "path": "LICENSE",
+        "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+        "url": "https://github.com/kellen-miller/garm-provider-aws/blob/3c0e79dddd58ea04b95b163014061dd240d52308/LICENSE"
+      },
+      "contributions": [
+        {
+          "purpose": "spot",
+          "url": "https://github.com/cloudbase/garm-provider-aws/pull/139",
+          "head_revision": "5ea36e48dd824e406e009cfe72d0328ce27f52a0"
+        },
+        {
+          "purpose": "controller-scoped name lifecycle and real Describe errors",
+          "url": "https://github.com/cloudbase/garm-provider-aws/pull/140",
+          "head_revision": "c4e9062351c02c40ac0e968d632369baf1ef0ca9"
+        }
+      ],
+      "integrated_commits": [
+        {
+          "integrated_sha": "e0e9a994fa4c6c1a314af0366dc31485a0c18da6",
+          "subject": "feat: support Spot instances",
+          "source_sha": "5ea36e48dd824e406e009cfe72d0328ce27f52a0"
+        },
+        {
+          "integrated_sha": "3c0e79dddd58ea04b95b163014061dd240d52308",
+          "subject": "fix: scope runner name lookups",
+          "source_sha": "c4e9062351c02c40ac0e968d632369baf1ef0ca9"
+        }
+      ],
+      "purchasing": [
+        "on-demand",
+        "spot"
+      ],
+      "spot_extra_specs": {
+        "spot": true
+      },
+      "on_demand_extra_specs": {
+        "spot": false
+      },
+      "qualified_binaries": [
+        {
+          "host": "darwin/arm64",
+          "sha256": "e6c89674ea542862f7d7545af9399ebb0a26a07462cf8cfa2b6c8a078ad97f9f",
+          "go_version": "go1.27.2",
+          "version_stdout": "3c0e79d",
+          "scope": "offline GetVersion only"
+        }
+      ],
+      "validation": {
+        "race_suite": "passed",
+        "format": "passed",
+        "diff_check": "passed",
+        "cloud_runtime": "not run",
+        "hosted_ci": "not qualified"
+      }
+    },
+    {
+      "cloud": "azure",
+      "upstream_repository": "cloudbase/garm-provider-azure",
+      "upstream_base_revision": "0b0effee0f653ac2f93810a6105049355735fa88",
+      "fork_repository": "kellen-miller/garm-provider-azure",
+      "source_revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+      "expected_version": "395847a",
+      "license": {
+        "spdx": "Apache-2.0",
+        "path": "LICENSE",
+        "sha256": "b1f07bbb8200af534878c8dc80f7f86ba1a64293ec6a03ed4de515d2ad97118e",
+        "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/LICENSE"
+      },
+      "contributions": [
+        {
+          "purpose": "spot",
+          "url": "https://github.com/cloudbase/garm-provider-azure/pull/80",
+          "head_revision": "7bbbe8175b4a7544419430d030271476a3ac67c1"
+        },
+        {
+          "purpose": "failed-create rollback, named error only",
+          "url": "https://github.com/cloudbase/garm-provider-azure/pull/81",
+          "head_revision": "03953dc913425d0ea749d0882193bd7b94283adf"
+        }
+      ],
+      "integrated_commits": [
+        {
+          "integrated_sha": "7d04a7c6f55aa920467e1a90dda541d446ec98ff",
+          "subject": "feat: support Spot instances",
+          "source_sha": "7bbbe8175b4a7544419430d030271476a3ac67c1"
+        },
+        {
+          "integrated_sha": "89835ff5ceeb5e02381b88872e0c711bccaf781d",
+          "subject": "fix: roll back failed runner creation",
+          "source_sha": "fadc83a003db4da05b8be57aca2453d1604cbb11"
+        },
+        {
+          "integrated_sha": "6cba5b74d7efd41ea3ab57763f3704699425a712",
+          "subject": "refactor: make create rollback explicit",
+          "source_sha": "cd5a63ccdd63ff9a9a417428f64ecf4fec748880"
+        },
+        {
+          "integrated_sha": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+          "subject": "refactor: name only the create error result",
+          "source_sha": "03953dc913425d0ea749d0882193bd7b94283adf"
+        }
+      ],
+      "purchasing": [
+        "on-demand",
+        "spot"
+      ],
+      "spot_extra_specs": {
+        "spot": true
+      },
+      "on_demand_extra_specs": {
+        "spot": false
+      },
+      "qualified_binaries": [
+        {
+          "host": "darwin/arm64",
+          "sha256": "13432c213611f402a7006a8ae183882029afd0772337dd3dd4243ea7d04e7ecb",
+          "go_version": "go1.27.2",
+          "version_stdout": "395847a",
+          "scope": "offline GetVersion only"
+        }
+      ],
+      "validation": {
+        "race_suite": "passed",
+        "format": "passed",
+        "diff_check": "passed",
+        "cloud_runtime": "not run",
+        "hosted_ci": "not qualified"
+      }
+    },
+    {
+      "cloud": "gcp",
+      "upstream_repository": "cloudbase/garm-provider-gcp",
+      "upstream_base_revision": "bcae8616efc091e85768e58b349214d4db041eda",
+      "fork_repository": "kellen-miller/garm-provider-gcp",
+      "source_revision": "98a362f5319928099b942a668c5a17a34170066a",
+      "expected_version": "98a362f",
+      "license": {
+        "spdx": "Apache-2.0",
+        "path": "LICENSE",
+        "sha256": "b1f07bbb8200af534878c8dc80f7f86ba1a64293ec6a03ed4de515d2ad97118e",
+        "url": "https://github.com/kellen-miller/garm-provider-gcp/blob/98a362f5319928099b942a668c5a17a34170066a/LICENSE"
+      },
+      "contributions": [
+        {
+          "purpose": "spot, existing contribution reused with original author credit",
+          "url": "https://github.com/cloudbase/garm-provider-gcp/pull/130",
+          "original_revision": "38d91ab17cba1a9d41cd854346d25084b86e9842",
+          "refreshed_fork_revision": "050922c0f59cb975da86d68a4b27b68f2c545465"
+        },
+        {
+          "purpose": "propagate zonal inventory iterator failures",
+          "url": "https://github.com/cloudbase/garm-provider-gcp/pull/139",
+          "head_revision": "55b3284c1e7b7281e4cc345d643ef3112b1e1a9b"
+        }
+      ],
+      "integrated_commits": [
+        {
+          "integrated_sha": "e9e2f386603b76de94cb71c181884d426ffea1b1",
+          "subject": "feat: support spot scheduling",
+          "source_sha": "f09a2e8321b5215bc5d10b03b9d94470734e0179"
+        },
+        {
+          "integrated_sha": "5ec508c59ad3e44a6627ce2afb32c394ceaffd6b",
+          "subject": "test: verify Spot scheduling requests",
+          "source_sha": "050922c0f59cb975da86d68a4b27b68f2c545465"
+        },
+        {
+          "integrated_sha": "98a362f5319928099b942a668c5a17a34170066a",
+          "subject": "fix: propagate instance listing errors",
+          "source_sha": "55b3284c1e7b7281e4cc345d643ef3112b1e1a9b"
+        }
+      ],
+      "purchasing": [
+        "on-demand",
+        "spot"
+      ],
+      "spot_extra_specs": {
+        "spot": true
+      },
+      "on_demand_extra_specs": {
+        "spot": false
+      },
+      "qualified_binaries": [
+        {
+          "host": "darwin/arm64",
+          "sha256": "92750219c68c7a29985a0fc59a990a75cfdffaa28263c95cf4d30da6ac8e60a2",
+          "go_version": "go1.27.2",
+          "version_stdout": "98a362f",
+          "scope": "offline GetVersion only"
+        }
+      ],
+      "validation": {
+        "race_suite": "passed",
+        "format": "passed",
+        "diff_check": "passed",
+        "cloud_runtime": "not run",
+        "hosted_ci": "not qualified"
+      }
+    }
+  ],
+  "common_contract": {
+    "commands": [
+      "CreateInstance",
+      "GetInstance",
+      "ListInstances",
+      "DeleteInstance",
+      "StartInstance",
+      "StopInstance",
+      "RemoveAllInstances",
+      "GetVersion"
+    ],
+    "error_semantics": "opaque exit1; no stderr-based missing/capacity/auth classification",
+    "create_failure": "ambiguous after dispatch, including malformed response, generic exit, cancellation and timeout",
+    "empty_inventory": "null or array on successful exit only; not absence proof after ambiguous create",
+    "list_filter": "pool only; attribute and deduplicate by journaled ownership and actual cloud scope",
+    "remove_all": "upstream no-op; Outrider must enumerate and delete only its owned allocations",
+    "runner_platform_goal": [
+      "linux/amd64",
+      "linux/arm64",
+      "windows/amd64"
+    ],
+    "macos": "Unavailable until GARM/common/AWS provider support exists; no Rust lifecycle fallback."
+  },
+  "qualification_limits": [
+    "Source request/schema and lifecycle regression tests plus offline executable version checks only.",
+    "No hosted CI pass, live cloud allocation, guest execution, eviction or complete cleanup qualification is claimed.",
+    "Stock vendor/lint workflow failures are recorded separately; no upstream workflow, vendor or lint-rule changes were included.",
+    "darwin/arm64 hashes identify local qualification artifacts. Other installation targets require their own builds and configured binary SHA256 pins."
+  ]
+}

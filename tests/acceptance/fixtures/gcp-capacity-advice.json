@@ -1,0 +1,75 @@
+{
+  "synthetic": true,
+  "api": "compute/beta advice.capacity",
+  "administrator_opt_in_required": true,
+  "request": {
+    "instanceProperties": {
+      "scheduling": {
+        "provisioningModel": "SPOT"
+      }
+    },
+    "instanceFlexibilityPolicy": {
+      "instanceSelections": {
+        "candidate": {
+          "machineTypes": [
+            "n2-standard-4"
+          ]
+        }
+      }
+    },
+    "size": 1,
+    "distributionPolicy": {
+      "zones": [
+        {
+          "zone": "zones/us-central1-a"
+        }
+      ],
+      "targetShape": "ANY_SINGLE_ZONE"
+    }
+  },
+  "response": {
+    "recommendations": [
+      {
+        "scores": {
+          "obtainability": 0.7,
+          "estimatedUptime": "3600s"
+        },
+        "shards": [
+          {
+            "zone": "us-central1-a",
+            "machineType": "n2-standard-4",
+            "instanceCount": 1,
+            "provisioningModel": "SPOT"
+          }
+        ]
+      }
+    ]
+  },
+  "expected_hint": {
+    "source_prefix": "compute.beta.advice.capacity.obtainability",
+    "cloud": "gcp",
+    "account": "synthetic-project",
+    "location": "configured-zone-alias",
+    "score": "0.7",
+    "observed_at": "local receipt timestamp; response has no timestamp"
+  },
+  "zero_score_is_valid": true,
+  "estimated_uptime_is_never_a_probability": true,
+  "unknown_cases": [
+    "disabled",
+    "permission/API/transport failure",
+    "missing score",
+    "out-of-range score",
+    "mismatched zone/type/model/count",
+    "multiple ambiguous matching recommendations",
+    "split shards"
+  ],
+  "cannot_qualify": [
+    "image/OS/licensing",
+    "persistent boot disk",
+    "network",
+    "overall create success"
+  ],
+  "ranking": "native hint does not enter any portable score",
+  "live_qualified": false
+}

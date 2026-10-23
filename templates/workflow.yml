@@ -1,0 +1,9 @@
+# Synthetic template. No credentials or cloud deployment are configured here.
+name: Build
+on: [push]
+jobs:
+  build:
+    runs-on: "${{ format('outrider:v1:{0}:{1}:{2}:linux-large:memory=16gib:vcpu=8', github.repository_id, github.run_id, github.run_attempt) }}"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: ./ci/build.sh

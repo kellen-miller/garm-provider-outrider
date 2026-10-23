@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "source_ids": [
+    "aws-ebs-optimized-info",
+    "aws-ebs-block-device",
+    "qualified-aws-client"
+  ],
+  "units": {
+    "maximumThroughputInMBps": "decimal MB/s; multiply by1000000/1048576 to compare MiB/s",
+    "gp3_throughput": "integer MiB/s request"
+  },
+  "default_optimization": "qualified child does not set EbsOptimized; only default-enabled metadata proves optimized capacity",
+  "capacity_cases": [
+    {
+      "name": "fractional_cap_below_requirement",
+      "maximumThroughputInMBps": "235.405312",
+      "expected_maximum_mib_s": "224.5",
+      "requested_mib_s": 225,
+      "eligible": false
+    },
+    {
+      "name": "fractional_cap_above_requirement",
+      "maximumThroughputInMBps": "236.453888",
+      "expected_maximum_mib_s": "225.5",
+      "requested_mib_s": 225,
+      "eligible": true
+    },
+    {
+      "name": "unknown_capacity",
+      "maximumThroughputInMBps": null,
+      "requested_mib_s": 225,
+      "eligible": false
+    },
+    {
+      "name": "optimization_requires_explicit_enable",
+      "ebsOptimizedSupport": "supported",
+      "maximumThroughputInMBps": "1000",
+      "requested_mib_s": 225,
+      "eligible": false
+    }
+  ],
+  "root_volume_cases": [
+    {
+      "image_volume_size_gib": 64,
+      "requested_gib": 40,
+      "eligible": false
+    },
+    {
+      "image_volume_size_gib": 32,
+      "requested_gib": 40,
+      "eligible": true
+    },
+    {
+      "image_volume_size_gib": null,
+      "requested_gib": 40,
+      "eligible": false
+    }
+  ],
+  "scope": "selection lower-bound compatibility; not a sustained performance SLA or local disk exposure guarantee"
+}

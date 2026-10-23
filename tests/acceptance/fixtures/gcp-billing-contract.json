@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "source_ids": [
+    "gcp-image-disk-pricing",
+    "gcp-persistent-disk-performance",
+    "gcp-billing-units",
+    "gcp-discovery"
+  ],
+  "licensing": {
+    "windows_server": "visible vCPU quantity; f1-micro and g1-small have a separate whole-instance rate",
+    "sql_server": "edition-specific license quantity max(visible vCPU, 4), in addition to Windows and compute",
+    "minimum_seconds": 60,
+    "spot_discount": "does not discount premium image licenses",
+    "unknown_license": "exclude or explicitly unpriced; never infer free from missing metadata"
+  },
+  "disk": {
+    "unit": "GiB; monthly rate is normalized over configured estimation hours, not multiplied by displayQuantity",
+    "billing_granularity_seconds": 1,
+    "persistent_disk_minimum_commitment_seconds": 0,
+    "performance": "MIN(disk baseline + per-GiB contribution, exact machine/disk-type cap)",
+    "api_shape": "DiskType does not expose numeric performance caps; central source-attested facts must not masquerade as API fields",
+    "pd_balanced_baseline": {
+      "iops": 3000,
+      "throughput_mib_s": 140
+    },
+    "pd_ssd_baseline": {
+      "iops": 6000,
+      "throughput_mib_s": 240
+    },
+    "local_ssd": "price actual bundled capacity separately unless an exact whole-machine meter includes it; Spot uses matching Spot local-SSD rates"
+  },
+  "cases": [
+    {
+      "name": "two_cpu_windows_sql",
+      "visible_vcpu": 2,
+      "compute_cpu_quantity": 2,
+      "windows_license_quantity": 2,
+      "sql_license_quantity": 4
+    },
+    {
+      "name": "spot_premium_license",
+      "compute_market": "spot",
+      "license_market": "on_demand"
+    },
+    {
+      "name": "shared_cpu",
+      "machine_type": "e2-micro",
+      "guest_cpus": 2,
+      "forbidden": "2 full-core CPU meters",
+      "requires": "exact matching shared-machine billing quantity/product"
+    },
+    {
+      "name": "fixed_gpu_bundle",
+      "forbidden": "whole-machine bundle plus a duplicate GPU charge"
+    },
+    {
+      "name": "short_lived_disk",
+      "duration_seconds": 30,
+      "disk_hourly_rate": "0.004",
+      "expected_charge": "0.0000333333333333333333333333",
+      "forbidden_minimum_seconds": 3600
+    }
+  ],
+  "qualification_limit": "Source-derived local contract, synthetic values; no live pricing or performance qualification.",
+  "catalog_usage_types": {
+    "source": "gcp-billing-units",
+    "on_demand": "OnDemand",
+    "spot": "Preemptible",
+    "reject": [
+      "Commit1Mo",
+      "Commit1Yr",
+      "Commit3Yr",
+      "unknown"
+    ],
+    "rule": "unknown/non-Spot is not automatically OnDemand; commitment products never enter ordinary market quotes",
+    "synthetic_price_trap": {
+      "OnDemand": "0.10",
+      "Preemptible": "0.03",
+      "Commit1Yr": "0.001"
+    },
+    "sku_resource_name": "services/{SERVICE_ID}/skus/{SKU_ID}"
+  }
+}

@@ -1,0 +1,886 @@
+{
+  "synthetic": true,
+  "sources": [
+    {
+      "id": "ec2-run",
+      "url": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_RunInstances.html",
+      "sha256": "6c7df7c47043c7d6de620f3d6458ce44682a2aeee0ee87fcc69e7f962220a495",
+      "bytes": 92223,
+      "fetched_at": "2026-10-21T14:09:00.343104+00:00"
+    },
+    {
+      "id": "ec2-host",
+      "url": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_AllocateHosts.html",
+      "sha256": "2e211c25c32ed9936c2819755726a00e411fa2750065e39e0f632eb8f0446fda",
+      "bytes": 28847,
+      "fetched_at": "2026-10-21T14:09:00.227750+00:00"
+    },
+    {
+      "id": "ec2-errors",
+      "url": "https://docs.aws.amazon.com/ec2/latest/devguide/errors-overview.html",
+      "sha256": "bdad70cebc362bcfdfae3dc3e0f78de3276ce275cfb37f271c92946f4c100c2d",
+      "bytes": 150820,
+      "fetched_at": "2026-10-21T14:09:00.281287+00:00"
+    },
+    {
+      "id": "azure-vm",
+      "url": "https://learn.microsoft.com/en-us/rest/api/compute/virtual-machines/create-or-update?view=rest-compute-2025-04-01",
+      "sha256": "0f8a632f15e86e443625040d601e331e4d82a18b1e5ecdd6c324326b69be6207",
+      "bytes": 784089,
+      "fetched_at": "2026-10-21T14:09:00.582140+00:00"
+    },
+    {
+      "id": "azure-errors",
+      "url": "https://learn.microsoft.com/en-us/azure/virtual-machines/error-codes-spot",
+      "sha256": "a8986fce38501d7a4a8379e44f811102ee8f21209fd810a40f3cf34d57ee5453",
+      "bytes": 53570,
+      "fetched_at": "2026-10-21T14:09:00.402485+00:00"
+    },
+    {
+      "id": "gcp-discovery",
+      "url": "https://compute.googleapis.com/$discovery/rest?version=v1",
+      "sha256": "9a86aa5d641d0987e6cfd1511171188854d6f0ed05aab27d01351dcdc6bc64e5",
+      "bytes": 6419010,
+      "fetched_at": "2026-10-21T14:09:01.318192+00:00"
+    },
+    {
+      "id": "gcp-errors",
+      "url": "https://docs.cloud.google.com/compute/docs/reference/rest/v1/errors",
+      "sha256": "726b3558c36f3b13fd7c486a6bd67926eaf5aa99ba7e413ad4ee179e38661a48",
+      "bytes": 2088003,
+      "fetched_at": "2026-10-21T14:09:02.689320+00:00"
+    },
+    {
+      "id": "garm-commands",
+      "url": "https://raw.githubusercontent.com/cloudbase/garm/154638445c3949c1958b01812f69d9a1e4d82684/runner/providers/external/external.go",
+      "sha256": "755516153f9e881e029846fb31207fabd45c5dcd446aca8f383a5c94367a8aad",
+      "bytes": 1350,
+      "fetched_at": "2026-10-21T14:09:00.729270+00:00"
+    },
+    {
+      "id": "garm-common-params",
+      "url": "https://raw.githubusercontent.com/cloudbase/garm/154638445c3949c1958b01812f69d9a1e4d82684/vendor/github.com/cloudbase/garm-provider-common/params/params.go",
+      "revision": "154638445c3949c1958b01812f69d9a1e4d82684",
+      "sha256": "69d449275511acad18018e1ce160a3e002f6ce697e2f026af6aa9dad1e08a8bb",
+      "fetched_at": "2026-10-21T14:11:36.033808+00:00"
+    },
+    {
+      "id": "garm-execution-v010",
+      "url": "https://github.com/cloudbase/garm-provider-common/blob/0e7768ad59793cfaf3124434eeb290f02a52e6f7/execution/v0.1.0/execution.go",
+      "revision": "0e7768ad59793cfaf3124434eeb290f02a52e6f7",
+      "sha256": "2d962868952a15f7b6836bb4b8671d745f5953615ce23fc52567e07abe2e01ba",
+      "bytes": 5149,
+      "fetched_at": "2026-10-21T15:03:48.777900+00:00"
+    },
+    {
+      "id": "garm-execution-v011",
+      "url": "https://github.com/cloudbase/garm-provider-common/blob/0e7768ad59793cfaf3124434eeb290f02a52e6f7/execution/v0.1.1/execution.go",
+      "revision": "0e7768ad59793cfaf3124434eeb290f02a52e6f7",
+      "sha256": "6a60259094bd3a84260b991a5804986acfe5838956b325602b4f87fc13a97dcc",
+      "bytes": 6371,
+      "fetched_at": "2026-10-21T15:03:48.778100+00:00"
+    },
+    {
+      "id": "garm-bootstrap-templates",
+      "url": "https://github.com/cloudbase/garm/blob/154638445c3949c1958b01812f69d9a1e4d82684/vendor/github.com/cloudbase/garm-provider-common/cloudconfig/templates.go",
+      "revision": "154638445c3949c1958b01812f69d9a1e4d82684",
+      "sha256": "712021eb9519e7b83e65cae16497bbe6a871d9ae131c3a87b703e91b9fc31271",
+      "bytes": 28217,
+      "fetched_at": "2026-10-21T15:04:51.401937+00:00"
+    },
+    {
+      "id": "garm-metadata-routes",
+      "url": "https://github.com/cloudbase/garm/blob/154638445c3949c1958b01812f69d9a1e4d82684/apiserver/routers/routers.go",
+      "revision": "154638445c3949c1958b01812f69d9a1e4d82684",
+      "sha256": "497e21f43aaee50114f86f8d3cef471dec008764fce2ff97578b6073b6d652ec",
+      "bytes": 38290,
+      "fetched_at": "2026-10-21T15:04:51.402147+00:00"
+    },
+    {
+      "id": "runner-linux-dependencies",
+      "url": "https://github.com/actions/runner/blob/b6d10b59c178914d331bcf03823133d5f9e366bb/src/Misc/layoutbin/installdependencies.sh",
+      "revision": "b6d10b59c178914d331bcf03823133d5f9e366bb",
+      "sha256": "dbc825434c2f8d618519d135ec5fcdcfb492064f5d907e184207b4a0571acd96",
+      "bytes": 7434,
+      "fetched_at": "2026-10-21T15:15:56.212194+00:00"
+    },
+    {
+      "id": "runner-systemd-service",
+      "url": "https://github.com/actions/runner/blob/b6d10b59c178914d331bcf03823133d5f9e366bb/src/Misc/layoutbin/systemd.svc.sh.template",
+      "revision": "b6d10b59c178914d331bcf03823133d5f9e366bb",
+      "sha256": "01a4cfda974c6b6de811c548788397e1f86f68696516f7a34b8dcfd086a4ddd3",
+      "bytes": 5151,
+      "fetched_at": "2026-10-21T15:15:56.212427+00:00"
+    },
+    {
+      "id": "runner-windows-service",
+      "url": "https://github.com/actions/runner/blob/b6d10b59c178914d331bcf03823133d5f9e366bb/src/Runner.Listener/Configuration/WindowsServiceControlManager.cs",
+      "revision": "b6d10b59c178914d331bcf03823133d5f9e366bb",
+      "sha256": "21a9e793869f0d63d31913cb12b67518a1e6f5098ac887d6ed44da17b058c598",
+      "bytes": 7782,
+      "fetched_at": "2026-10-21T15:15:56.212470+00:00"
+    },
+    {
+      "id": "runner-windows-config",
+      "url": "https://github.com/actions/runner/blob/b6d10b59c178914d331bcf03823133d5f9e366bb/src/Misc/layoutroot/config.cmd",
+      "revision": "b6d10b59c178914d331bcf03823133d5f9e366bb",
+      "sha256": "2ea27be8ccbbc5b99d4fa19e59929141bcfcfbe30e16954408d0fcd082a9acb9",
+      "bytes": 1199,
+      "fetched_at": "2026-10-21T15:29:53.272132+00:00"
+    },
+    {
+      "id": "aws-get-products",
+      "url": "https://docs.aws.amazon.com/cli/latest/reference/pricing/get-products.html",
+      "sha256": "8c4c0ec436c3b7f8b566a2dd1c76e4dd27556d198460ef85afc05e43c4d058bb",
+      "bytes": 43871,
+      "fetched_at": "2026-10-21T15:38:54.989111+00:00"
+    },
+    {
+      "id": "aws-ebs-codes",
+      "url": "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-billing-usage-reports.html",
+      "sha256": "0359c44feadf4671ea0efa317efaed328923df0b59cebb0fa45d0447e9680c98",
+      "bytes": 24408,
+      "fetched_at": "2026-10-21T15:38:54.969433+00:00"
+    },
+    {
+      "id": "aws-ebs-pricing",
+      "url": "https://aws.amazon.com/ebs/pricing/",
+      "sha256": "2891afd8004186c3631315a37345b3c8f7b388bc760da50bb8b6999a51023421",
+      "bytes": 383395,
+      "fetched_at": "2026-10-21T15:38:54.975710+00:00"
+    },
+    {
+      "id": "aws-vpc-pricing",
+      "url": "https://aws.amazon.com/vpc/pricing/",
+      "sha256": "d7942246107c72fd65ecb39e45408547fc8194f664359d749a5460c81c647fbe",
+      "bytes": 388547,
+      "fetched_at": "2026-10-21T15:38:54.965118+00:00"
+    },
+    {
+      "id": "azure-delete-contract",
+      "url": "https://learn.microsoft.com/en-us/azure/virtual-machines/delete",
+      "sha256": "ae4fba11b2a43cb25a981422a2b05f51d08a1a2b7d22eebe402f082a6cf193dd",
+      "bytes": 71514,
+      "fetched_at": "2026-10-21T16:00:50.312267+00:00"
+    },
+    {
+      "id": "azure-retail-contract",
+      "url": "https://learn.microsoft.com/en-us/rest/api/cost-management/retail-prices/azure-retail-prices",
+      "sha256": "2d28edba78ed86cc63271e0108d80246955a22be1b8b9523fe747d434d2cd374",
+      "bytes": 52675,
+      "fetched_at": "2026-10-21T16:00:50.312267+00:00"
+    },
+    {
+      "id": "azure-nic-contract",
+      "url": "https://learn.microsoft.com/en-us/azure/templates/microsoft.network/2024-05-01/networkinterfaces",
+      "sha256": "a58501309e3c723a3afbfd2cd58afd631038dd2852968e1f6309a3dc5c020e4b",
+      "bytes": 646829,
+      "fetched_at": "2026-10-21T16:00:50.312267+00:00"
+    },
+    {
+      "id": "gcp-billing-units",
+      "url": "https://cloud.google.com/billing/docs/reference/rest/v1/services.skus/list",
+      "sha256": "42d44cd7f61e30423670c8aee15a8efd45e301eb2feee08f4c5c1219b0f704be",
+      "bytes": 214908,
+      "fetched_at": "2026-10-21T16:00:50.312267+00:00"
+    },
+    {
+      "id": "gcp-windows-sql-license",
+      "url": "https://cloud.google.com/compute/docs/instances/windows/ms-licensing-faq",
+      "sha256": "f2864d0e6d7a2410cecd3d65c9809740b8a796ac05478f6fbec7280c254a0859",
+      "bytes": 398592,
+      "fetched_at": "2026-10-21T16:00:50.312267+00:00"
+    },
+    {
+      "id": "gcp-machine-types",
+      "url": "https://cloud.google.com/compute/docs/reference/rest/v1/machineTypes",
+      "sha256": "1ca8015ec6e8ba73233bda49e67c21b78b1ddfb0c73a8ab2a99efb0d4b25b842",
+      "bytes": 2033432,
+      "fetched_at": "2026-10-21T16:00:50.312267+00:00"
+    },
+    {
+      "id": "aws-vpc-offer",
+      "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/current/us-east-1/index.json",
+      "sha256": "85367cb441bc050ea66796736a4605b4a937f9b2a8639a7103270c7eac941a1c",
+      "bytes": 80535,
+      "fetched_at": "2026-10-21T16:00:50.312267+00:00"
+    },
+    {
+      "id": "aws-ami-billing",
+      "url": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/billing-info-fields.html",
+      "sha256": "09a1c12f4e5da465a2b043165a352e4b4fcfe842c48504c913d43f1c3cf6ab5d",
+      "bytes": 18011,
+      "fetched_at": "2026-10-21T16:06:24.068424+00:00"
+    },
+    {
+      "id": "gcp-beta-advice",
+      "url": "https://cloud.google.com/compute/docs/reference/rest/beta/advice/capacity",
+      "sha256": "a995aaca825fe32461512776b6da8b76400c6c2cf20b0677dcefa1f00a5292bf",
+      "bytes": 2042868,
+      "fetched_at": "2026-10-21T16:31:14.937589+00:00"
+    },
+    {
+      "id": "github-public-commit-records",
+      "url": "https://api.github.com/repos/cloudbase/garm/actions/runs/39593036510/attempts/1",
+      "sha256": "748f1730e613234b97b5fbf27927b80f7cd4fab882035e8b7ebb76e521e4ed18",
+      "fetched_at": "2026-10-21T16:40:42.019491+00:00",
+      "transform": "multiple connector public API captures; digest binds combined local source JSON, individual hashes/URLs in evidence fixture"
+    },
+    {
+      "id": "azure-arg-health-identity",
+      "url": "https://learn.microsoft.com/en-us/azure/virtual-machines/resource-graph-availability",
+      "sha256": "c984a0f3360eefe019a2003fb662db3c24cfff6da70109613bb15cfc33a12d9d",
+      "bytes": 56212,
+      "fetched_at": "2026-10-21T16:59:40.498563+00:00"
+    },
+    {
+      "id": "azure-arg-query",
+      "url": "https://learn.microsoft.com/en-us/rest/api/azureresourcegraph/resourcegraph/resources/resources?view=rest-azureresourcegraph-resourcegraph-2024-04-01",
+      "sha256": "84426b67617236ea59f0574b2974cdfa6cb011ab03420b336d6dc9f12cf17d2a",
+      "bytes": 165501,
+      "fetched_at": "2026-10-21T16:59:40.468937+00:00"
+    },
+    {
+      "id": "azure-public-ip-retail",
+      "url": "https://prices.azure.com/api/retail/prices?%24filter=productName+eq+%27IP+Addresses%27+and+armRegionName+eq+%27eastus%27&api-version=2023-01-01-preview",
+      "sha256": "6e876acd51996cfce995957074811f3359f4c05e065130f85e8810c54d20e9ba",
+      "fetched_at": "2026-10-21T17:03:06.776590+00:00",
+      "note": "Public unauthenticated product/region filter, eight rows; attributes projected, no rate recommendation"
+    },
+    {
+      "id": "aws-child-main",
+      "url": "https://github.com/cloudbase/garm-provider-aws/blob/4572ed3b7cb575b1dc9993affcd030f97c77c81e/main.go",
+      "revision": "4572ed3b7cb575b1dc9993affcd030f97c77c81e",
+      "git_blob_sha": "973f7c469bd5c2d9af755a4195485d59eb85267a",
+      "sha256": "b57b4931826825b3b2031f1ca39fa7499809505bdb9b9816be6355bf984f164e",
+      "bytes": 1525,
+      "fetched_at": "2026-10-21",
+      "transform": "exact UTF-8 repository content verified against Git blob SHA"
+    },
+    {
+      "id": "azure-child-main",
+      "url": "https://github.com/cloudbase/garm-provider-azure/blob/0b0effee0f653ac2f93810a6105049355735fa88/main.go",
+      "revision": "0b0effee0f653ac2f93810a6105049355735fa88",
+      "git_blob_sha": "037ff1907cd3d5c4d8c087ccec4f82b5f09cf270",
+      "sha256": "5373151a86a54878e1e093531f8b705eddbcd249ea5f820cf2f9056287dd078c",
+      "bytes": 1513,
+      "fetched_at": "2026-10-21",
+      "transform": "exact UTF-8 repository content verified against Git blob SHA"
+    },
+    {
+      "id": "gcp-child-main",
+      "url": "https://github.com/cloudbase/garm-provider-gcp/blob/bcae8616efc091e85768e58b349214d4db041eda/main.go",
+      "revision": "bcae8616efc091e85768e58b349214d4db041eda",
+      "git_blob_sha": "651e1418f417b0e3b722f39b8dbc012a30a562ab",
+      "sha256": "50ed900a08131293b3d6ae5181c41683de174768739dd1bdacb50ec6d0ec130b",
+      "bytes": 1560,
+      "fetched_at": "2026-10-21",
+      "transform": "exact UTF-8 repository content verified against Git blob SHA"
+    },
+    {
+      "id": "child-execution-v010",
+      "url": "https://github.com/cloudbase/garm-provider-aws/blob/4572ed3b7cb575b1dc9993affcd030f97c77c81e/vendor/github.com/cloudbase/garm-provider-common/execution/v0.1.0/execution.go",
+      "revision": "4572ed3b7cb575b1dc9993affcd030f97c77c81e",
+      "git_blob_sha": "73957cc966412cfe4c1ca1cc7a942f2a4eaa723e",
+      "sha256": "b2f159d479969a1b3e215144d58b0211e2f9fc9c0f00a47c0ad50c2cec309c1c",
+      "bytes": 5148,
+      "fetched_at": "2026-10-21",
+      "transform": "exact UTF-8 repository content verified against Git blob SHA"
+    },
+    {
+      "id": "child-interface-selector",
+      "url": "https://github.com/cloudbase/garm-provider-aws/blob/4572ed3b7cb575b1dc9993affcd030f97c77c81e/vendor/github.com/cloudbase/garm-provider-common/execution/execution.go",
+      "revision": "4572ed3b7cb575b1dc9993affcd030f97c77c81e",
+      "git_blob_sha": "481ab8498ec8e7f0cabecf197dddaa1a7b9c6cad",
+      "sha256": "546d62b44fd8f332002e99d31cb790b67113b164882c640c756e25599258e541",
+      "bytes": 2652,
+      "fetched_at": "2026-10-21T18:38:36.236184+00:00"
+    },
+    {
+      "id": "qualified-aws-spec",
+      "url": "https://github.com/kellen-miller/garm-provider-aws/blob/3c0e79dddd58ea04b95b163014061dd240d52308/internal/spec/spec.go",
+      "revision": "3c0e79dddd58ea04b95b163014061dd240d52308",
+      "git_blob_sha": "447445948434cf9db63b09b5de98170611b7fce6",
+      "sha256": "782bd8581dd5b4e768ee9c094502cd0d0cc9a416742c7d65bee9c5772d07fc31",
+      "bytes": 11184,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
+    },
+    {
+      "id": "qualified-aws-client",
+      "url": "https://github.com/kellen-miller/garm-provider-aws/blob/3c0e79dddd58ea04b95b163014061dd240d52308/internal/client/aws.go",
+      "revision": "3c0e79dddd58ea04b95b163014061dd240d52308",
+      "git_blob_sha": "4d16526d54452d98e148fe3c22075874868001d3",
+      "sha256": "4f3798b2b1b2c4f8c0dfe4e19596871e0da3c210d7797ee5b72054cd12f53197",
+      "bytes": 10608,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
+    },
+    {
+      "id": "qualified-aws-config",
+      "url": "https://github.com/kellen-miller/garm-provider-aws/blob/3c0e79dddd58ea04b95b163014061dd240d52308/config/config.go",
+      "revision": "3c0e79dddd58ea04b95b163014061dd240d52308",
+      "git_blob_sha": "c262e8c1fce35e5740a145c22d5ae45c9624449a",
+      "sha256": "b3467850cb21800d6b7edeb9e4e54a9b5d5bb49e1812927b740956b5c3f88511",
+      "bytes": 3696,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
+    },
+    {
+      "id": "qualified-azure-spec",
+      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/internal/spec/spec.go",
+      "revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+      "git_blob_sha": "1c0a40d1ca19797b6ccb60875f8d55a7d8715ed0",
+      "sha256": "88082fd83c5b24dd3675706a010836eddabab113641fcc899a32dda2920ce8e8",
+      "bytes": 22073,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
+    },
+    {
+      "id": "qualified-azure-client",
+      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/internal/client/azure.go",
+      "revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+      "git_blob_sha": "6836cc0d2288aa350af8ce9beaaa0abf908193fe",
+      "sha256": "f264a1fdfc8a5d366e86048b12cfee073c643552a1a6a84049354f9941ad8d3d",
+      "bytes": 15270,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
+    },
+    {
+      "id": "qualified-azure-config",
+      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/config/config.go",
+      "revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+      "git_blob_sha": "df4b2cf251f1ae1395b7ea8819c3e69daecb6f54",
+      "sha256": "d99f29e5243a427d45076981deb87cc9b819c6cc7a3d59871fd8896ed25e3790",
+      "bytes": 6817,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
+    },
+    {
+      "id": "qualified-gcp-spec",
+      "url": "https://github.com/kellen-miller/garm-provider-gcp/blob/98a362f5319928099b942a668c5a17a34170066a/internal/spec/spec.go",
+      "revision": "98a362f5319928099b942a668c5a17a34170066a",
+      "git_blob_sha": "abe5ce0d48990733ab5d4b806e0c0a6f1f65694b",
+      "sha256": "1bfbf6da6ec6c1853e8e8548630bb1174d327613f570f740f8ce92cab4430803",
+      "bytes": 12710,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
+    },
+    {
+      "id": "qualified-gcp-client",
+      "url": "https://github.com/kellen-miller/garm-provider-gcp/blob/98a362f5319928099b942a668c5a17a34170066a/internal/client/gcp.go",
+      "revision": "98a362f5319928099b942a668c5a17a34170066a",
+      "git_blob_sha": "dcddbe9b7b6611156883ecdfda56c7731b012f9e",
+      "sha256": "dd616a4ded48758945eb05323e903d905503c462a832ca4c65226c424ca450f6",
+      "bytes": 13834,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
+    },
+    {
+      "id": "qualified-gcp-config",
+      "url": "https://github.com/kellen-miller/garm-provider-gcp/blob/98a362f5319928099b942a668c5a17a34170066a/config/config.go",
+      "revision": "98a362f5319928099b942a668c5a17a34170066a",
+      "git_blob_sha": "6bbb95c4fdc0e0c86af5e246ba4ff72be536aec0",
+      "sha256": "9233477740e190941a9a4f9cffd89f8b4a36c479efaa000ece1b67bbbf7cb3e6",
+      "bytes": 1796,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
+    },
+    {
+      "id": "common-install-hook",
+      "url": "https://github.com/kellen-miller/garm-provider-aws/blob/3c0e79dddd58ea04b95b163014061dd240d52308/vendor/github.com/cloudbase/garm-provider-common/cloudconfig/util.go",
+      "revision": "3c0e79dddd58ea04b95b163014061dd240d52308",
+      "git_blob_sha": "2a8f4a3453da71e79702372bebcf6959bad25df4",
+      "sha256": "ea8ac95db603a2291971fd50009210c680dcb5b6d29898275aa052811a8d320b",
+      "bytes": 9123,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned vendored common source; identical bytes verified in all3 qualified provider checkouts"
+    },
+    {
+      "id": "common-cloud-init",
+      "url": "https://github.com/kellen-miller/garm-provider-aws/blob/3c0e79dddd58ea04b95b163014061dd240d52308/vendor/github.com/cloudbase/garm-provider-common/cloudconfig/cloudconfig.go",
+      "revision": "3c0e79dddd58ea04b95b163014061dd240d52308",
+      "git_blob_sha": "a49fe42a1b1da9fa60df9ec55df8b75939c91ab1",
+      "sha256": "0f01bf9dece7f95a6a00cdd717163e41e54d46b1262e8408fc95c11b868a32f0",
+      "bytes": 4208,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned vendored common source; identical bytes verified in all3 qualified provider checkouts"
+    },
+    {
+      "id": "common-install-templates",
+      "url": "https://github.com/kellen-miller/garm-provider-aws/blob/3c0e79dddd58ea04b95b163014061dd240d52308/vendor/github.com/cloudbase/garm-provider-common/cloudconfig/templates.go",
+      "revision": "3c0e79dddd58ea04b95b163014061dd240d52308",
+      "git_blob_sha": "8c3b5d75ee7b42d421bbf27a8f3360e0ff0fab40",
+      "sha256": "712021eb9519e7b83e65cae16497bbe6a871d9ae131c3a87b703e91b9fc31271",
+      "bytes": 28217,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned vendored common source; identical bytes verified in all3 qualified provider checkouts"
+    },
+    {
+      "id": "common-runner-defaults",
+      "url": "https://github.com/kellen-miller/garm-provider-aws/blob/3c0e79dddd58ea04b95b163014061dd240d52308/vendor/github.com/cloudbase/garm-provider-common/defaults/defaults.go",
+      "revision": "3c0e79dddd58ea04b95b163014061dd240d52308",
+      "git_blob_sha": "0feda5e382d6ef519b9821aa288a99d23e9bfcb7",
+      "sha256": "83ffee9cabcb398b9874e24b14f9b41bee9b8395dee31e51521d4b2558b2ae88",
+      "bytes": 1054,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned vendored common source; identical bytes verified in all3 qualified provider checkouts"
+    },
+    {
+      "id": "common-runner-artifact",
+      "url": "https://github.com/kellen-miller/garm-provider-aws/blob/3c0e79dddd58ea04b95b163014061dd240d52308/vendor/github.com/cloudbase/garm-provider-common/params/github.go",
+      "revision": "3c0e79dddd58ea04b95b163014061dd240d52308",
+      "git_blob_sha": "c3e9a0a4c57bea6474e58c7f83412a5326ea3aa8",
+      "sha256": "fbd23ac1220da6d4a0c98eb39cf4e03f56a32cc4cda2d288910033481d5b3c0e",
+      "bytes": 2643,
+      "fetched_at": "2026-10-21",
+      "transform": "exact pinned vendored common source; identical bytes verified in all3 qualified provider checkouts"
+    },
+    {
+      "id": "azure-customdata-model",
+      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/vendor/github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5/models.go",
+      "revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+      "git_blob_sha": "1fad0acd2a7edc9da843a10003312531bc968bd9",
+      "sha256": "d834e0d939f5d8d6fed44160e2d1f0eb3d5aeb7a1aa5a344d05286e7260db8eb",
+      "bytes": 337071,
+      "fetched_at": "2026-10-21",
+      "transform": "vendored official ARM OSProfile model: maximum decoded customData65535 bytes"
+    },
+    {
+      "id": "aws-ebs-optimized-info",
+      "url": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_EbsOptimizedInfo.html",
+      "sha256": "06258612aae6e2089ee05aa77434077cadebee4de96a9497dc7341c8feb18b80",
+      "bytes": 14604,
+      "fetched_at": "2026-10-21T19:28:31.973617+00:00"
+    },
+    {
+      "id": "aws-ebs-block-device",
+      "url": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_EbsBlockDevice.html",
+      "sha256": "01461e439a6a2f112bbdd3b0c3078dc4ae65e6fc847c1fe28f0ab3c0e9c1fe47",
+      "bytes": 29510,
+      "fetched_at": "2026-10-21T19:28:31.973946+00:00"
+    },
+    {
+      "id": "gcp-gpu-create",
+      "url": "https://docs.cloud.google.com/compute/docs/gpus/create-gpu-vm-accelerator-optimized",
+      "sha256": "18860dbd1e5a2d2900d8706f1ef497fdb79553a7185e97320ce79b58ae535de6",
+      "bytes": 403888,
+      "fetched_at": "2026-10-21T19:38:21.488710+00:00"
+    },
+    {
+      "id": "azure-image-get",
+      "url": "https://learn.microsoft.com/en-us/rest/api/compute/virtual-machine-images/get?view=rest-compute-2025-04-01",
+      "sha256": "ca59473de3b9125f30d0ed17fccf5ac5185904ebfd2f3994ebd03114d522730e",
+      "bytes": 68865,
+      "fetched_at": "2026-10-21T19:42:06.068267+00:00"
+    },
+    {
+      "id": "azure-disk-tiers",
+      "url": "https://learn.microsoft.com/en-us/azure/virtual-machines/disks-types",
+      "sha256": "04b8621b1dcd8c5b5ea943389772bab2853ff196e15058e5c3dc79ffa45dd30c",
+      "bytes": 91605,
+      "fetched_at": "2026-10-21T19:42:05.066829+00:00"
+    },
+    {
+      "id": "qualified-azure-util",
+      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/internal/util/util.go",
+      "revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+      "git_blob_sha": "f611bd758b5aade9870c0485aaa9270716920e9d",
+      "sha256": "f169ba2d4e9d9fbe69cb52d5c994d63359f3f2a20bfa45906689985d0e3954f1",
+      "bytes": 5150,
+      "fetched_at": "2026-10-21T19:46:53.763407+00:00",
+      "transform": "exact checked-out immutable Git blob"
+    },
+    {
+      "id": "azure-native-vm-state",
+      "url": "https://learn.microsoft.com/azure/virtual-machines/states-billing",
+      "sha256": "90eb1ffc15b9e16052d8a29f6213e0a497b29cb31200e4681406421ad3d3bcbb",
+      "bytes": 54991,
+      "fetched_at": "2026-10-21T19:59:47.443659+00:00"
+    },
+    {
+      "id": "azure-managed-disk-limits",
+      "url": "https://learn.microsoft.com/en-us/azure/virtual-machines/managed-disks-overview",
+      "sha256": "3e9f22dbcf1860e4ab04dc1851f3867ce4918e14126c431001c5f8466cdebf29",
+      "bytes": 64066,
+      "fetched_at": "2026-10-21T19:59:47.213720+00:00"
+    },
+    {
+      "id": "azure-nct4-hardware",
+      "url": "https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/gpu-accelerated/ncast4v3-series?tabs=sizebasic",
+      "sha256": "f29e0070cf3edd743ffd05a49ca00f480d220762984e9b98c784630bd9d2305c",
+      "bytes": 59962,
+      "fetched_at": "2026-10-21T19:59:47.264259+00:00"
+    },
+    {
+      "id": "azure-compute-retail",
+      "url": "https://prices.azure.com/api/retail/prices?%24filter=serviceName+eq+%27Virtual+Machines%27+and+armRegionName+eq+%27eastus%27+and+armSkuName+eq+%27Standard_D2s_v3%27&api-version=2023-01-01-preview",
+      "sha256": "38ab0035d509fbf33588766c0356b25afc25a83a419b35a619dc4031c42fe0b2",
+      "bytes": 5448,
+      "fetched_at": "2026-10-21T20:03:21.253351+00:00"
+    },
+    {
+      "id": "gcp-image-disk-pricing",
+      "url": "https://cloud.google.com/compute/disks-image-pricing",
+      "sha256": "a870344ad983c7c83a388b5ae3c182bcf128a9b101703d583a29e8e131c16ce8",
+      "bytes": 3993808,
+      "fetched_at": "2026-10-21T20:15:23.981616+00:00"
+    },
+    {
+      "id": "gcp-persistent-disk-performance",
+      "url": "https://docs.cloud.google.com/compute/docs/disks/performance",
+      "sha256": "aba4007b8c56dc55165e8371614138c941241847c981eb80830d831e45ff3313",
+      "bytes": 469262,
+      "fetched_at": "2026-10-21T20:15:24.992438+00:00"
+    },
+    {
+      "id": "azure-marketplace-licensing",
+      "url": "https://learn.microsoft.com/en-us/marketplace/purchase-vm-in-azure-portal",
+      "sha256": "243f1e34721a01c86430200f065249ec293bfd34a1bf3375ee7245f490a44918",
+      "bytes": 53635,
+      "fetched_at": "2026-10-21T20:33:00.752147+00:00"
+    },
+    {
+      "id": "azure-marketplace-plan",
+      "url": "https://learn.microsoft.com/en-us/azure/virtual-machines/linux/cli-ps-findimage",
+      "sha256": "b8b1ff076aa897096b540f8a75b0eda3b52e921590dd9d440754679cb261101c",
+      "bytes": 66260,
+      "fetched_at": "2026-10-21T20:33:01.095400+00:00"
+    },
+    {
+      "id": "garm-api-params",
+      "url": "https://github.com/cloudbase/garm/blob/154638445c3949c1958b01812f69d9a1e4d82684/params/params.go",
+      "revision": "154638445c3949c1958b01812f69d9a1e4d82684",
+      "git_blob_sha": "49b237d69a3683e17f834de9b6c4a73872e65666",
+      "sha256": "cb291302f1c3949220b7cbb47a351869fee795d99d9d34c966460fe8e71075f9",
+      "bytes": 55049,
+      "fetched_at": "2026-10-21T21:32:44.668808+00:00",
+      "transform": "qualified tagged archive bytes matched independently fetched exact-revision GitHub tree blob hashes"
+    },
+    {
+      "id": "garm-api-pool-request",
+      "url": "https://github.com/cloudbase/garm/blob/154638445c3949c1958b01812f69d9a1e4d82684/params/requests.go",
+      "revision": "154638445c3949c1958b01812f69d9a1e4d82684",
+      "git_blob_sha": "12979ce96d4d328c41eb941b2e8867a7de497c99",
+      "sha256": "87272e01383ee683cb28209157e2d4c95da774a73c058b90fbd1ef3710003446",
+      "bytes": 31489,
+      "fetched_at": "2026-10-21T21:32:44.669020+00:00",
+      "transform": "qualified tagged archive bytes matched independently fetched exact-revision GitHub tree blob hashes"
+    },
+    {
+      "id": "garm-api-repository-controller",
+      "url": "https://github.com/cloudbase/garm/blob/154638445c3949c1958b01812f69d9a1e4d82684/apiserver/controllers/repositories.go",
+      "revision": "154638445c3949c1958b01812f69d9a1e4d82684",
+      "git_blob_sha": "f3675790db793d1b37f9b738253a619a54c27df9",
+      "sha256": "fe5c5eed840b6c0bf8f399fb30e35f8953e13e18a9b71c6b3fee1ce107204f95",
+      "bytes": 21043,
+      "fetched_at": "2026-10-21T21:32:44.669081+00:00",
+      "transform": "qualified tagged archive bytes matched independently fetched exact-revision GitHub tree blob hashes"
+    },
+    {
+      "id": "garm-api-webhook-controller",
+      "url": "https://github.com/cloudbase/garm/blob/154638445c3949c1958b01812f69d9a1e4d82684/apiserver/controllers/controllers.go",
+      "revision": "154638445c3949c1958b01812f69d9a1e4d82684",
+      "git_blob_sha": "ec5c1ea3822f7447cefcaae1d020b60e88327800",
+      "sha256": "dc73d4c082c7cd73433d434712a55f6fc874523646c89192b326b393a833e0a7",
+      "bytes": 17354,
+      "fetched_at": "2026-10-21T21:32:44.669131+00:00",
+      "transform": "qualified tagged archive bytes matched independently fetched exact-revision GitHub tree blob hashes"
+    },
+    {
+      "id": "garm-pool-bootstrap-timeout",
+      "url": "https://github.com/cloudbase/garm/blob/154638445c3949c1958b01812f69d9a1e4d82684/runner/pool/pool.go",
+      "revision": "154638445c3949c1958b01812f69d9a1e4d82684",
+      "git_blob_sha": "9f5fc197272d7aabd04351e3dfd7bd2583a505a6",
+      "sha256": "0ff95bdd8b0c327da9d82694247bd4a81098b10e8a217d1b3089437246ec8e26",
+      "bytes": 80851,
+      "fetched_at": "2026-10-21T21:32:44.669230+00:00",
+      "transform": "qualified tagged archive bytes matched independently fetched exact-revision GitHub tree blob hashes"
+    },
+    {
+      "id": "aws-spot-status-time",
+      "url": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_SpotInstanceStatus.html",
+      "sha256": "a165165b0f8a66272548895c7150d8245449d585f6e96059ce1c7a39ef9bd241",
+      "bytes": 13696,
+      "fetched_at": "2026-10-21T21:58:24.529382+00:00"
+    },
+    {
+      "id": "aws-spot-status-codes",
+      "url": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-request-status.html",
+      "sha256": "a1bbeee1735351f83b2f1addb723de93b5bd674f61cbe0f0a9a29d9a1ef68aa9",
+      "bytes": 24798,
+      "fetched_at": "2026-10-21T21:58:24.488995+00:00"
+    },
+    {
+      "id": "aws-describe-spot-requests",
+      "url": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeSpotInstanceRequests.html",
+      "sha256": "ebc9f80e08faae4e95cefba81627fd4369b41be7c2ac7154aeefdb9be61be277",
+      "bytes": 35134,
+      "fetched_at": "2026-10-21T21:58:24.501861+00:00"
+    },
+    {
+      "id": "gcp-spot-preemption-operation",
+      "url": "https://docs.cloud.google.com/compute/docs/instances/create-use-spot",
+      "sha256": "6e4f540a36ca3daa23b0e407b5488e8126b969941192833517f91fc81e83504d",
+      "bytes": 474352,
+      "fetched_at": "2026-10-21T21:58:25.572834+00:00"
+    },
+    {
+      "id": "gcp-operation-sdk-model",
+      "url": "https://github.com/googleapis/google-cloud-rust/blob/373bb9cc698f45e1f63e41beef090924af2ac2a4/src/generated/cloud/compute/v1/src/model.rs",
+      "revision": "373bb9cc698f45e1f63e41beef090924af2ac2a4",
+      "crate": "google-cloud-compute-v1@3.6.0",
+      "crate_sha256": "f0ed19dfae528981c14500a8be342922423d933a2f9b76ae0cc07d174790670e",
+      "sha256": "609ae2c6951364ed9c48f50d57286b92203b244d4221796927da3327672b5372",
+      "bytes": 26656472,
+      "inspected_at": "2026-10-21T22:24:42.820721+00:00",
+      "qualification": "Cargo cache package digest verified against Cargo.lock; local model.rs equals package archive member; OperationList.kind compute#operations and operation native IDs Option<u64>"
+    },
+    {
+      "id": "garm-external-wrapper-v010",
+      "url": "https://github.com/cloudbase/garm/blob/154638445c3949c1958b01812f69d9a1e4d82684/runner/providers/v0.1.0/external.go",
+      "revision": "154638445c3949c1958b01812f69d9a1e4d82684",
+      "git_blob_sha": "bb96f4d7c02b3f28c200d1e8f353425233653463",
+      "sha256": "16dd66d60627415cfa6dd163e545f304b9dac339754386906b93101eb3fdb499",
+      "bytes": 12457,
+      "fetched_at": "2026-10-21T22:44:56.247700+00:00",
+      "transform": "exact tagged archive bytes matched independently fetched exact-revision GitHub contents API blob SHA"
+    }
+  ],
+  "fixture_provenance": {
+    "ec2-run.xml": {
+      "source": "ec2-run",
+      "operation": "RunInstances",
+      "shape": "RunInstancesResponse/instancesSet/item",
+      "transform": "minimal documented element projection; synthetic IDs and t3.small value replace sample placeholders"
+    },
+    "ec2-host.xml": {
+      "source": "ec2-host",
+      "operation": "AllocateHosts",
+      "shape": "AllocateHostsResponse/hostIdSet",
+      "transform": "minimal documented response; synthetic host ID"
+    },
+    "azure-vm.json": {
+      "source": "azure-vm",
+      "operation": "VirtualMachines_CreateOrUpdate",
+      "api_version": "2025-04-01",
+      "transform": "unmodified first Linux response example; illustrative source values, not an image recommendation"
+    },
+    "gcp-model.json": {
+      "source": "gcp-discovery",
+      "operation": "instances.insert",
+      "transform": "Operation/Scheduling/Instance schema projection"
+    },
+    "gcp-operation.json": {
+      "source": "gcp-discovery",
+      "operation": "instances.insert",
+      "shape": "Operation",
+      "transform": "synthetic values with schema property validation"
+    },
+    "garm-bootstrap.json": {
+      "source": "garm-common-params",
+      "operation": "CreateInstance",
+      "shape": "BootstrapInstance",
+      "transform": "synthetic values; byte fields base64 as Go encoding/json"
+    },
+    "errors.json": {
+      "sources": [
+        "ec2-errors",
+        "azure-errors",
+        "gcp-errors"
+      ],
+      "transform": "documented codes; terminal outcome and scope still required before fallback"
+    },
+    "bootstrap-contract.json": {
+      "sources": [
+        "garm-bootstrap-templates",
+        "garm-metadata-routes",
+        "garm-common-params",
+        "runner-linux-dependencies",
+        "runner-systemd-service",
+        "runner-windows-service",
+        "runner-windows-config"
+      ],
+      "transform": "protocol expectations from tagged routes/templates; runtime values synthetic; checksum requirement and no-default-label scope from approved Outrider plan"
+    },
+    "aws-price-list-example.json": {
+      "source": "aws-get-products",
+      "operation": "GetProducts",
+      "transform": "unmodified JSON output example; PriceList contains JSON strings. Historical storage example, not current price recommendation."
+    },
+    "aws-price-components.json": {
+      "sources": [
+        "aws-ebs-codes",
+        "aws-ebs-pricing",
+        "aws-vpc-pricing"
+      ],
+      "transform": "synthetic prices; documented gp3 baseline and charging dimensions; explicit730h/month estimation basis; totals computed by PythonDecimal"
+    },
+    "azure-provisioning-contract.json": {
+      "sources": [
+        "azure-delete-contract",
+        "azure-retail-contract",
+        "azure-nic-contract",
+        "azure-vm"
+      ],
+      "transform": "documented request paths/API versions; synthetic prices and identifiers, no live cloud"
+    },
+    "gcp-price-units.json": {
+      "sources": [
+        "gcp-billing-units",
+        "gcp-windows-sql-license",
+        "gcp-machine-types"
+      ],
+      "transform": "synthetic quantities/rates; PythonDecimal totals; explicit730h/month estimate, no cloud invoice/current rates"
+    },
+    "aws-vpc-products.json": {
+      "source": "aws-vpc-offer",
+      "transform": "actual product attribute projection; rates excluded; demonstrates AmazonVPC service and absent productFamily"
+    },
+    "aws-ami-billing.json": {
+      "source": "aws-ami-billing",
+      "transform": "documented standard/premium billing-code pairs; no prices or cloud calls"
+    },
+    "gcp-capacity-advice.json": {
+      "source": "gcp-beta-advice",
+      "transform": "synthetic request/recommendation values, source-derived fields/scope/units; no project call"
+    },
+    "github-public-commit-evidence.json": {
+      "source": "github-public-commit-records",
+      "transform": "main-verified selected fields from actual public run/attempt/job/PR/commit/Contents responses; no received webhook or cloud qualification"
+    },
+    "github-event-commit-matrix.json": {
+      "source": "github-public-commit-records",
+      "transform": "synthetic IDs/SHAs/headers/body; HMAC generated by Python; captured public relationships remain separately labeled"
+    },
+    "azure-interruption-identity.json": {
+      "sources": [
+        "azure-arg-health-identity",
+        "azure-arg-query"
+      ],
+      "transform": "synthetic request/response values; documented ARG property and pagination fields; conservative main attribution rules, no live Azure capture"
+    },
+    "azure-public-ip-products.json": {
+      "source": "azure-public-ip-retail",
+      "transform": "actual non-rate projection; separate synthetic price for local matching test, no cloud provisioning proof"
+    },
+    "provider-process-contract.json": {
+      "sources": [
+        "aws-child-main",
+        "azure-child-main",
+        "gcp-child-main",
+        "child-execution-v010",
+        "garm-common-params",
+        "child-interface-selector"
+      ],
+      "transform": "pinned executable wire shapes and failure semantics; synthetic values; Outrider supervision requirements come from the approved amended plan, not cloud runtime evidence"
+    },
+    "provider-launch-contract.json": {
+      "sources": [
+        "qualified-aws-spec",
+        "qualified-aws-client",
+        "qualified-aws-config",
+        "qualified-azure-spec",
+        "qualified-azure-client",
+        "qualified-azure-config",
+        "qualified-gcp-spec",
+        "qualified-gcp-client",
+        "qualified-gcp-config"
+      ],
+      "transform": "main projections of pinned Go spec/client/config; numbers/identities are contract defaults or synthetic; actual cloud launch/price inheritance requires read-only facts or explicit supported extras"
+    },
+    "provider-bootstrap-contract.json": {
+      "sources": [
+        "common-install-hook",
+        "common-cloud-init",
+        "common-install-templates",
+        "common-runner-defaults",
+        "common-runner-artifact",
+        "qualified-aws-spec",
+        "qualified-azure-client",
+        "qualified-gcp-client",
+        "azure-customdata-model"
+      ],
+      "transform": "pinned common/provider behavior projections; metadata values synthetic; limits and Outrider conservative gate are separately labelled"
+    },
+    "aws-launch-limits.json": {
+      "sources": [
+        "aws-ebs-optimized-info",
+        "aws-ebs-block-device",
+        "qualified-aws-client"
+      ],
+      "transform": "source units/default request behavior; synthetic capacity/minimum-volume values. Decimal conversion and fail-closed expectations are main acceptance requirements, not performance or cloud qualification."
+    },
+    "gcp-provider-capabilities.json": {
+      "sources": [
+        "gcp-gpu-create",
+        "gcp-discovery",
+        "qualified-gcp-spec",
+        "qualified-gcp-client",
+        "qualified-gcp-config"
+      ],
+      "transform": "main projection of pre-attached GPU versus unsupported attachment and scheduling requirements; values synthetic, not cloud launch evidence"
+    },
+    "azure-catalog-contract.json": {
+      "sources": [
+        "azure-image-get",
+        "azure-disk-tiers",
+        "qualified-azure-client",
+        "qualified-azure-spec",
+        "azure-native-vm-state",
+        "azure-managed-disk-limits",
+        "azure-nct4-hardware",
+        "azure-marketplace-licensing",
+        "azure-marketplace-plan"
+      ],
+      "transform": "main API-field/tier projections plus synthetic rates and administrator-attested image minimum. Attestation is central configuration, not an invented marketplace API field."
+    },
+    "provider-ownership-contract.json": {
+      "sources": [
+        "qualified-aws-client",
+        "qualified-azure-util",
+        "qualified-gcp-spec",
+        "qualified-gcp-client"
+      ],
+      "transform": "main projection of actual delegated child tags/native identity fields. No synthetic native Outrider tags or old client-token operations."
+    },
+    "azure-compute-products.json": {
+      "source": "azure-compute-retail",
+      "transform": "nine real Retail row metadata projections; price fields replaced with explicit synthetic trap rates. Public request only; no cloud allocation."
+    },
+    "gcp-billing-contract.json": {
+      "sources": [
+        "gcp-image-disk-pricing",
+        "gcp-persistent-disk-performance",
+        "gcp-billing-units",
+        "gcp-discovery"
+      ],
+      "transform": "main projection of official license quantities, disk billing granularity and physical performance separation; illustrative values synthetic"
+    },
+    "delegated-allocation-contract.json": {
+      "sources": [
+        "qualified-aws-client",
+        "qualified-azure-client",
+        "qualified-gcp-client",
+        "child-execution-v010",
+        "aws-child-main",
+        "azure-child-main",
+        "gcp-child-main"
+      ],
+      "transform": "main-approved durable ownership/ambiguity behavior over opaque child process semantics and actual child native lifecycle boundaries; local synthetic sequences, not API absence guarantees"
+    },
+    "interruption-observation-contract.json": {
+      "sources": [
+        "aws-spot-status-time",
+        "aws-spot-status-codes",
+        "aws-describe-spot-requests",
+        "gcp-spot-preemption-operation",
+        "gcp-discovery",
+        "azure-arg-health-identity",
+        "azure-arg-query",
+        "gcp-operation-sdk-model"
+      ],
+      "transform": "Main-written synthetic XML/JSON values and identity/time variants derived from official documented response models and approved interruption/history rules; no live capture or delivery/completeness guarantee"
+    }
+  }
+}

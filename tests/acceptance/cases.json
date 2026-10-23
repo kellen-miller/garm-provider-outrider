@@ -1,0 +1,184 @@
+{
+  "version": 2,
+  "owner": "main acceptance; implementation workers cannot alter",
+  "milestones": [
+    {
+      "id": "core",
+      "target": "core_contract",
+      "required_tests": [
+        "config::precedence_replace_lists",
+        "config::hard_limit_reject",
+        "catalog::canonical_token_reject_variants",
+        "catalog::distinct_override_tokens",
+        "policy::all_four_policies",
+        "policy::missing_stale_data",
+        "client_shapes::total_cost_commitment_overflow",
+        "client_shapes::real_client_shape_prototypes",
+        "policy::cost_horizon_ranking_consistency",
+        "config::fractional_hardware_caps"
+      ]
+    },
+    {
+      "id": "control",
+      "target": "control_contract",
+      "required_tests": [
+        "process::real_subprocess_all_commands",
+        "provider::base64_and_stdout",
+        "restart::duplicate_restart",
+        "restart::exclusive_daemon",
+        "restart::malformed_and_redaction",
+        "tombstones::provider_disconnect_delete_tombstone"
+      ]
+    },
+    {
+      "id": "bootstrap",
+      "target": "bootstrap_contract",
+      "required_tests": [
+        "linux::linux_token_no_default_labels",
+        "linux::linux_jit_exact_labels",
+        "registration::windows_repository_registration",
+        "registration::macos_direct_credentials",
+        "registration::checksum_ca_callback",
+        "registration::injection_and_secret_redaction",
+        "registration::required_syntax_validators",
+        "linux::provider_hook_literal_round_trip",
+        "linux::wrapped_payload_limit",
+        "rendering::actual_common_rendering"
+      ]
+    },
+    {
+      "id": "providers",
+      "target": "provider_contract",
+      "required_tests": [
+        "pinned_process_configuration",
+        "bootstrap_wire_and_clean_environment",
+        "stock_result_shapes_and_null_inventory",
+        "opaque_failure_and_redaction",
+        "bounded_process_io_and_deadline"
+      ]
+    },
+    {
+      "id": "aws",
+      "target": "aws_contract",
+      "required_tests": [
+        "inventory::paginated_inventory_prices",
+        "launch::provider_launch_defaults_and_quote",
+        "spot_observations::read_only_cloud_calls",
+        "inventory::scoped_capacity_advice",
+        "launch::fractional_disk_throughput",
+        "inventory::binding_account_region_mismatch",
+        "launch::launch_disk_feasibility",
+        "inventory::provider_ownership_observations"
+      ]
+    },
+    {
+      "id": "azure",
+      "target": "azure_contract",
+      "required_tests": [
+        "pricing::sku_price_pagination",
+        "pricing::provider_launch_defaults_and_quote",
+        "hardware::public_ip_and_disk_dimensions",
+        "resource_graph::read_only_cloud_calls",
+        "ownership::interruption_requires_incarnation",
+        "ownership::binding_subscription_location_mismatch",
+        "ownership::untrusted_pagination_rejected",
+        "ownership::provider_ownership_observations",
+        "catalog::image_licensing_and_purchase_plan"
+      ]
+    },
+    {
+      "id": "gcp",
+      "target": "gcp_contract",
+      "required_tests": [
+        "catalog::machine_price_pagination",
+        "catalog::provider_launch_defaults_and_quote",
+        "catalog::windows_license_and_gpu_disks",
+        "capacity::optional_capacity_advice_scope",
+        "ownership::read_only_cloud_calls",
+        "ownership::binding_project_zone_mismatch",
+        "ownership::unsupported_attachment_rejected",
+        "ownership::provider_ownership_observations"
+      ]
+    },
+    {
+      "id": "ingress",
+      "target": "ingress_contract",
+      "required_tests": [
+        "signed_admission::signed_durable_ack",
+        "signed_admission::exact_repository_pool_before_forward",
+        "job_provenance::canonical_and_extra_label_reject",
+        "job_provenance::immutable_event_commit_matrix",
+        "job_provenance::fork_default_and_central_opt_in",
+        "job_provenance::duplicate_hook_and_terminal_order",
+        "job_provenance::poison_no_head_of_line",
+        "pool_lifecycle::rejection_check_dedup_outage",
+        "pool_lifecycle::pool_caps_expiry_drain",
+        "pool_lifecycle::unavailable_garm_restart"
+      ]
+    },
+    {
+      "id": "aws-mac",
+      "target": "mac_contract",
+      "required_tests": [
+        "unsupported_macos_fail_fast",
+        "provider_capability_gate",
+        "minimum_commitment_cost_preserved"
+      ]
+    },
+    {
+      "id": "allocation",
+      "target": "allocation_contract",
+      "required_tests": [
+        "snapshot_admission::generic_child_failure_no_fallback",
+        "snapshot_admission::ambiguous_no_duplicate",
+        "snapshot_admission::expired_nonterminal_fenced",
+        "snapshot_admission::killed_provider_late_create_delete",
+        "native_ownership::list_outage_not_empty",
+        "snapshot_admission::tightened_limits_and_removed_account",
+        "native_ownership::native_id_binding_collision",
+        "native_ownership::name_and_opaque_id_same_allocation",
+        "native_ownership::wrapped_bootstrap_limit_pre_spawn",
+        "native_ownership::remove_all_owned_journal_only",
+        "native_ownership::ambiguous_counts_against_caps",
+        "native_ownership::no_bare_name_native_mutation"
+      ]
+    },
+    {
+      "id": "recovery",
+      "target": "recovery_contract",
+      "required_tests": [
+        "startup_cleanup::verified_interruption_only",
+        "rerun_state::default_off_and_caps",
+        "rerun_state::per_job_endpoint_after_completion",
+        "rerun_state::ambiguous_rerun_observation",
+        "startup_cleanup::restart_retained_cleanup",
+        "startup_cleanup::observation_provenance",
+        "startup_cleanup::historical_policy_inputs_after_restart"
+      ]
+    },
+    {
+      "id": "handoff",
+      "target": "system_contract",
+      "required_tests": [
+        "cross_cloud_cleanup::signed_event_to_cross_cloud_cleanup",
+        "daemon_restart::restart_idempotent_end_to_end",
+        "daemon_restart::repository_registration_labels",
+        "cross_cloud_cleanup::unsupported_macos_fail_fast",
+        "cross_cloud_cleanup::required_tools_no_skip"
+      ]
+    }
+  ],
+  "external_gates": [
+    {
+      "id": "upstream_garm_wrapper_probe",
+      "owner": "main",
+      "required_evidence": ".agent/work/initial-provider/qualification/garm-wrapper-probe.json"
+    },
+    {
+      "id": "qualified_provider_binary_versions",
+      "owner": "main",
+      "required_evidence": ".agent/work/initial-provider/qualification/upstream-spot/qualified-main-acceptance.json"
+    }
+  ],
+  "architecture": "compose-existing-garm-providers"
+}

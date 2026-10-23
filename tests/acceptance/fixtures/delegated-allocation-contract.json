@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "source_ids": [
+    "qualified-aws-client",
+    "qualified-azure-client",
+    "qualified-gcp-client",
+    "child-execution-v010",
+    "aws-child-main",
+    "azure-child-main",
+    "gcp-child-main"
+  ],
+  "identity": {
+    "logical_allocation": "unique controller_id + GARM runner name, also addressable by one opaque allocation ID",
+    "native_resource": "actual cloud account/subscription/project + region/zone + native ID; separate from allocation and runtime binding IDs",
+    "dispatch": "immutable binary/config/source pins plus original controller/pool, exact flavor/image/approved extras",
+    "attribution": "journal identity plus native scope; controller/pool tags alone do not authorize adoption or mutation"
+  },
+  "cases": [
+    {
+      "name": "opaque_capacity_failure",
+      "events": [
+        "Create durably marked dispatched",
+        "child exits 1 with capacity-looking stderr"
+      ],
+      "expected": "allocation remains ambiguous and charged against concurrency; no next-candidate dispatch; diagnostics redact raw child output"
+    },
+    {
+      "name": "expired_uncertain_create",
+      "events": [
+        "Create times out after spawn",
+        "child is killed/reaped",
+        "lease/cooldown expires",
+        "empty child List"
+      ],
+      "expected": "still ambiguous; no absence-only or TTL proof; a late cloud operation can still materialize"
+    },
+    {
+      "name": "pre_spawn_rejection",
+      "events": [
+        "binary/config pin fails before spawning"
+      ],
+      "expected": "definitive local failure; no cloud mutation; another eligible candidate may be considered within the original deadline"
+    },
+    {
+      "name": "name_and_opaque_delete",
+      "events": [
+        "Create runner-1 gets allocation opaque-1",
+        "Delete runner-1",
+        "Delete opaque-1"
+      ],
+      "expected": "one allocation and one tombstone; late Create reconciles into cleanup; no second identity row or new allocation"
+    },
+    {
+      "name": "azure_dependencies_without_vm",
+      "events": [
+        "Azure child Create fails after dispatch",
+        "VM inventory is empty",
+        "Delete requested"
+      ],
+      "expected": "invoke qualified child Delete using reserved resource-group/runner name; record cleanup attempts; do not equate missing VM with absence of dependencies or terminal no-allocation proof"
+    },
+    {
+      "name": "missing_native_id",
+      "events": [
+        "AWS/GCP Create is ambiguous",
+        "no native ID is known"
+      ],
+      "expected": "resolve exact owned native identity before native-ID lifecycle commands; no bare-name no-op accepted as cleanup success"
+    },
+    {
+      "name": "list_omission_and_outage",
+      "events": [
+        "journal knows a live native ID",
+        "child List omits it",
+        "independent cloud inspection fails"
+      ],
+      "expected": "List returns an error; do not report empty inventory, omit the allocation, or serve cached state as fresh"
+    },
+    {
+      "name": "unknown_tagged_resource",
+      "events": [
+        "child List returns a matching controller/pool resource absent from journal"
+      ],
+      "expected": "orphan diagnostic; no automatic adoption, mutation, or return as an owned GARM allocation"
+    },
+    {
+      "name": "removed_binding_cleanup",
+      "events": [
+        "live allocation recorded under binding A",
+        "administrator removes A from current candidate selection"
+      ],
+      "expected": "retain immutable historical binding A for lifecycle; fail visibly if original pins/credentials unavailable; do not reroute through a replacement binding"
+    },
+    {
+      "name": "uncertain_allocation_consumes_caps",
+      "events": [
+        "one ambiguous allocation",
+        "GARM retries under a new runner name"
+      ],
+      "expected": "original allocation still consumes pool/account/controller caps; unrelated allocation can proceed only where independent remaining capacity exists"
+    }
+  ],
+  "qualification_limit": "Local process/journal contract only; no live cloud or guest qualification."
+}

@@ -1,0 +1,33 @@
+{
+  "source_url": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/billing-info-fields.html",
+  "standard_pricing": {
+    "linux": {
+      "platform_details": "Linux/UNIX",
+      "usage_operation": "RunInstances"
+    },
+    "windows": {
+      "platform_details": "Windows",
+      "usage_operation": "RunInstances:0002"
+    }
+  },
+  "not_generic_standard_pricing": [
+    {
+      "platform_details": "Ubuntu Pro",
+      "usage_operation": "RunInstances:0g00"
+    },
+    {
+      "platform_details": "Red Hat Enterprise Linux",
+      "usage_operation": "RunInstances:0010"
+    },
+    {
+      "platform_details": "Windows with SQL Server Standard",
+      "usage_operation": "RunInstances:0006"
+    },
+    {
+      "platform_details": "Windows BYOL",
+      "usage_operation": "RunInstances:0800"
+    }
+  ],
+  "required_behavior": "Match actual AMI billing identity to exact compute/license SKU, otherwise required licensing unknown or unsupported, never generic zero",
+  "rates_included": false
+}

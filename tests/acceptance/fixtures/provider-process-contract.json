@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "interface_version": "v0.1.0",
+  "source_ids": [
+    "aws-child-main",
+    "azure-child-main",
+    "gcp-child-main",
+    "child-execution-v010",
+    "garm-common-params",
+    "child-interface-selector"
+  ],
+  "commands": {
+    "GetVersion": {
+      "stdin": "empty",
+      "stdout": "raw pinned version string"
+    },
+    "CreateInstance": {
+      "stdin": "BootstrapInstance JSON; byte fields base64",
+      "stdout": "ProviderInstance JSON"
+    },
+    "GetInstance": {
+      "stdin": "empty",
+      "stdout": "ProviderInstance JSON"
+    },
+    "ListInstances": {
+      "stdin": "empty",
+      "stdout": "ProviderInstance array; null is an empty list on exit0 only"
+    },
+    "DeleteInstance": {
+      "stdin": "empty",
+      "stdout": "empty"
+    },
+    "StartInstance": {
+      "stdin": "empty",
+      "stdout": "empty"
+    },
+    "StopInstance": {
+      "stdin": "empty",
+      "stdout": "empty"
+    },
+    "RemoveAllInstances": {
+      "stdin": "empty",
+      "stdout": "empty; does not prove resource cleanup (children implement no-op)"
+    }
+  },
+  "environment": {
+    "clear_inherited": true,
+    "reserved_prefix": "GARM_",
+    "explicit": [
+      "GARM_COMMAND",
+      "GARM_CONTROLLER_ID",
+      "GARM_PROVIDER_CONFIG_FILE",
+      "GARM_INTERFACE_VERSION"
+    ],
+    "per_operation": [
+      "GARM_POOL_ID",
+      "GARM_INSTANCE_ID"
+    ],
+    "only_explicit_admin_allowlist_inherited": true,
+    "preserve_controller_and_pool_identity": true
+  },
+  "identity": {
+    "native_id": "i-synthetic-001",
+    "runner_name": "runner-synthetic",
+    "controller_id": "e2967645-7ea5-4b22-b08a-f885ca171393",
+    "pool_id": "a7539ead-5271-40ac-8c55-be99d41b7ae0"
+  },
+  "failure_rules": {
+    "pinned_child_error_exit": 1,
+    "typed_capacity_or_missing_exit": false,
+    "never_classify_from_stderr": true,
+    "post_spawn_create_errors": "ambiguous; no second VM until independently resolved",
+    "invalid_instance_result": "failure; create remains ambiguous",
+    "provider_fault": "discard before returning results or diagnostics",
+    "stdout_stderr_logs": "never include raw child data in diagnostics"
+  },
+  "supervision": {
+    "validate_before_spawn": [
+      "absolute regular executable/config paths",
+      "SHA256 matches at dispatch",
+      "immutable source revision",
+      "supported OS/architecture/purchasing",
+      "exact GetVersion match"
+    ],
+    "bound": [
+      "stdin bytes",
+      "stdout bytes",
+      "stderr bytes",
+      "absolute caller deadline including pin validation, version check and child I/O"
+    ],
+    "concurrent_output_drains": true,
+    "overflow_timeout_cancel": "kill process group, reap child; no detached readers or late local subprocess",
+    "drop_does_not_clear_create_ambiguity": true
+  },
+  "coverage": {
+    "pinned_process_configuration": [
+      "valid binding",
+      "relative path rejected",
+      "hash mismatch/config change rejected before operation",
+      "duplicate binding rejected",
+      "GetVersion mismatch rejected",
+      "reserved inherited GARM variable rejected",
+      "unknown command rejected before spawn"
+    ],
+    "bootstrap_wire_and_clean_environment": [
+      "same controller/pool IDs",
+      "binary CA base64",
+      "bootstrap JSON stdin only on Create",
+      "ambient credentials and GARM variables excluded",
+      "explicit allowlisted credentials retained"
+    ],
+    "stock_result_shapes_and_null_inventory": [
+      "Create and Get exact typed instance",
+      "List array and successful null",
+      "raw version",
+      "mutators empty stdout",
+      "unsupported metadata command rejected"
+    ],
+    "opaque_failure_and_redaction": [
+      "exit1 capacity-like stderr remains opaque",
+      "exit30 or31 not treated as typed missing/duplicate",
+      "nonzero null never empty success",
+      "provider_fault removed",
+      "malformed/extra stdout fails",
+      "create errors after spawn ambiguous"
+    ],
+    "bounded_process_io_and_deadline": [
+      "oversized stdin rejected pre-spawn",
+      "stdout and stderr flood bounded independently",
+      "hung child/no stdin reader bounded",
+      "expired deadline pre-spawn",
+      "cancel/drop cleans process group and reaps child"
+    ]
+  },
+  "qualification_limit": "This fixture specifies local process behavior. Three real pinned binary GetVersion probes are a separate mandatory gate. No live cloud capacity, bootstrap guest or provisioning behavior is proved."
+}

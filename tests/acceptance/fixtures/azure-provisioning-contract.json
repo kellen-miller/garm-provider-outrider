@@ -1,0 +1,134 @@
+{
+  "synthetic": true,
+  "api_versions": {
+    "compute": "2025-04-01",
+    "network": "2024-05-01"
+  },
+  "required_paths": {
+    "vm": {
+      "/properties/priority": "Spot",
+      "/properties/evictionPolicy": "Delete",
+      "/properties/billingProfile/maxPrice": -1,
+      "/properties/storageProfile/osDisk/deleteOption": "Delete",
+      "/properties/networkProfile/networkInterfaces/0/properties/deleteOption": "Delete"
+    },
+    "nic": {
+      "/properties/ipConfigurations/0/properties/publicIPAddress/properties/deleteOption": "Delete"
+    },
+    "windows_extension": {
+      "/properties/publisher": "Microsoft.Compute",
+      "/properties/type": "CustomScriptExtension",
+      "/properties/typeHandlerVersion": "1.10",
+      "/properties/protectedSettings/commandToExecute": "secret-bearing compressed script loader; decode must equal generated bootstrap"
+    }
+  },
+  "forbidden": {
+    "nic": [
+      "/properties/deleteOption"
+    ],
+    "windows_vm": [
+      "/properties/osProfile/customData"
+    ],
+    "windows_extension": [
+      "/properties/settings/commandToExecute"
+    ]
+  },
+  "linux_requires": {
+    "admin_username": "central explicit",
+    "ssh_keys": "at least one GARM or central trusted key",
+    "disable_password_authentication": true
+  },
+  "windows_requires": {
+    "password": "unique OS-CSPRNG,8-123 chars,3/4 complexity groups; create body only",
+    "guest_agent": true
+  },
+  "cleanup_order": [
+    "extension/VM",
+    "owned NIC",
+    "owned PIP",
+    "remaining owned managed disks"
+  ],
+  "retail_matching": {
+    "currencyCode": "USD",
+    "armRegionName": "eastus",
+    "armSkuName": "Standard_D2s_v3",
+    "type": "Consumption",
+    "unitOfMeasure": "1 Hour",
+    "tierMinimumUnits": 0,
+    "isPrimaryMeterRegion": true
+  },
+  "retail_records": [
+    {
+      "currencyCode": "USD",
+      "armRegionName": "eastus",
+      "armSkuName": "Standard_D2s_v3",
+      "type": "Consumption",
+      "unitOfMeasure": "1 Hour",
+      "tierMinimumUnits": 0,
+      "isPrimaryMeterRegion": true,
+      "meterId": "synthetic-linux-on_demand",
+      "productName": "Virtual Machines Dsv3 Series",
+      "skuName": "D2s v3",
+      "meterName": "D2s v3",
+      "retailPrice": 0.1,
+      "unitPrice": 0.1,
+      "effectiveStartDate": "2026-01-01T00:00:00Z"
+    },
+    {
+      "currencyCode": "USD",
+      "armRegionName": "eastus",
+      "armSkuName": "Standard_D2s_v3",
+      "type": "Consumption",
+      "unitOfMeasure": "1 Hour",
+      "tierMinimumUnits": 0,
+      "isPrimaryMeterRegion": true,
+      "meterId": "synthetic-linux-spot",
+      "productName": "Virtual Machines Dsv3 Series",
+      "skuName": "D2s v3 Spot",
+      "meterName": "D2s v3 Spot",
+      "retailPrice": 0.03,
+      "unitPrice": 0.03,
+      "effectiveStartDate": "2026-01-01T00:00:00Z"
+    },
+    {
+      "currencyCode": "USD",
+      "armRegionName": "eastus",
+      "armSkuName": "Standard_D2s_v3",
+      "type": "Consumption",
+      "unitOfMeasure": "1 Hour",
+      "tierMinimumUnits": 0,
+      "isPrimaryMeterRegion": true,
+      "meterId": "synthetic-windows-on_demand",
+      "productName": "Virtual Machines Dsv3 Series Windows",
+      "skuName": "D2s v3",
+      "meterName": "D2s v3",
+      "retailPrice": 0.2,
+      "unitPrice": 0.2,
+      "effectiveStartDate": "2026-01-01T00:00:00Z"
+    },
+    {
+      "currencyCode": "USD",
+      "armRegionName": "eastus",
+      "armSkuName": "Standard_D2s_v3",
+      "type": "Consumption",
+      "unitOfMeasure": "1 Hour",
+      "tierMinimumUnits": 0,
+      "isPrimaryMeterRegion": true,
+      "meterId": "synthetic-windows-spot",
+      "productName": "Virtual Machines Dsv3 Series Windows",
+      "skuName": "D2s v3 Spot",
+      "meterName": "D2s v3 Spot",
+      "retailPrice": 0.06,
+      "unitPrice": 0.06,
+      "effectiveStartDate": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "price_expectation": {
+    "linux_on_demand": "0.10",
+    "linux_spot": "0.03",
+    "windows_on_demand_including_license": "0.20",
+    "windows_spot_including_license": "0.06",
+    "missing_or_multiple_distinct_matching_meters": "unknown"
+  },
+  "live_qualified": false
+}

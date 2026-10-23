@@ -1,0 +1,73 @@
+{
+  "source_revision": "154638445c3949c1958b01812f69d9a1e4d82684",
+  "synthetic": true,
+  "artifact_platforms": [
+    {
+      "os": "linux",
+      "arch": "amd64",
+      "tool_os": "linux",
+      "tool_arch": "x64"
+    },
+    {
+      "os": "linux",
+      "arch": "arm64",
+      "tool_os": "linux",
+      "tool_arch": "arm64"
+    },
+    {
+      "os": "windows",
+      "arch": "amd64",
+      "tool_os": "win",
+      "tool_arch": "x64"
+    },
+    {
+      "os": "macos",
+      "arch": "arm64",
+      "tool_os": "osx",
+      "tool_arch": "arm64"
+    }
+  ],
+  "metadata_get": [
+    "credentials/runner",
+    "credentials/credentials",
+    "credentials/credentials_rsaparams"
+  ],
+  "legacy_registration_get": "runner-registration-token/",
+  "callback_suffix": "status",
+  "system_info_suffix": "system-info/",
+  "status_values": [
+    "installing",
+    "failed",
+    "idle"
+  ],
+  "agent_id_field": "agent_id",
+  "legacy_required_arguments": [
+    "--unattended",
+    "--url",
+    "--token",
+    "--name",
+    "--labels",
+    "--no-default-labels",
+    "--ephemeral"
+  ],
+  "legacy_forbidden_arguments": [
+    "--runnergroup"
+  ],
+  "windows_jit_rsa_protection_scope": "LocalMachine",
+  "secret_canaries": [
+    "synthetic-bootstrap-secret",
+    "synthetic-download-secret"
+  ],
+  "malicious_literal": "literal ' \" $(touch /tmp/outrider-injection) `id` ; $env:SECRET <&> \n value",
+  "note": "Mac JIT uses direct credentials and own launchd; avoid Linux systemd/unit-file or aggregate runner-metadata endpoints. No cloud or GitHub execution is proved by this fixture.",
+  "service_name_get_platforms": [
+    "linux",
+    "windows"
+  ],
+  "linux_service_install_runs_as": "root",
+  "linux_jit_copies": "bin/runsvc.sh",
+  "windows_legacy_config_starts_service": true,
+  "macos_uses_linux_dependency_installer": false,
+  "windows_legacy_config_entry": "bin\\Runner.Listener.exe configure",
+  "windows_config_direct_reason": "Preserve percent-encoded atomic labels without cmd.exe expansion; wrapper only unblocks files then delegates configure."
+}

@@ -1,0 +1,211 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "source_ids": [
+    "aws-spot-status-time",
+    "aws-spot-status-codes",
+    "aws-describe-spot-requests",
+    "gcp-spot-preemption-operation",
+    "gcp-discovery",
+    "azure-arg-health-identity",
+    "azure-arg-query",
+    "gcp-operation-sdk-model"
+  ],
+  "contract": "Time-qualified interruption observations for opt-in rerun. These are synthetic API-shaped responses and approved conservative classifications, not live cloud evidence. Provider reason alone may support diagnostics; missing event time remains unknown for rerun eligibility.",
+  "common": {
+    "created_at": "2026-10-21T15:00:00Z",
+    "observed_at": "2026-10-21T16:01:00Z",
+    "teardown_intent_at": null,
+    "purchasing": "spot",
+    "earlier_positive_evidence_survives_later_cleanup": true,
+    "api_error_empty_expired_or_partial": "unknown"
+  },
+  "aws": {
+    "api_version": "2016-11-15",
+    "identity": {
+      "account_id": "111111111111",
+      "region": "us-east-1",
+      "instance_id": "i-00000000000000001",
+      "spot_request_id": "sir-00000000000000001"
+    },
+    "response_xml": "<DescribeSpotInstanceRequestsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\">\n  <requestId>synthetic-request-1</requestId>\n  <spotInstanceRequestSet><item>\n    <spotInstanceRequestId>sir-00000000000000001</spotInstanceRequestId>\n    <instanceId>i-00000000000000001</instanceId>\n    <state>closed</state>\n    <status><code>instance-terminated-no-capacity</code><updateTime>2026-10-21T16:00:00Z</updateTime></status>\n  </item></spotInstanceRequestSet>\n</DescribeSpotInstanceRequestsResponse>",
+    "cases": [
+      {
+        "name": "exact_capacity_reason_and_time",
+        "change": {},
+        "expected": "verified"
+      },
+      {
+        "name": "price_preemption",
+        "change": {
+          "status_code": "instance-terminated-by-price"
+        },
+        "expected": "verified"
+      },
+      {
+        "name": "missing_update_time",
+        "change": {
+          "update_time": null
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "wrong_request",
+        "change": {
+          "spot_request_id": "sir-00000000000000002"
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "wrong_instance",
+        "change": {
+          "instance_id": "i-00000000000000002"
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "ordinary_user_delete",
+        "change": {
+          "status_code": "instance-terminated-by-user"
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "generic_service_delete",
+        "change": {
+          "status_code": "instance-terminated-by-service"
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "scheduled_duration",
+        "change": {
+          "status_code": "instance-terminated-by-schedule"
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "event_before_allocation",
+        "change": {
+          "update_time": "2026-10-21T14:59:00Z"
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "planned_delete_before_event",
+        "change": {
+          "teardown_intent_at": "2026-10-21T15:59:00Z"
+        },
+        "expected": "not_eligible"
+      },
+      {
+        "name": "cleanup_after_event",
+        "change": {
+          "teardown_intent_at": "2026-10-21T16:00:30Z"
+        },
+        "expected": "verified"
+      }
+    ]
+  },
+  "gcp": {
+    "api_version": "v1",
+    "identity": {
+      "project_id": "synthetic-project",
+      "zone": "us-central1-a",
+      "name": "runner-1",
+      "numeric_id": "12820389800990687211"
+    },
+    "response": {
+      "kind": "compute#operations",
+      "items": [
+        {
+          "kind": "compute#operation",
+          "id": "15041793718812375372",
+          "name": "systemevent-synthetic-1",
+          "operationType": "compute.instances.preempted",
+          "targetLink": "https://www.googleapis.com/compute/v1/projects/synthetic-project/zones/us-central1-a/instances/runner-1",
+          "targetId": "12820389800990687211",
+          "status": "DONE",
+          "startTime": "2026-10-21T16:00:00Z",
+          "endTime": "2026-10-21T16:00:00Z"
+        }
+      ]
+    },
+    "cases": [
+      {
+        "name": "exact_done_preemption",
+        "change": {},
+        "expected": "verified"
+      },
+      {
+        "name": "reused_name_wrong_generation",
+        "change": {
+          "targetId": "12820389800990687212"
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "foreign_project_or_zone",
+        "change": {
+          "targetLink": "https://www.googleapis.com/compute/v1/projects/foreign/zones/us-central1-a/instances/runner-1"
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "ordinary_delete",
+        "change": {
+          "operationType": "delete"
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "not_done",
+        "change": {
+          "status": "RUNNING"
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "missing_time",
+        "change": {
+          "startTime": null,
+          "endTime": null
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "failed_preemption_operation",
+        "change": {
+          "error": {
+            "errors": [
+              {
+                "code": "INTERNAL_ERROR"
+              }
+            ]
+          }
+        },
+        "expected": "unknown"
+      },
+      {
+        "name": "failed_later_page",
+        "change": {
+          "nextPageToken": "second",
+          "next_page_http_status": 503
+        },
+        "expected": "unknown"
+      }
+    ]
+  },
+  "azure": {
+    "fixture": "azure-interruption-identity.json",
+    "reuse_rule": "No vmId join exists in ARG annotations; path reuse or missing incarnation history remains unknown, even if event emission time falls inside a newer local allocation interval."
+  },
+  "history_rules": [
+    "Persist actual candidate/market/image/source-scoped dispatch/result and native observation timestamps; no test-provided rate can authorize behavior",
+    "Unknown create outcomes excluded from definitive outcomes; local pre-spawn failures excluded from cloud rejection rate",
+    "Unknown running exposure and polling gaps remain unknown, never zero interruptions or infinite reliability",
+    "Use exact configured window, minimum samples and freshness; continuity/weighted enrich from durable history before production ranking",
+    "History survives reopen; changed native machine/image/market/scope does not inherit unrelated samples; insufficient data invokes explicit reject/fallback",
+    "Raw evidence/callback/registration credentials never appear in diagnostics or persisted history"
+  ]
+}

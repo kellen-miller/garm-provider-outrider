@@ -1,0 +1,36 @@
+{
+  "name": "garm-test",
+  "tools": [
+    {
+      "os": "linux",
+      "architecture": "x64",
+      "download_url": "https://github.com/actions/runner/releases/download/v0.0.0/runner-test.tar.gz",
+      "filename": "runner-test.tar.gz",
+      "sha256_checksum": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "repo_url": "https://github.com/example/project",
+  "callback-url": "https://garm.invalid/callback",
+  "metadata-url": "https://garm.invalid/metadata",
+  "instance-token": "synthetic-bootstrap-secret",
+  "ssh-keys": [],
+  "extra_specs": {
+    "snapshot_id": "synthetic-snapshot"
+  },
+  "github-runner-group": "",
+  "ca-cert-bundle": "c3ludGhldGljLWNh",
+  "arch": "amd64",
+  "os_type": "linux",
+  "flavor": "build",
+  "image": "linux-build",
+  "labels": [
+    "outrider:v1:123:456:1:build"
+  ],
+  "pool_id": "00000000-0000-4000-8000-000000000003",
+  "user_data_options": {
+    "disable_updates_on_boot": false,
+    "extra_packages": [],
+    "enable_boot_debug": false
+  },
+  "jit_config_enabled": true
+}

@@ -1,0 +1,52 @@
+{
+  "synthetic": true,
+  "currency": "USD",
+  "basis": {
+    "monthly_hours": 730,
+    "purpose": "Explicit public-list estimate basis; not exact invoice/calendar-month or account discount quote"
+  },
+  "candidate": {
+    "boot_disk_class": "gp3",
+    "boot_disk_gib": 40,
+    "boot_disk_iops": 4000,
+    "boot_disk_throughput_mib_s": 225,
+    "public_ipv4_count": 1,
+    "duration_seconds": 3600,
+    "licensing": "explicitly license-free image for this synthetic case"
+  },
+  "rates": {
+    "compute_hourly": "0.10",
+    "storage_gib_month": "0.073",
+    "extra_iops_month": "0.0073",
+    "extra_throughput_mib_s_month": "0.073",
+    "public_ipv4_hourly": "0.005"
+  },
+  "gp3_baseline": {
+    "iops": 3000,
+    "throughput_mib_s": 125
+  },
+  "expected_hourly": {
+    "storage": "0.004",
+    "extra_iops": "0.0100",
+    "extra_throughput": "0.010",
+    "disk_total": "0.0240",
+    "compute": "0.10",
+    "public_ipv4": "0.005",
+    "total": "0.1290"
+  },
+  "minimums_seconds": {
+    "gp3": 60,
+    "public_ipv4": 60
+  },
+  "negative_cases": [
+    "missing required storage rate is unknown",
+    "missing extra IOPS price above baseline is unknown",
+    "missing extra throughput price above baseline is unknown",
+    "unmatched Windows/license SKU is unknown",
+    "public IPv4 price required when requested",
+    "private networking explicitly has no public IPv4 charge",
+    "future effective term cannot be treated as current",
+    "ambiguous multiple matching price dimensions must reject"
+  ],
+  "note": "PriceList API supplies public on-demand SKU terms; Spot compute comes from EC2 Spot history. All prices here synthetic, no credentials or live billing API."
+}

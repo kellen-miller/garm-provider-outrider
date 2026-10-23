@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "source_ids": [
+    "garm-metadata-routes",
+    "garm-api-params",
+    "garm-api-pool-request",
+    "garm-api-repository-controller",
+    "garm-api-webhook-controller",
+    "garm-pool-bootstrap-timeout",
+    "garm-external-wrapper-v010"
+  ],
+  "source_facts": {
+    "webhook": "POST /webhooks/{controllerID}, outside /api/v1 and administrative bearer middleware; preserve original GitHub event/delivery/target-type/signature headers and raw body",
+    "repository_identity": "GET /api/v1/repositories/{repositoryUUID} returns id, owner, name; UUID differs from GitHub numeric repository ID; verify mapping before pool mutation",
+    "create_pool": {
+      "route": "POST /api/v1/repositories/{repositoryUUID}/pools",
+      "success_status": 200,
+      "response": "Pool object",
+      "template_id": "optional unsigned JSON integer (*uint), never string/UUID",
+      "tags": "array of strings in request; array of Tag{id,name} in response",
+      "runner_bootstrap_timeout": "minutes; round allocation seconds + bootstrap minutes + margin seconds upward"
+    },
+    "list_pools": {
+      "route": "GET /api/v1/repositories/{repositoryUUID}/pools",
+      "response": "direct JSON pool array"
+    },
+    "empty_pool": "Pool.Instances has omitempty; missing instances in successful Pool DTO is normal when empty, not an outage by itself",
+    "pool_instances": "GET /api/v1/pools/{poolID}/instances supplies explicit inventory; pending/live records and local outstanding operations block drain/delete",
+    "bootstrap_labels": {
+      "source_id": "garm-pool-bootstrap-timeout",
+      "non_jit": "runner/pool/pool.go:getLabelsForInstance appends exact runner-controller-id=<controller UUID> and runner-pool-id=<pool UUID> to pool tags; Outrider permits its one exact request token plus only those matching internal labels",
+      "jit": "AddRunner supplies the same complete labels to GetEntityJITConfig; addInstanceToProvider populates BootstrapInstance.Labels only when !hasJITConfig. A real JIT Create normally has empty Labels, and providers must ignore that field when JIT is enabled.",
+      "admission": "Accept empty Labels for a verified enabled JIT snapshot/controller/pool; preserve the empty field. Nonempty labels must still match the exact request token and only matching GARM internal labels. Do not require a fabricated token label in JIT BootstrapInstance.",
+      "source_lines": {
+        "constants": [
+          52,
+          53
+        ],
+        "jit_registration": [
+          948,
+          954
+        ],
+        "label_construction": [
+          1034,
+          1042
+        ],
+        "bootstrap_jit_branch": [
+          1101,
+          1106
+        ],
+        "internal_values": [
+          1206,
+          1212
+        ]
+      }
+    },
+    "external_wrapper_v010": {
+      "source_id": "garm-external-wrapper-v010",
+      "create": "GARM_POOL_ID supplied; complete BootstrapInstance (including ExtraSpecs snapshot metadata) serialized on stdin. GARM_POOL_EXTRASPECS environment variable is absent. Normalize snapshot routing from bootstrap for v0.1.0; reject conflicting snapshot IDs if both interface metadata sources are supplied.",
+      "list": "GARM_POOL_ID supplied",
+      "get_start_stop_delete": "GARM_INSTANCE_ID supplied; GARM_POOL_ID absent. Resolve immutable child controller/pool from the owned journal allocation. An optionally supplied mismatching pool must not reroute the allocation.",
+      "remove_all": "GARM_CONTROLLER_ID supplied; neither pool ID nor instance ID supplied. Enumerate owned allocations for this controller; never invoke child no-op RemoveAll."
+    }
+  },
+  "out_rider_rules": [
+    "Reconcile exact singleton atomic user tag, provider, repository, platform, immutable snapshot and bounded pool settings before enable",
+    "Persist intent before dispatch, snapshot before enable, then forward original signed body",
+    "Reconcile uncertain remote pool creation before another create; duplicate matches remain unresolved",
+    "Terminal/expired requests cannot be re-enabled by older queued deliveries; disable and verify zero instances/operations before delete"
+  ],
+  "qualification_limit": "Source and synthetic HTTP contracts only; no actual GARM REST/controller instance run."
+}

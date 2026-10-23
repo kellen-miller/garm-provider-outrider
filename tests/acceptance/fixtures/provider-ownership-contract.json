@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "source_ids": [
+    "qualified-aws-client",
+    "qualified-azure-util",
+    "qualified-gcp-spec",
+    "qualified-gcp-client"
+  ],
+  "identity_rules": {
+    "candidate_location": "administrator alias",
+    "placement_identity_location": "actual cloud location: AWS region, Azure region, GCP zone",
+    "placement_identity_resource": "actual native resource identity; opaque Outrider allocation ID is a separate journal key",
+    "attribution": "controller tag plus exact journal name/native scope; pool tag alone does not grant ownership",
+    "unknown": "lookup outage/invalid ownership/inconclusive mapping must not become empty or absent",
+    "incarnation_before_name_mutation": "Azure resource-group/name and GCP name/zone-name locators can be reused. Before lifecycle mutation or attributing Get/List under an existing opaque allocation, independently verify retained native scope/ID/controller/pool and Azure vmId or GCP numericID+name. Missing, changed incarnation or failed lookup cannot authorize mutation/adoption of a replacement.",
+    "stock_child_race_limit": "Unmodified child name-addressed APIs provide no atomic native-incarnation precondition. Read verification is required; concurrent out-of-band replacement between verification and child mutation remains an operator ownership boundary, not a claimed atomic guarantee."
+  },
+  "aws": {
+    "tags": {
+      "Name": "runner-1",
+      "GARM_CONTROLLER_ID": "controller-1",
+      "GARM_POOL_ID": "pool-1"
+    },
+    "native_id": "i-0123456789abcdef0",
+    "native_location": "us-east-1",
+    "facts": [
+      "subnetId",
+      "placement.availabilityZone"
+    ],
+    "reject": [
+      "foreign controller",
+      "foreign native scope",
+      "missing name/controller",
+      "invented client-token: identities"
+    ],
+    "list_filters": [
+      "tag:GARM_CONTROLLER_ID",
+      "tag:Name when a name is requested"
+    ],
+    "forbidden_filters": [
+      "tag:outrider:controller",
+      "tag:outrider:name",
+      "tag:outrider:location"
+    ]
+  },
+  "azure": {
+    "tags": {
+      "garm-controller-id": "controller-1",
+      "garm-pool-id": "pool-1"
+    },
+    "native_id": "/subscriptions/sub-1/resourceGroups/runner-1/providers/Microsoft.Compute/virtualMachines/runner-1",
+    "native_location": "eastus",
+    "incarnation": "properties.vmId; preserve separately from reusable ARM path",
+    "native_child_provider_id": "runner-1 (resource-group/name lifecycle)"
+  },
+  "gcp": {
+    "labels": {
+      "garmcontrollerid": "controller-1",
+      "garmpoolid": "pool-1"
+    },
+    "metadata": {
+      "runner_name": "runner-1"
+    },
+    "native_id": "numeric instance id plus project/zone/name",
+    "native_location": "us-central1-a",
+    "native_child_provider_id": "name in zonal mode; zone/name in qualified regional mode"
+  }
+}

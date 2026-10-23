@@ -1,0 +1,17 @@
+{
+  "action": "queued",
+  "repository": {
+    "id": 101,
+    "name": "base-repo",
+    "full_name": "base-owner/base-repo",
+    "owner": {"login": "base-owner"}
+  },
+  "workflow_job": {
+    "id": 301,
+    "run_id": 201,
+    "run_attempt": 1,
+    "head_sha": "1111111111111111111111111111111111111111",
+    "status": "queued",
+    "labels": ["outrider:v1:101:201:1:linux-large"]
+  }
+}

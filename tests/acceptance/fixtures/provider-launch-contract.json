@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "source_ids": [
+    "qualified-aws-spec",
+    "qualified-aws-client",
+    "qualified-aws-config",
+    "qualified-azure-spec",
+    "qualified-azure-client",
+    "qualified-azure-config",
+    "qualified-gcp-spec",
+    "qualified-gcp-client",
+    "qualified-gcp-config"
+  ],
+  "purpose": "Quotes and candidates must match existing provider request fields. This is source contract evidence, not guest/cloud qualification.",
+  "aws": {
+    "source_revision": "3c0e79dddd58ea04b95b163014061dd240d52308",
+    "flavor": "exact EC2 instance type",
+    "image": "exact AMI ID",
+    "subnet": "configured subnet_id, optionally approved subnet_id extra",
+    "public_ip": "No AssociatePublicIpAddress request field; derive from selected subnet MapPublicIpOnLaunch; no unsupported override",
+    "root_disk": {
+      "device_name": "DescribeImages RootDeviceName",
+      "delete_on_termination": true,
+      "extra_specs": [
+        "volume_type",
+        "volume_size",
+        "iops",
+        "throughput"
+      ],
+      "when_omitted": "Do not invent gp3/size values. Resolve actual AMI/API inheritance or emit explicit supported extras before quoting.",
+      "gp3_throughput_unit": "MiB/s integer request; cost/hardware conversions retain fractional precision"
+    },
+    "purchasing": {
+      "spot": {
+        "MarketType": "spot",
+        "SpotInstanceType": "one-time",
+        "InstanceInterruptionBehavior": "terminate",
+        "MaxPrice": null
+      },
+      "on-demand": "InstanceMarketOptions nil"
+    },
+    "metadata_required": [
+      "image architecture/OS/licensing",
+      "root EBS mapping",
+      "subnet public-IP setting",
+      "actual region/account/zone",
+      "exact billing product and cost horizon"
+    ],
+    "binding_safety": {
+      "configuration": "Read pinned actual provider TOML; verify SHA256 before using its target/auth facts",
+      "region": "Must equal catalog/runtime declared region, or reject before launch",
+      "credentials": "Use same supported static credentials/session token for Rust read-only SDK account verification; no unrelated parent ambient default chain",
+      "account": "STS account must equal binding and current admin account constraint",
+      "unsupported_role_context": "Reject explicitly until child allowlist/identity equivalence is implemented and qualified"
+    }
+  },
+  "azure": {
+    "source_revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+    "flavor": "exact VM size",
+    "image": "publisher:offer:sku:version or approved source format",
+    "defaults": {
+      "disk_size_gb": 127,
+      "storage_account_type": "Standard_LRS",
+      "allocate_public_ip": false,
+      "disable_isolated_networks": false
+    },
+    "extra_specs": [
+      "disk_size_gb",
+      "storage_account_type",
+      "allocate_public_ip",
+      "use_ephemeral_storage",
+      "disable_isolated_networks",
+      "vnet_subnet_id"
+    ],
+    "purchasing": {
+      "spot": {
+        "Priority": "Spot",
+        "EvictionPolicy": "Delete",
+        "BillingProfile.MaxPrice": "-1 (on-demand price ceiling)"
+      },
+      "on-demand": "Spot priority/eviction/billing profile nil"
+    },
+    "quote_rules": [
+      "disk tier follows provisioned size and selected account type",
+      "public IP billed only when selected",
+      "Windows compute meter must not double-count licensing",
+      "ephemeral root must fit supported VM cache/resource disk and cannot be billed as ordinary managed root"
+    ],
+    "unknown_storage_account_type": "upstream normalizes to Standard_LRS; Outrider must reject unknown requested class instead of silently billing another class"
+  },
+  "gcp": {
+    "source_revision": "98a362f5319928099b942a668c5a17a34170066a",
+    "flavor": "exact machine type in configured zone",
+    "image": "immutable source image resource",
+    "defaults": {
+      "disksize": 127,
+      "disktype": "pd-standard (API default when omitted)",
+      "external_ip_access": false,
+      "nic_type": "VIRTIO_NET"
+    },
+    "extra_specs": [
+      "disksize",
+      "disktype",
+      "subnetwork_id",
+      "network_id",
+      "source_snapshot",
+      "service_accounts",
+      "network_tags",
+      "regional_placement"
+    ],
+    "network_id_extra": "Parsed into RunnerSpec but ignored by zonal Create, which uses g.cfg.NetworkID. Quote and validate actual configured network.",
+    "public_ip": "Only central external_ip_access config controls AccessConfigs; false removes external IP",
+    "root_disk": {
+      "Boot": true,
+      "AutoDelete": true,
+      "InitializeParams.DiskSizeGb": "disksize",
+      "InitializeParams.DiskType": "disktype when explicit",
+      "source_snapshot": "clears SourceImage; unsupported if no matching snapshot price/image facts"
+    },
+    "purchasing": {
+      "spot": {
+        "ProvisioningModel": "SPOT",
+        "InstanceTerminationAction": "DELETE",
+        "AutomaticRestart": false,
+        "OnHostMaintenance": "TERMINATE"
+      },
+      "on-demand": "Scheduling nil"
+    },
+    "unsupported_mutations": "Do not invent guest accelerator or extra local-disk attachment extras absent from the selected provider path; reject unsupported requirements explicitly"
+  },
+  "all_clouds": {
+    "admin_only": [
+      "credential configuration",
+      "binary/config/source pins",
+      "network/account/region bindings",
+      "trusted install hook",
+      "image maps",
+      "native extra-spec capability map"
+    ],
+    "profile_to_child": "Resolve exact candidate flavor/image/disk and permitted market; preserve original controller/pool and bootstrap registration metadata.",
+    "quote_fingerprint": [
+      "binding ID",
+      "binary SHA256",
+      "configuration SHA256",
+      "image",
+      "flavor",
+      "region or zone",
+      "selected disk/extras",
+      "purchasing",
+      "duration"
+    ],
+    "hard_limits": "Final catalog selection and every initial purchasing tier must satisfy current limits; unknown hardware cannot satisfy a requirement."
+  }
+}

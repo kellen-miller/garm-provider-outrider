@@ -1,0 +1,464 @@
+{
+  "synthetic": true,
+  "webhook_secret": "synthetic-webhook-secret-not-real",
+  "source_evidence": "github-public-commit-evidence.json",
+  "cases": [
+    {
+      "name": "push",
+      "central_allow_forks": false,
+      "wire_body": "{\n  \"action\": \"queued\",\n  \"workflow_job\": {\n    \"id\": 301,\n    \"run_id\": 201,\n    \"run_attempt\": 1,\n    \"head_sha\": \"1111111111111111111111111111111111111111\",\n    \"status\": \"queued\",\n    \"labels\": [\n      \"outrider:v1:101:201:1:build\"\n    ]\n  },\n  \"repository\": {\n    \"id\": 101,\n    \"name\": \"base-repo\",\n    \"full_name\": \"base-owner/base-repo\",\n    \"owner\": {\n      \"login\": \"base-owner\"\n    }\n  },\n  \"installation\": {\n    \"id\": 901\n  }\n}\n",
+      "headers": {
+        "X-GitHub-Event": "workflow_job",
+        "X-GitHub-Delivery": "d107ea36-29c3-4671-8876-f07356a48dea",
+        "X-GitHub-Hook-Installation-Target-Type": "repository",
+        "X-Hub-Signature-256": "sha256=9a385224bca59fde67087e8e49967d00d39c2e48aa595c370634d7928ec09258"
+      },
+      "run": {
+        "id": 201,
+        "run_attempt": 1,
+        "event": "push",
+        "head_sha": "1111111111111111111111111111111111111111",
+        "repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "head_repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "pull_requests": [],
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "job": {
+        "id": 301,
+        "run_id": 201,
+        "run_attempt": 1,
+        "head_sha": "1111111111111111111111111111111111111111",
+        "status": "queued",
+        "labels": [
+          "outrider:v1:101:201:1:build"
+        ]
+      },
+      "expected": "accept",
+      "expected_config_sha": "1111111111111111111111111111111111111111",
+      "forbidden_substitute_sha": null
+    },
+    {
+      "name": "same_repo_pr",
+      "central_allow_forks": false,
+      "wire_body": "{\n  \"action\": \"queued\",\n  \"workflow_job\": {\n    \"id\": 301,\n    \"run_id\": 201,\n    \"run_attempt\": 1,\n    \"head_sha\": \"2222222222222222222222222222222222222222\",\n    \"status\": \"queued\",\n    \"labels\": [\n      \"outrider:v1:101:201:1:build\"\n    ]\n  },\n  \"repository\": {\n    \"id\": 101,\n    \"name\": \"base-repo\",\n    \"full_name\": \"base-owner/base-repo\",\n    \"owner\": {\n      \"login\": \"base-owner\"\n    }\n  },\n  \"installation\": {\n    \"id\": 901\n  }\n}\n",
+      "headers": {
+        "X-GitHub-Event": "workflow_job",
+        "X-GitHub-Delivery": "c8d91305-87e0-46c0-a091-79f1ba6af60d",
+        "X-GitHub-Hook-Installation-Target-Type": "repository",
+        "X-Hub-Signature-256": "sha256=18c42a0e804ce1449c3f43f447d701292e91168a958baef603916d7132b401bd"
+      },
+      "run": {
+        "id": 201,
+        "run_attempt": 1,
+        "event": "pull_request",
+        "head_sha": "2222222222222222222222222222222222222222",
+        "repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "head_repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "pull_requests": [
+          {
+            "head": {
+              "sha": "2222222222222222222222222222222222222222"
+            },
+            "base": {
+              "sha": "4444444444444444444444444444444444444444"
+            }
+          }
+        ],
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "job": {
+        "id": 301,
+        "run_id": 201,
+        "run_attempt": 1,
+        "head_sha": "2222222222222222222222222222222222222222",
+        "status": "queued",
+        "labels": [
+          "outrider:v1:101:201:1:build"
+        ]
+      },
+      "expected": "accept",
+      "expected_config_sha": "2222222222222222222222222222222222222222",
+      "forbidden_substitute_sha": "3333333333333333333333333333333333333333"
+    },
+    {
+      "name": "fork_pr_denied",
+      "central_allow_forks": false,
+      "wire_body": "{\n  \"action\": \"queued\",\n  \"workflow_job\": {\n    \"id\": 301,\n    \"run_id\": 201,\n    \"run_attempt\": 1,\n    \"head_sha\": \"2222222222222222222222222222222222222222\",\n    \"status\": \"queued\",\n    \"labels\": [\n      \"outrider:v1:101:201:1:build\"\n    ]\n  },\n  \"repository\": {\n    \"id\": 101,\n    \"name\": \"base-repo\",\n    \"full_name\": \"base-owner/base-repo\",\n    \"owner\": {\n      \"login\": \"base-owner\"\n    }\n  },\n  \"installation\": {\n    \"id\": 901\n  }\n}\n",
+      "headers": {
+        "X-GitHub-Event": "workflow_job",
+        "X-GitHub-Delivery": "70bbc6fe-0345-40c9-bec2-eb8403a436c9",
+        "X-GitHub-Hook-Installation-Target-Type": "repository",
+        "X-Hub-Signature-256": "sha256=18c42a0e804ce1449c3f43f447d701292e91168a958baef603916d7132b401bd"
+      },
+      "run": {
+        "id": 201,
+        "run_attempt": 1,
+        "event": "pull_request",
+        "head_sha": "2222222222222222222222222222222222222222",
+        "repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "head_repository": {
+          "id": 102,
+          "name": "base-repo",
+          "full_name": "fork-owner/base-repo",
+          "owner": {
+            "login": "fork-owner"
+          }
+        },
+        "pull_requests": [
+          {
+            "head": {
+              "sha": "2222222222222222222222222222222222222222"
+            },
+            "base": {
+              "sha": "4444444444444444444444444444444444444444"
+            }
+          }
+        ],
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "job": {
+        "id": 301,
+        "run_id": 201,
+        "run_attempt": 1,
+        "head_sha": "2222222222222222222222222222222222222222",
+        "status": "queued",
+        "labels": [
+          "outrider:v1:101:201:1:build"
+        ]
+      },
+      "expected": "reject_fork",
+      "expected_config_sha": "2222222222222222222222222222222222222222",
+      "forbidden_substitute_sha": "3333333333333333333333333333333333333333"
+    },
+    {
+      "name": "fork_pr_opt_in",
+      "central_allow_forks": true,
+      "wire_body": "{\n  \"action\": \"queued\",\n  \"workflow_job\": {\n    \"id\": 301,\n    \"run_id\": 201,\n    \"run_attempt\": 1,\n    \"head_sha\": \"2222222222222222222222222222222222222222\",\n    \"status\": \"queued\",\n    \"labels\": [\n      \"outrider:v1:101:201:1:build\"\n    ]\n  },\n  \"repository\": {\n    \"id\": 101,\n    \"name\": \"base-repo\",\n    \"full_name\": \"base-owner/base-repo\",\n    \"owner\": {\n      \"login\": \"base-owner\"\n    }\n  },\n  \"installation\": {\n    \"id\": 901\n  }\n}\n",
+      "headers": {
+        "X-GitHub-Event": "workflow_job",
+        "X-GitHub-Delivery": "28701073-fb96-4baa-9dca-ed336cb4601b",
+        "X-GitHub-Hook-Installation-Target-Type": "repository",
+        "X-Hub-Signature-256": "sha256=18c42a0e804ce1449c3f43f447d701292e91168a958baef603916d7132b401bd"
+      },
+      "run": {
+        "id": 201,
+        "run_attempt": 1,
+        "event": "pull_request",
+        "head_sha": "2222222222222222222222222222222222222222",
+        "repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "head_repository": {
+          "id": 102,
+          "name": "base-repo",
+          "full_name": "fork-owner/base-repo",
+          "owner": {
+            "login": "fork-owner"
+          }
+        },
+        "pull_requests": [
+          {
+            "head": {
+              "sha": "2222222222222222222222222222222222222222"
+            },
+            "base": {
+              "sha": "4444444444444444444444444444444444444444"
+            }
+          }
+        ],
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "job": {
+        "id": 301,
+        "run_id": 201,
+        "run_attempt": 1,
+        "head_sha": "2222222222222222222222222222222222222222",
+        "status": "queued",
+        "labels": [
+          "outrider:v1:101:201:1:build"
+        ]
+      },
+      "expected": "accept",
+      "expected_config_sha": "2222222222222222222222222222222222222222",
+      "forbidden_substitute_sha": "3333333333333333333333333333333333333333"
+    },
+    {
+      "name": "target_unproven_denied",
+      "central_allow_forks": false,
+      "wire_body": "{\n  \"action\": \"queued\",\n  \"workflow_job\": {\n    \"id\": 301,\n    \"run_id\": 201,\n    \"run_attempt\": 1,\n    \"head_sha\": \"4444444444444444444444444444444444444444\",\n    \"status\": \"queued\",\n    \"labels\": [\n      \"outrider:v1:101:201:1:build\"\n    ]\n  },\n  \"repository\": {\n    \"id\": 101,\n    \"name\": \"base-repo\",\n    \"full_name\": \"base-owner/base-repo\",\n    \"owner\": {\n      \"login\": \"base-owner\"\n    }\n  },\n  \"installation\": {\n    \"id\": 901\n  }\n}\n",
+      "headers": {
+        "X-GitHub-Event": "workflow_job",
+        "X-GitHub-Delivery": "3aaf57f5-23af-4160-9d41-1a7189c6fa5e",
+        "X-GitHub-Hook-Installation-Target-Type": "repository",
+        "X-Hub-Signature-256": "sha256=ff496cce9fe1b9c0d60535bdbc1af4c2280458355e3eb90eae011abaacb803fa"
+      },
+      "run": {
+        "id": 201,
+        "run_attempt": 1,
+        "event": "pull_request_target",
+        "head_sha": "4444444444444444444444444444444444444444",
+        "repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "head_repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "pull_requests": [
+          {
+            "head": {
+              "sha": "2222222222222222222222222222222222222222"
+            },
+            "base": {
+              "sha": "4444444444444444444444444444444444444444"
+            }
+          }
+        ],
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "job": {
+        "id": 301,
+        "run_id": 201,
+        "run_attempt": 1,
+        "head_sha": "4444444444444444444444444444444444444444",
+        "status": "queued",
+        "labels": [
+          "outrider:v1:101:201:1:build"
+        ]
+      },
+      "expected": "reject_unproven_fork_origin",
+      "expected_config_sha": "4444444444444444444444444444444444444444",
+      "forbidden_substitute_sha": "2222222222222222222222222222222222222222"
+    },
+    {
+      "name": "target_opt_in",
+      "central_allow_forks": true,
+      "wire_body": "{\n  \"action\": \"queued\",\n  \"workflow_job\": {\n    \"id\": 301,\n    \"run_id\": 201,\n    \"run_attempt\": 1,\n    \"head_sha\": \"4444444444444444444444444444444444444444\",\n    \"status\": \"queued\",\n    \"labels\": [\n      \"outrider:v1:101:201:1:build\"\n    ]\n  },\n  \"repository\": {\n    \"id\": 101,\n    \"name\": \"base-repo\",\n    \"full_name\": \"base-owner/base-repo\",\n    \"owner\": {\n      \"login\": \"base-owner\"\n    }\n  },\n  \"installation\": {\n    \"id\": 901\n  }\n}\n",
+      "headers": {
+        "X-GitHub-Event": "workflow_job",
+        "X-GitHub-Delivery": "9c43e851-150d-47b8-a146-5a39f55e6425",
+        "X-GitHub-Hook-Installation-Target-Type": "repository",
+        "X-Hub-Signature-256": "sha256=ff496cce9fe1b9c0d60535bdbc1af4c2280458355e3eb90eae011abaacb803fa"
+      },
+      "run": {
+        "id": 201,
+        "run_attempt": 1,
+        "event": "pull_request_target",
+        "head_sha": "4444444444444444444444444444444444444444",
+        "repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "head_repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "pull_requests": [
+          {
+            "head": {
+              "sha": "2222222222222222222222222222222222222222"
+            },
+            "base": {
+              "sha": "4444444444444444444444444444444444444444"
+            }
+          }
+        ],
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "job": {
+        "id": 301,
+        "run_id": 201,
+        "run_attempt": 1,
+        "head_sha": "4444444444444444444444444444444444444444",
+        "status": "queued",
+        "labels": [
+          "outrider:v1:101:201:1:build"
+        ]
+      },
+      "expected": "accept_base_config",
+      "expected_config_sha": "4444444444444444444444444444444444444444",
+      "forbidden_substitute_sha": "2222222222222222222222222222222222222222"
+    },
+    {
+      "name": "merge_group",
+      "central_allow_forks": false,
+      "wire_body": "{\n  \"action\": \"queued\",\n  \"workflow_job\": {\n    \"id\": 301,\n    \"run_id\": 201,\n    \"run_attempt\": 1,\n    \"head_sha\": \"5555555555555555555555555555555555555555\",\n    \"status\": \"queued\",\n    \"labels\": [\n      \"outrider:v1:101:201:1:build\"\n    ]\n  },\n  \"repository\": {\n    \"id\": 101,\n    \"name\": \"base-repo\",\n    \"full_name\": \"base-owner/base-repo\",\n    \"owner\": {\n      \"login\": \"base-owner\"\n    }\n  },\n  \"installation\": {\n    \"id\": 901\n  }\n}\n",
+      "headers": {
+        "X-GitHub-Event": "workflow_job",
+        "X-GitHub-Delivery": "c6b6fb39-1679-414b-96f5-352f8c2cac6e",
+        "X-GitHub-Hook-Installation-Target-Type": "repository",
+        "X-Hub-Signature-256": "sha256=2edccc2208e5444170c3298a66dc4d4a435dd327ea0dd78ed93ba77a23981332"
+      },
+      "run": {
+        "id": 201,
+        "run_attempt": 1,
+        "event": "merge_group",
+        "head_sha": "5555555555555555555555555555555555555555",
+        "repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "head_repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "pull_requests": [],
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "job": {
+        "id": 301,
+        "run_id": 201,
+        "run_attempt": 1,
+        "head_sha": "5555555555555555555555555555555555555555",
+        "status": "queued",
+        "labels": [
+          "outrider:v1:101:201:1:build"
+        ]
+      },
+      "expected": "accept",
+      "expected_config_sha": "5555555555555555555555555555555555555555",
+      "forbidden_substitute_sha": null
+    },
+    {
+      "name": "rerun_attempt2",
+      "central_allow_forks": false,
+      "wire_body": "{\n  \"action\": \"queued\",\n  \"workflow_job\": {\n    \"id\": 302,\n    \"run_id\": 201,\n    \"run_attempt\": 2,\n    \"head_sha\": \"2222222222222222222222222222222222222222\",\n    \"status\": \"queued\",\n    \"labels\": [\n      \"outrider:v1:101:201:2:build\"\n    ]\n  },\n  \"repository\": {\n    \"id\": 101,\n    \"name\": \"base-repo\",\n    \"full_name\": \"base-owner/base-repo\",\n    \"owner\": {\n      \"login\": \"base-owner\"\n    }\n  },\n  \"installation\": {\n    \"id\": 901\n  }\n}\n",
+      "headers": {
+        "X-GitHub-Event": "workflow_job",
+        "X-GitHub-Delivery": "2d05b46e-b632-42ea-afa3-c6e18054c04b",
+        "X-GitHub-Hook-Installation-Target-Type": "repository",
+        "X-Hub-Signature-256": "sha256=5aa248764cfa254f5dfaa9cfae267e8a4785d4232400c4d7e6e9102dcfe3e8b1"
+      },
+      "run": {
+        "id": 201,
+        "run_attempt": 2,
+        "event": "pull_request",
+        "head_sha": "2222222222222222222222222222222222222222",
+        "repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "head_repository": {
+          "id": 101,
+          "name": "base-repo",
+          "full_name": "base-owner/base-repo",
+          "owner": {
+            "login": "base-owner"
+          }
+        },
+        "pull_requests": [
+          {
+            "head": {
+              "sha": "2222222222222222222222222222222222222222"
+            },
+            "base": {
+              "sha": "4444444444444444444444444444444444444444"
+            }
+          }
+        ],
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "job": {
+        "id": 302,
+        "run_id": 201,
+        "run_attempt": 2,
+        "head_sha": "2222222222222222222222222222222222222222",
+        "status": "queued",
+        "labels": [
+          "outrider:v1:101:201:2:build"
+        ]
+      },
+      "expected": "accept",
+      "expected_config_sha": "2222222222222222222222222222222222222222",
+      "forbidden_substitute_sha": "3333333333333333333333333333333333333333"
+    }
+  ],
+  "negative_cases": [
+    "tampered original wire bytes",
+    "wrong repo/run/attempt/job identity",
+    "run/job/event SHA mismatch",
+    "noncanonical token or extra requested labels",
+    "moving ref instead of exact commit",
+    "fork default denial bypassed by target base head_repository",
+    "private source inaccessible; no moving/default ref fallback"
+  ],
+  "raw_forwarding": "forward original body/header signature byte-for-byte only after exact pool durable enablement",
+  "limitations": "Captured public API data establishes sampled SHA relationships; synthetic webhook bodies are not real delivered hooks or a commissioned GARM controller."
+}

@@ -1,2 +1,28 @@
 Required Notice: Copyright 2026 Kellen Miller
 
+Outrider guest bootstrap templates
+Copyright 2026 Kellen Miller
+
+The Linux and Windows bootstrap flows are adapted from the guest setup
+semantics in Cloudbase Solutions' garm-provider-common cloudconfig templates,
+vendored with GARM at 154638445c3949c1958b01812f69d9a1e4d82684:
+https://github.com/cloudbase/garm/tree/154638445c3949c1958b01812f69d9a1e4d82684/vendor/github.com/cloudbase/garm-provider-common/cloudconfig
+
+Copyright 2022 Cloudbase Solutions SRL. The Linux and Windows template
+adaptations are modified by Kellen Miller for Outrider.
+
+That source is licensed under the Apache License, Version 2.0. Outrider's
+templates are substantially rewritten in Rust, Bash, and PowerShell, retain
+GARM's callback, registration-token, JIT credential, and runner-agent
+semantics, and add checksum validation and secret-safe diagnostics. The
+macOS launchd bootstrap is original Outrider work.
+
+Delegated AWS, Azure, and GCP provider executables are distributed separately
+from Outrider and retain their own upstream notices and licenses. The exact
+source repositories, revisions, license digests, and contribution attribution
+are listed in providers/manifest.json. Provider bundle builds copy each pinned
+source LICENSE file alongside its executable; retain those files when
+redistributing a bundle.
+
+A copy of the upstream Apache License, Version 2.0 is provided in
+LICENSES/Apache-2.0.txt. These third-party terms and notices remain applicable.

@@ -1,0 +1,215 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "source_ids": [
+    "azure-image-get",
+    "azure-disk-tiers",
+    "qualified-azure-client",
+    "qualified-azure-spec",
+    "azure-native-vm-state",
+    "azure-managed-disk-limits",
+    "azure-nct4-hardware"
+  ],
+  "image_response": {
+    "properties": {
+      "architecture": "x64",
+      "osDiskImage": {
+        "operatingSystem": "Linux"
+      }
+    }
+  },
+  "image_rules": [
+    "architecture is properties.architecture",
+    "marketplace OSDiskImage exposes operatingSystem only; no fabricated sizeInGB/architecture there",
+    "minimum_os_disk_gib plus minimum_os_disk_source are explicit central administrator attestation, not inferred from absent API data",
+    "reject unknown/minimum missing or mutable latest image references"
+  ],
+  "disk_tier_cases": [
+    {
+      "storage_account_type": "Standard_LRS",
+      "provisioned_gib": 32,
+      "meter_tier": "S4"
+    },
+    {
+      "storage_account_type": "Standard_LRS",
+      "provisioned_gib": 40,
+      "meter_tier": "S6"
+    },
+    {
+      "storage_account_type": "Standard_LRS",
+      "provisioned_gib": 127,
+      "meter_tier": "S10"
+    },
+    {
+      "storage_account_type": "Standard_LRS",
+      "provisioned_gib": 129,
+      "meter_tier": "S15"
+    },
+    {
+      "storage_account_type": "Premium_LRS",
+      "provisioned_gib": 4,
+      "meter_tier": "P1"
+    },
+    {
+      "storage_account_type": "Premium_LRS",
+      "provisioned_gib": 8,
+      "meter_tier": "P2"
+    },
+    {
+      "storage_account_type": "Premium_LRS",
+      "provisioned_gib": 16,
+      "meter_tier": "P3"
+    },
+    {
+      "storage_account_type": "Premium_LRS",
+      "provisioned_gib": 32,
+      "meter_tier": "P4"
+    },
+    {
+      "storage_account_type": "Premium_LRS",
+      "provisioned_gib": 64,
+      "meter_tier": "P6"
+    },
+    {
+      "storage_account_type": "Premium_LRS",
+      "provisioned_gib": 127,
+      "meter_tier": "P10"
+    },
+    {
+      "storage_account_type": "StandardSSD_LRS",
+      "provisioned_gib": 4,
+      "meter_tier": "E1"
+    },
+    {
+      "storage_account_type": "StandardSSD_LRS",
+      "provisioned_gib": 40,
+      "meter_tier": "E6"
+    },
+    {
+      "storage_account_type": "StandardSSD_LRS",
+      "provisioned_gib": 127,
+      "meter_tier": "E10"
+    }
+  ],
+  "child_public_ip": {
+    "requested_sku": null,
+    "allocation": "Static",
+    "rule": "current qualified provider omits SKU; do not claim Standard is dispatched. Gate requested public IP until actual child SKU/default is independently qualified."
+  },
+  "price_rules": [
+    "missing disk rate is unknown, never zero",
+    "actual effective dates/observed timestamps remain attached to each charged component",
+    "changing quote duration does not create a new minimum commitment",
+    "meter IDs are billing identity, not HTTP provider request IDs",
+    "transaction-dependent disk cost needs an explicit estimate/bound or an honest exclusion; no implicit zero guarantee"
+  ],
+  "read_only_observations": "CloudCatalog inspect/list are independent ARM observations, not mutation/lifecycle duplication. Unknown lookup must fail List conservatively, never become successful empty inventory.",
+  "hardware_rules": [
+    "SKU CpuArchitectureType must match image/profile architecture; unknown cannot prove a match",
+    "ResourceSku.family is the family identifier; do not collapse Standard_* names to family Standard",
+    "constrained-vCPU availability uses vCPUsAvailable before full physical vCPUs",
+    "byte/MB throughput and GPU/temporary-disk memory parsing retain Decimal fractions",
+    "whole GPU/resource disks supplied by exact VM flavor require metadata, not nonexistent provisioning extras",
+    "missing vendor/model/VRAM may be resolved by explicit central per-SKU accelerator facts with source provenance; count must still agree with actual SKU data"
+  ],
+  "throughput_unit_case": {
+    "megabytes_per_second": "60",
+    "mib_per_second": "57.220458984375"
+  },
+  "os_disk_limit_gib": 4095,
+  "state_cases": [
+    {
+      "provisioningState": "Succeeded",
+      "powerState": null,
+      "expected": "unknown"
+    },
+    {
+      "provisioningState": "Succeeded",
+      "powerState": "PowerState/deallocated",
+      "expected": "stopped"
+    },
+    {
+      "provisioningState": "Succeeded",
+      "powerState": "PowerState/running",
+      "expected": "running"
+    }
+  ],
+  "quote_tamper_cases": [
+    "spot bool disagrees with candidate market",
+    "disk_size_gb disagrees with priced size",
+    "storage_account_type disagrees with priced disk",
+    "unsupported allocate_public_ip=true",
+    "native region/image version or minimum provenance no longer matches binding"
+  ],
+  "accelerator_fact_example": {
+    "sku": "Standard_NC4as_T4_v3",
+    "vendor": "nvidia",
+    "model": "T4",
+    "total_memory_gib": "16",
+    "source": "https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/gpu-accelerated/ncast4v3-series?tabs=sizebasic",
+    "count": "actual SKU GPUs=1 (synthetic API fixture); do not infer from SKU name",
+    "scope": "central operator attestation, not runtime guest/driver qualification"
+  },
+  "explicit_size_case": {
+    "profile_size_gib": 40,
+    "image_minimum_gib": 30,
+    "administrator_maximum_gib": 64,
+    "expected_provisioned_gib": 40,
+    "expected_standard_hdd_tier": "S6",
+    "reason": "child127 default only applies when disk_size_gb is omitted"
+  },
+  "licensing": {
+    "source_ids": [
+      "azure-image-get",
+      "azure-marketplace-licensing",
+      "azure-marketplace-plan",
+      "qualified-azure-spec"
+    ],
+    "rules": [
+      "properties.plan is real image metadata; qualified child does not map VM Plan, so any non-null plan is unsupported",
+      "non-Windows does not establish zero image-software charges",
+      "central licensing facts must explicitly attest no extra software charges or Windows license included in selected compute meter, with source provenance",
+      "unknown or additional unpriced software licensing excludes/fails explicitly",
+      "quote re-reads image plan and current exact central licensing binding"
+    ],
+    "cases": [
+      {
+        "name": "free_linux",
+        "api_plan": null,
+        "central_licensing": "source-attested no additional software charges",
+        "eligible": true
+      },
+      {
+        "name": "windows_included",
+        "api_plan": null,
+        "central_licensing": "source-attested included in Windows compute meter",
+        "duplicate_license_charge": false
+      },
+      {
+        "name": "unknown_linux_license",
+        "api_plan": null,
+        "central_licensing": "unknown",
+        "eligible": false
+      },
+      {
+        "name": "marketplace_plan",
+        "api_plan": {
+          "name": "example",
+          "publisher": "example",
+          "product": "example"
+        },
+        "eligible": false
+      },
+      {
+        "name": "plan_appears_on_quote",
+        "catalog_api_plan": null,
+        "quote_api_plan": {
+          "name": "example",
+          "publisher": "example",
+          "product": "example"
+        },
+        "quote_valid": false
+      }
+    ]
+  }
+}

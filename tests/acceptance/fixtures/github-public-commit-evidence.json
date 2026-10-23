@@ -1,0 +1,105 @@
+{
+  "captured_public_api_values": true,
+  "signed_webhook_received": false,
+  "captured_at": "2026-10-21T16:40:42.019491+00:00",
+  "internal_pr": {
+    "run_id": 39593036510,
+    "run_attempt": 1,
+    "repository_id": 488973970,
+    "head_repository_id": 488973970,
+    "run_head_sha": "25ac24edce373cb1861de77f0b6553c31694765c",
+    "job_id": 119198474668,
+    "job_head_sha": "25ac24edce373cb1861de77f0b6553c31694765c",
+    "pr_head_sha": "25ac24edce373cb1861de77f0b6553c31694765c",
+    "merge_commit_sha": "f562d729fa3717d3b844da359d308743ec0b78ec",
+    "merge_parents": [
+      "3d907a17018e1cb3056aadabb57cc1158683ec75",
+      "25ac24edce373cb1861de77f0b6553c31694765c"
+    ]
+  },
+  "fork_pr": {
+    "run_id": 36066939420,
+    "repository_id": 197814629,
+    "head_repository_id": 1386419016,
+    "head_sha": "2f547d07f23dec7f4a96fc091165260dcbe59529",
+    "base_contents_blob_sha": "175fad67e46a06b0285abbe3dc7886a70ab391bc",
+    "private_fork_access_proven": false
+  },
+  "target": {
+    "run_id": 39618186083,
+    "head_sha": "ad8d32c9875c30961a7135bfea862eba55060b80",
+    "repository_id": 189621607,
+    "head_repository_id": 189621607,
+    "triggering_pr_proven": false,
+    "fork_status_proven": false,
+    "job_id": 119284406743,
+    "job_head_sha": "ad8d32c9875c30961a7135bfea862eba55060b80",
+    "job_run_attempt": 1
+  },
+  "merge_group": {
+    "run_id": 38900255136,
+    "head_sha": "ff759d8d323d8794ce98d1dedd758356e2940a84",
+    "event": "merge_group",
+    "job_id": 116970453406,
+    "job_head_sha": "ff759d8d323d8794ce98d1dedd758356e2940a84",
+    "job_run_attempt": 1
+  },
+  "rerun": {
+    "run_id": 39220711909,
+    "attempts": [
+      1,
+      2
+    ],
+    "head_sha": "69c2204d8dc7df95b0d4b57f1aea2e2c288969fe"
+  },
+  "sources": {
+    "internal-run-attempt": {
+      "url": "https://github.com/cloudbase/garm/actions/runs/39593036510/attempts/1",
+      "response_sha256": "22fca6656dfb6162cf50c366f9dd1b389b2a2f2b851feb714c5d278f34161e62"
+    },
+    "internal-attempt-jobs": {
+      "url": "https://github.com/cloudbase/garm/actions/runs/39593036510/attempts/1/jobs",
+      "response_sha256": "b14afb36c7ab42998da79c6401762706f825a0c57b7772c09794a2016c47f36f"
+    },
+    "fork-run": {
+      "url": "https://github.com/actions/checkout/actions/runs/36066939420",
+      "response_sha256": "7d182ee47002379ed140c7fd8816dd9681fac0a66901680cf4249bad6e4cc1eb"
+    },
+    "internal-pr": {
+      "url": "https://github.com/cloudbase/garm/pull/925",
+      "response_sha256": "60b00aa3f45dbabacfff5985b4c340b93bd647fcc8da950a1fba9c7d5d11cd28"
+    },
+    "target-run": {
+      "url": "https://github.com/github/docs/actions/runs/39618186083",
+      "response_sha256": "0fdea958d606623cfd891d6f4f10da1d4a16dc129a66bbdaba2f4262c17e3c24"
+    },
+    "merge-group-run": {
+      "url": "https://github.com/github/docs/actions/runs/38900255136",
+      "response_sha256": "c97ed20210d356b98568d56815fdbb1d63334b7bef9593edb16894cdd4e2056f"
+    },
+    "rerun-attempt-1": {
+      "url": "https://github.com/actions/runner/actions/runs/39220711909/attempts/1",
+      "response_sha256": "2aac9efd2774ce9969d15a3f499bee69c942d73c91879e99606c4d16a6bcfab0"
+    },
+    "rerun-attempt-2": {
+      "url": "https://github.com/actions/runner/actions/runs/39220711909/attempts/2",
+      "response_sha256": "1772da9d738ed0f7630aa4ceff25e4e91a42236df7d52c15977c4fbf4f7dd962"
+    },
+    "merge-commit": {
+      "url": "https://github.com/cloudbase/garm/commit/f562d729fa3717d3b844da359d308743ec0b78ec",
+      "response_sha256": "4dbe5ad79e19ab10725bd865f177240fc6bbdeb4e2083d8176ec391115b03048"
+    },
+    "fork-contents": {
+      "url": "https://api.github.com/repos/actions/checkout/contents/action.yml?ref=2f547d07f23dec7f4a96fc091165260dcbe59529",
+      "response_sha256": "278169f8ff9a705dafdbb8bb5c8b4476714afbd497ac2fd2e9b3422d77f64529"
+    },
+    "target-attempt-jobs": {
+      "url": "https://github.com/github/docs/actions/runs/39618186083/attempts/1/jobs",
+      "response_sha256": "0cd54232987ad47de6ab5f86454ea453249326f4ab020f87ec027239ae619d45"
+    },
+    "merge-group-attempt-jobs": {
+      "url": "https://github.com/github/docs/actions/runs/38900255136/attempts/1/jobs",
+      "response_sha256": "16420d09cdcdfe38270d057dc31cffd7c5b4fc22400281f329b713f340687306"
+    }
+  }
+}

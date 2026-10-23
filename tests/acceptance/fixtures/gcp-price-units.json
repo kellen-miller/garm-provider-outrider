@@ -1,0 +1,77 @@
+{
+  "synthetic": true,
+  "estimation_basis": {
+    "hours_per_month": 730,
+    "currency": "USD",
+    "displayQuantity_is_only_display": true
+  },
+  "quantities": {
+    "vcpu": "2",
+    "memory_gib": "7.5",
+    "boot_disk_gib": "40",
+    "gpu_count": "1",
+    "windows_visible_vcpu": "2",
+    "sql_license_cores": "4"
+  },
+  "rates": {
+    "vcpu_hour": "0.03",
+    "memory_gib_hour": "0.004",
+    "disk_gib_month": "0.073",
+    "gpu_hour": "0.5",
+    "windows_core_hour": "0.01",
+    "sql_core_hour": "0.025",
+    "public_ipv4_hour": "0.005"
+  },
+  "expected_hourly_components": {
+    "compute_cpu": "0.06",
+    "compute_ram": "0.0300",
+    "disk": "0.004",
+    "gpu": "0.5",
+    "windows_license": "0.02",
+    "sql_license": "0.100",
+    "public_address": "0.005"
+  },
+  "expected_windows_total_hourly": "0.6190",
+  "expected_windows_sql_total_hourly": "0.7190",
+  "money_examples": [
+    {
+      "units": "0",
+      "nanos": 30000000,
+      "expected_decimal": "0.03"
+    },
+    {
+      "units": "1",
+      "nanos": 125000000,
+      "expected_decimal": "1.125"
+    }
+  ],
+  "expression_example": {
+    "usageUnit": "h",
+    "baseUnit": "s",
+    "baseUnitConversionFactor": 3600,
+    "displayQuantity": 1000,
+    "tieredRates": [
+      {
+        "startUsageAmount": 0,
+        "unitPrice": {
+          "currencyCode": "USD",
+          "units": "0",
+          "nanos": 30000000
+        }
+      }
+    ]
+  },
+  "unit_expectations": {
+    "cpu_price_per_hour": "0.03",
+    "cpu_price_per_second": "0.000008333333333333333333333333333",
+    "displayQuantity_must_not_scale_price": 1000
+  },
+  "invariants": [
+    "CPU quantity remains2 even when SQL license quantity is4",
+    "Windows Server license remains2 visible vCPU; SQL minimum is separate",
+    "unknown SKU/edition/VRAM is unknown, never0",
+    "fixed GPU whole-machine bundle must not also add attachment GPU meter",
+    "future effective terms and multiple incompatible matching SKUs remain unknown"
+  ],
+  "live_qualified": false
+}

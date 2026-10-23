@@ -1,0 +1,6 @@
+# Synthetic repository overlay. Central limits remain authoritative.
+version: 1
+profiles:
+  linux-large:
+    # Replaces this selector list; candidates still must satisfy central limits.
+    accounts: [synthetic-account]

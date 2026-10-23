@@ -1,0 +1,66 @@
+# Synthetic example. Use no cloud credentials or real account identifiers.
+version: 1
+control:
+  listen_address: 127.0.0.1:9191
+  database_path: .local/outrider.sqlite3
+  auth_token_file: .local/provider-token
+  provider_timeout_seconds: 900
+cost_horizon_seconds: 86400
+max_price_age_seconds: 3600
+default_purchasing: on_demand
+default_policy: economy
+policies:
+  economy:
+    strategy:
+      strategy: economy
+      max_price_age_seconds: 600
+    missing_data: {action: reject}
+limits:
+  max_vcpu: 32
+  max_memory_gib: 256
+  max_boot_disk_gib: 1024
+  max_boot_disk_iops: 100000
+  max_boot_disk_throughput_mib_s: 1000
+  max_local_scratch_gib: 512
+  max_gpu_count: 8
+  max_gpu_memory_gib: 256
+  max_allocations_controller: 1000
+  max_allocations_account: 100
+  max_allocations_pool: 25
+  max_total_cost: 1000
+  allowed_clouds: [aws]
+  allowed_accounts: [synthetic-account]
+  allowed_locations: [us-east-1]
+  allowed_machine_types:
+    aws: [m7i.large, m7i.xlarge]
+  allowed_machine_families: {}
+  allowed_gpu_vendors: []
+  allowed_gpu_models: []
+  allowed_os: [linux]
+  allowed_architectures: [amd64]
+  allowed_images: [ubuntu-24]
+  allowed_capabilities: [docker]
+  allowed_purchasing: [on_demand, spot]
+defaults:
+  os: linux
+  architecture: amd64
+  image: ubuntu-24
+  vcpu_min: 4
+  vcpu_max: 8
+  memory_gib_min: 8
+  memory_gib_max: 16
+  machine_types:
+    aws: [m7i.large]
+  accounts: [synthetic-account]
+  locations: [us-east-1]
+  boot_disk: {class: gp3, size_gib: 40}
+  local_scratch_gib: 0
+  capabilities: [docker]
+profiles:
+  linux-large:
+    vcpu_min: 8
+    vcpu_max: 8
+    memory_gib_min: 16
+    memory_gib_max: 16
+    machine_types:
+      aws: [m7i.xlarge]

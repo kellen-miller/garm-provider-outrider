@@ -1,0 +1,163 @@
+{
+  "synthetic": true,
+  "currency": "USD",
+  "duration_seconds": 3600,
+  "cases": [
+    {
+      "id": "hourly_components",
+      "compute_per_hour": "1.00",
+      "disk_per_hour": "0.20",
+      "licensing_per_hour": "0.30",
+      "expected_total": "1.50"
+    },
+    {
+      "id": "new_mac_host_minimum",
+      "host_per_hour": "2.00",
+      "minimum_allocation_hours": 24,
+      "duration_hours": 1,
+      "expected_minimum_host_cost": "48.00"
+    },
+    {
+      "id": "unknown_price",
+      "compute_per_hour": null,
+      "missing_data_behavior": "reject",
+      "expected": "reject_missing_price"
+    },
+    {
+      "id": "hard_requirement_before_cost",
+      "requested_arch": "arm64",
+      "candidates": [
+        {
+          "id": "cheap",
+          "arch": "amd64",
+          "cost": "0.10"
+        },
+        {
+          "id": "eligible",
+          "arch": "arm64",
+          "cost": "1.00"
+        }
+      ],
+      "expected_candidate": "eligible"
+    },
+    {
+      "id": "minimum_applies_per_component",
+      "components": [
+        {
+          "name": "new_host",
+          "hourly_usd": "2.00",
+          "minimum_seconds": 86400
+        },
+        {
+          "name": "disk",
+          "hourly_usd": "0.20",
+          "minimum_seconds": 0
+        }
+      ],
+      "duration_seconds": 3600,
+      "expected_total": "48.20"
+    },
+    {
+      "id": "existing_host_sunk_commitment",
+      "host_remaining_commitment_usd": "4.00",
+      "new_host_commitment": false,
+      "marginal_host_per_hour_usd": "0.00",
+      "disk_per_hour_usd": "0.20",
+      "duration_seconds": 3600,
+      "expected_marginal_total": "0.20"
+    },
+    {
+      "id": "continuity_is_lexicographic",
+      "candidates": [
+        {
+          "id": "a",
+          "interruption_rate_per_hour": "0.000001",
+          "allocation_failure_rate": "1.0"
+        },
+        {
+          "id": "b",
+          "interruption_rate_per_hour": "0.0000011",
+          "allocation_failure_rate": "0.0"
+        }
+      ],
+      "expected_order": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "id": "single_configured_horizon",
+      "horizon_seconds": 86400,
+      "maximum_total_cost": "30",
+      "candidates": [
+        {
+          "id": "committed",
+          "compute_hourly_usd": "1",
+          "minimum_seconds": 86400,
+          "expected_total": "24"
+        },
+        {
+          "id": "hourly",
+          "compute_hourly_usd": "2",
+          "minimum_seconds": 0,
+          "expected_total": "48"
+        }
+      ],
+      "expected_economy_order": [
+        "committed",
+        "hourly"
+      ],
+      "expected_weighted_cost_order": [
+        "committed",
+        "hourly"
+      ],
+      "expected_under_cost_ceiling": [
+        "committed"
+      ],
+      "note": "At one hour the hourly candidate costs2 vs24, reversing order. All policies and cost ceilings must use the same configured24h horizon, including named missing-data fallback."
+    },
+    {
+      "id": "fractional_hardware_caps",
+      "cases": [
+        {
+          "kind": "RAM",
+          "api_mib": 31232,
+          "exact_gib": "30.5",
+          "max_gib": 30,
+          "expected": "reject_above_maximum"
+        },
+        {
+          "kind": "aggregate_GPU_VRAM",
+          "api_mib": 16896,
+          "exact_gib": "16.5",
+          "max_gib": 16,
+          "expected": "reject_above_maximum"
+        },
+        {
+          "kind": "local_scratch",
+          "exact_gib": "8.5",
+          "max_gib": 8,
+          "expected": "reject_above_maximum"
+        },
+        {
+          "kind": "RAM_minimum",
+          "exact_gib": "30.5",
+          "min_gib": 31,
+          "expected": "reject_below_minimum"
+        },
+        {
+          "kind": "GPU_unknown_VRAM",
+          "gpu_count": 1,
+          "memory_gib": null,
+          "expected": "unknown_not_zero_no_eligible_candidate"
+        }
+      ],
+      "decimal_GB_conversion": {
+        "api_GB": 900,
+        "expected_GiB": "838.1903171539306640625"
+      },
+      "note": "Candidate physical quantities retain fractional GiB. Profile integer GiB limits compare exactly; unknown hardware is excluded, never cast to zero or floor through upper bounds."
+    }
+  ],
+  "hardware_precision_note": "Positive GPU count requires known strictly positive aggregate VRAM. None, zero, and negative VRAM are ineligible; no integer flooring for known physical quantities."
+}

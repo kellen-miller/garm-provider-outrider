@@ -1,0 +1,65 @@
+[
+  {
+    "cloud": "aws",
+    "code": "InsufficientInstanceCapacity",
+    "category": "capacity",
+    "source": "ec2-errors",
+    "terminal_and_scope_verification_required": true
+  },
+  {
+    "cloud": "aws",
+    "code": "VcpuLimitExceeded",
+    "category": "quota",
+    "source": "ec2-errors",
+    "terminal_and_scope_verification_required": true
+  },
+  {
+    "cloud": "aws",
+    "code": "AuthFailure",
+    "category": "auth",
+    "source": "ec2-errors",
+    "terminal_and_scope_verification_required": true
+  },
+  {
+    "cloud": "aws",
+    "code": "RequestLimitExceeded",
+    "category": "rate_limit",
+    "source": "ec2-errors",
+    "terminal_and_scope_verification_required": true
+  },
+  {
+    "cloud": "aws",
+    "code": "IdempotentParameterMismatch",
+    "category": "configuration",
+    "source": "ec2-errors",
+    "terminal_and_scope_verification_required": true
+  },
+  {
+    "cloud": "azure",
+    "code": "SkuNotAvailable",
+    "category": "capacity_scoped",
+    "source": "azure-errors",
+    "terminal_and_scope_verification_required": true
+  },
+  {
+    "cloud": "gcp",
+    "code": "ZONE_RESOURCE_POOL_EXHAUSTED",
+    "category": "capacity",
+    "source": "gcp-errors",
+    "terminal_and_scope_verification_required": true
+  },
+  {
+    "cloud": "gcp",
+    "code": "QUOTA_EXCEEDED",
+    "category": "quota",
+    "source": "gcp-errors",
+    "terminal_and_scope_verification_required": true
+  },
+  {
+    "cloud": "gcp",
+    "code": "RATE_LIMIT_EXCEEDED",
+    "category": "rate_limit",
+    "source": "gcp-errors",
+    "terminal_and_scope_verification_required": true
+  }
+]

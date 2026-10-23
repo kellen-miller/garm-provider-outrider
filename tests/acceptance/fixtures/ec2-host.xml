@@ -1,0 +1,1 @@
+<AllocateHostsResponse xmlns="http://ec2.amazonaws.com/doc/2016-11-15/"><requestId>00000000-0000-4000-8000-000000000002</requestId><hostIdSet><item>h-00000000000000001</item></hostIdSet></AllocateHostsResponse>

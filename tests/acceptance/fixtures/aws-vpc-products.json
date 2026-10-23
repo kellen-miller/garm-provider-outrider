@@ -1,0 +1,52 @@
+{
+  "source_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/current/us-east-1/index.json",
+  "retrieved_at": "2026-10-21T16:00:50.312267+00:00",
+  "catalog_sha256": "85367cb441bc050ea66796736a4605b4a937f9b2a8639a7103270c7eac941a1c",
+  "offer_code": "AmazonVPC",
+  "catalog_version": "20261016224321",
+  "transform": "product attributes only; rates excluded; exact schema fact, not a pricing recommendation",
+  "products": [
+    {
+      "sku": "G45CEDSGU2ER8WPQ",
+      "attributes": {
+        "servicecode": "AmazonVPC",
+        "location": "US East (N. Virginia)",
+        "locationType": "AWS Region",
+        "group": "VPCIPv4ContiguousBlocks",
+        "groupDescription": "Hourly charge for IPv4 address in a contiguous block of IPv4 address",
+        "usagetype": "USE1-PublicIPv4:ContiguousBlock",
+        "operation": "ProvisionIpamPoolCidr",
+        "regionCode": "us-east-1",
+        "servicename": "Amazon Virtual Private Cloud"
+      }
+    },
+    {
+      "sku": "4GQUNXTFWVSGPUZK",
+      "attributes": {
+        "servicecode": "AmazonVPC",
+        "location": "US East (N. Virginia)",
+        "locationType": "AWS Region",
+        "group": "VPCPublicIPv4Address",
+        "groupDescription": "Hourly charge for In-use Public IPv4 Addresses",
+        "usagetype": "USE1-PublicIPv4:InUseAddress",
+        "operation": "",
+        "regionCode": "us-east-1",
+        "servicename": "Amazon Virtual Private Cloud"
+      }
+    },
+    {
+      "sku": "T6YDQKTMVWKNJFJ8",
+      "attributes": {
+        "servicecode": "AmazonVPC",
+        "location": "US East (N. Virginia)",
+        "locationType": "AWS Region",
+        "group": "VPCPublicIPv4Address",
+        "groupDescription": "Hourly charge for Idle Public IPv4 Addresses",
+        "usagetype": "USE1-PublicIPv4:IdleAddress",
+        "operation": "",
+        "regionCode": "us-east-1",
+        "servicename": "Amazon Virtual Private Cloud"
+      }
+    }
+  ]
+}
