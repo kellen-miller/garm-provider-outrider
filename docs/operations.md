@@ -14,6 +14,12 @@ entity's secret ([GARM v0.2.1 source](https://github.com/cloudbase/garm/blob/154
 Outrider sets GARM's hook target header to `repository`, matching its pool
 registration scope. GitHub App deliveries use `integration`, which GARM rejects.
 The original headers remain in the inbox; signed body bytes stay unchanged.
+Only jobs carrying a complete Outrider routing label are relayed to GARM.
+Other authenticated deliveries are acknowledged locally. Run-completion events
+still persist terminal barriers and drive Outrider pool cleanup locally.
+Configure a separate GARM webhook for GARM-native jobs outside Outrider.
+The case-insensitive `outrider` label prefix is reserved; malformed request
+labels receive an admission check instead of being silently ignored.
 Set `allow_forks: true` only when an administrator has explicitly approved
 fork workflows; the default is denial. Keep the secret file readable only by
 the daemon account.

@@ -218,8 +218,7 @@ impl IngressService {
             let deadline = tokio::time::Instant::now() + self.operation_budget();
             if message.kind == "forward" {
                 let current =
-                    tokio::time::timeout_at(deadline, self.forward_admission_is_current(&message))
-                        .await;
+                    tokio::time::timeout_at(deadline, self.forward_job_is_current(&message)).await;
                 match current {
                     Ok(Ok(true)) => {}
                     Ok(Ok(false)) => {
@@ -238,7 +237,7 @@ impl IngressService {
                             .set_outbox_state(
                                 &message.id,
                                 "rejected",
-                                Some("forward record is malformed"),
+                                Some("forward does not identify a valid Outrider job"),
                             )
                             .map_err(|_| IngressError::Journal)?;
                         processed += 1;

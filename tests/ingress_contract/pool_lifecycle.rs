@@ -261,12 +261,15 @@ async fn pool_caps_expiry_drain() {
 #[tokio::test]
 async fn unavailable_garm_restart() {
     let directory = TestDirectory::new().expect("temp directory");
+    let github = HttpFixture::start_github(failed_run(), failed_assigned_job(), true)
+        .await
+        .expect("GitHub fixture");
     let (service, journal) =
-        open_service(&directory, "http://127.0.0.1:1/", "http://127.0.0.1:1/").expect("service");
-    let body = br#"{"repository":{"id":101,"name":"base-repo","full_name":"base-owner/base-repo","owner":{"login":"base-owner"}},"action":"created"}"#;
-    let (signature, headers) = webhook("repository", "delivery-10", body);
+        open_service(&directory, &github.origin, "http://127.0.0.1:1/").expect("service");
+    let body = completed_failure_body();
+    let (signature, headers) = webhook("workflow_job", "delivery-10", &body);
     let _inserted = service
-        .intake("repository", "delivery-10", &signature, headers, body)
+        .intake("workflow_job", "delivery-10", &signature, headers, &body)
         .expect("intake");
     let _processed = service.process_pending(1).await.expect("offline worker");
     assert_eq!(
