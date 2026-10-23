@@ -23,8 +23,7 @@ async fn binding_account_region_mismatch() {
     let mut settings = aws_settings(&server.endpoint);
     let changed_child_config = AWS_CHILD_CONFIG.replace("us-east-1", "us-west-2");
     fs::write(&settings.provider_configuration_path, &changed_child_config).unwrap();
-    settings.configuration_sha256 =
-        format!("{:x}", Sha256::digest(changed_child_config.as_bytes()));
+    settings.configuration_sha256 = hex::encode(Sha256::digest(changed_child_config.as_bytes()));
     let error = aws_backend_with_settings(&server.endpoint, settings)
         .await
         .err()
@@ -52,7 +51,7 @@ async fn binding_account_region_mismatch() {
     let mut settings = aws_settings(&server.endpoint);
     let role_config = "region = \"us-east-1\"\nsubnet_id = \"subnet-123\"\n[credentials]\ncredential_type = \"role\"\n";
     fs::write(&settings.provider_configuration_path, role_config).unwrap();
-    settings.configuration_sha256 = format!("{:x}", Sha256::digest(role_config.as_bytes()));
+    settings.configuration_sha256 = hex::encode(Sha256::digest(role_config.as_bytes()));
     let error = AwsBackend::connect(
         settings,
         tokio::time::Instant::now() + Duration::from_secs(5),

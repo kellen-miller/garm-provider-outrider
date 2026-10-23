@@ -32,7 +32,7 @@ use google_cloud_auth::credentials::{
     AccessToken as GcpAccessToken, AccessTokenCredentials, AccessTokenCredentialsProvider,
     CacheableResource, CredentialsProvider, EntityTag,
 };
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use hyper::http::{Extensions, HeaderMap, HeaderValue};
 use outrider::{
     allocation::{AllocationService, ConnectedCatalog, catalog_configuration_fingerprint},

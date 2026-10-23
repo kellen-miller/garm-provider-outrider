@@ -151,7 +151,7 @@ async fn regional_public_ipv4_quote(
     let mut settings = aws_settings(&server.endpoint);
     let child_config = AWS_CHILD_CONFIG.replace("us-east-1", "eu-west-1");
     fs::write(&settings.provider_configuration_path, &child_config)?;
-    settings.configuration_sha256 = format!("{:x}", Sha256::digest(child_config.as_bytes()));
+    settings.configuration_sha256 = hex::encode(Sha256::digest(child_config.as_bytes()));
     settings.region = "eu-west-1".to_owned();
     settings.pricing_location = "Europe (Ireland)".to_owned();
     settings.locations.clear();

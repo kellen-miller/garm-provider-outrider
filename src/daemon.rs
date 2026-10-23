@@ -8,7 +8,7 @@ use axum::{
     routing::{get, post},
 };
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use serde::Serialize;
 use serde_json::Value;
 use sha2::Sha256;
