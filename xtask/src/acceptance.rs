@@ -29,6 +29,17 @@ pub fn run(selected: Option<&str>) -> Result<()> {
         .filter(|m| selected.is_none_or(|id| m.id == id))
         .collect();
     ensure!(!milestones.is_empty(), "unknown milestone");
+    if selected.is_none() {
+        cargo(&[
+            "test",
+            "--locked",
+            "--workspace",
+            "--all-targets",
+            "--all-features",
+            "--no-run",
+        ])?;
+    }
+
     for milestone in &milestones {
         let listing = cargo(&[
             "test",
