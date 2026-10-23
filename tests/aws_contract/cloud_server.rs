@@ -28,7 +28,7 @@ use tokio::net::TcpListener;
 pub(super) const AWS_CHILD_CONFIG: &str = "region = \"us-east-1\"\nsubnet_id = \"subnet-123\"\n[credentials]\ncredential_type = \"static\"\n[credentials.static]\naccess_key_id = \"AKIDTESTAWSCONTRACT\"\nsecret_access_key = \"secret-test-only-not-a-real-key\"\n";
 
 pub(super) fn child_config_sha256() -> String {
-    format!("{:x}", Sha256::digest(AWS_CHILD_CONFIG.as_bytes()))
+    hex::encode(Sha256::digest(AWS_CHILD_CONFIG.as_bytes()))
 }
 
 pub(super) struct CapturedAwsRequest {
