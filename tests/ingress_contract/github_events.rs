@@ -208,6 +208,21 @@ pub(super) async fn handle_request(
     request: Request<Incoming>,
     state: Arc<FixtureState>,
 ) -> Result<Response<Full<bytes::Bytes>>, hyper::Error> {
+    // GitHub rejects requests without a valid User-Agent, even with valid auth.
+    if !matches!(state.mode, FixtureMode::GarmPool)
+        && request
+            .headers()
+            .get("user-agent")
+            .and_then(|value| value.to_str().ok())
+            .is_none_or(|value| value.trim().is_empty())
+    {
+        let mut response = Response::new(Full::new(bytes::Bytes::from_static(
+            b"User-Agent header is required",
+        )));
+        *response.status_mut() = StatusCode::FORBIDDEN;
+        return Ok(response);
+    }
+
     let method = request.method().to_string();
     let path = request.uri().path_and_query().map_or_else(
         || request.uri().path().to_owned(),
