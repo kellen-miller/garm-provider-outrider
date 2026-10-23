@@ -268,6 +268,7 @@ pub(super) fn machine_page(shape: MockShape, paginated: bool) -> String {
 pub(super) fn machine_json(shape: MockShape) -> String {
     match shape {
         MockShape::Standard => r#"{"name":"n2-standard-4","guestCpus":4,"memoryMb":16384,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":[]}"#.to_owned(),
+        MockShape::NativeSpot => r#"{"name":"e2-standard-8","guestCpus":8,"memoryMb":32768,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":[]}"#.to_owned(),
         MockShape::WindowsSql => r#"{"name":"n2-standard-2","guestCpus":2,"memoryMb":8192,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":[]}"#.to_owned(),
         MockShape::GpuSpot => r#"{"name":"a2-highgpu-1g","guestCpus":12,"memoryMb":87040,"architecture":"X86_64","isSharedCpu":false,"accelerators":[{"guestAcceleratorType":"nvidia-tesla-a100","guestAcceleratorCount":1}],"bundledLocalSsds":[]}"#.to_owned(),
         MockShape::BundledSsd => r#"{"name":"n2-local-ssd-synthetic","guestCpus":4,"memoryMb":16384,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":[{"partitionCount":1,"defaultInterface":"NVME"}]}"#.to_owned(),
@@ -276,7 +277,7 @@ pub(super) fn machine_json(shape: MockShape) -> String {
 
 pub(super) fn image_json(shape: MockShape) -> String {
     let (name, licenses) = match shape {
-        MockShape::Standard => ("ubuntu-24", Vec::new()),
+        MockShape::Standard | MockShape::NativeSpot => ("ubuntu-24", Vec::new()),
         MockShape::WindowsSql => (
             "windows-server-synthetic",
             vec![
@@ -325,7 +326,7 @@ fn child_path() -> PathBuf {
 
 fn image(shape: MockShape) -> GcpImage {
     let (name, os, capabilities, license_free_source, license_facts) = match shape {
-        MockShape::Standard => (
+        MockShape::Standard | MockShape::NativeSpot => (
             "ubuntu-24",
             "linux",
             BTreeSet::from(["docker".to_owned()]),
@@ -399,6 +400,7 @@ pub(super) fn settings(endpoint: &str, enabled_advice: bool, shape: MockShape) -
         images: BTreeMap::from([(
             match shape {
                 MockShape::Standard => "ubuntu-24",
+                MockShape::NativeSpot => "ubuntu-24",
                 MockShape::WindowsSql => "windows-synthetic",
                 MockShape::GpuSpot => "gpu-linux-synthetic",
                 MockShape::BundledSsd => "ubuntu-24",
@@ -429,6 +431,7 @@ pub(super) fn settings(endpoint: &str, enabled_advice: bool, shape: MockShape) -
         machine_facts: BTreeMap::from([(
             match shape {
                 MockShape::Standard => "n2-standard-4",
+                MockShape::NativeSpot => "e2-standard-8",
                 MockShape::WindowsSql => "n2-standard-2",
                 MockShape::GpuSpot => "a2-highgpu-1g",
                 MockShape::BundledSsd => "n2-local-ssd-synthetic",

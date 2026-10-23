@@ -69,6 +69,7 @@ pub(super) struct MockServer {
 #[derive(Clone, Copy)]
 pub(super) enum MockShape {
     Standard,
+    NativeSpot,
     WindowsSql,
     GpuSpot,
     BundledSsd,
@@ -173,6 +174,10 @@ pub(super) fn response_for(method: &str, path: &str, routes: &MockRoutes) -> (u1
         return (routes.advice_status, routes.advice_body.clone());
     }
     if path.contains("/skus?") {
+        if matches!(routes.shape, MockShape::NativeSpot) {
+            return (200, include_str!("predefined-spot-prices.json").to_owned());
+        }
+
         if matches!(routes.shape, MockShape::WindowsSql) {
             return (200, windows_skus(path.contains("pageToken=")));
         }
@@ -199,6 +204,7 @@ pub(super) fn response_for(method: &str, path: &str, routes: &MockRoutes) -> (u1
         }
         let machine_name = match routes.shape {
             MockShape::Standard => "n2-standard-4",
+            MockShape::NativeSpot => "e2-standard-8",
             MockShape::WindowsSql => "n2-standard-2",
             MockShape::GpuSpot => "a2-highgpu-1g",
             MockShape::BundledSsd => "n2-local-ssd-synthetic",

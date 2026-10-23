@@ -93,24 +93,10 @@ impl GcpBackend {
             rate
         } else {
             let cpu = unique_sku(&rates, |sku| {
-                sku.category.resource_group.eq_ignore_ascii_case("CPU")
-                    && sku.category.resource_family.eq_ignore_ascii_case("Compute")
-                    && sku
-                        .description
-                        .split_whitespace()
-                        .next()
-                        .is_some_and(|token| token.eq_ignore_ascii_case(&family))
-                    && market_matches(sku)
+                predefined_compute_sku(sku, &family, "CPU") && market_matches(sku)
             })?;
             let ram = unique_sku(&rates, |sku| {
-                sku.category.resource_group.eq_ignore_ascii_case("RAM")
-                    && sku.category.resource_family.eq_ignore_ascii_case("Compute")
-                    && sku
-                        .description
-                        .split_whitespace()
-                        .next()
-                        .is_some_and(|token| token.eq_ignore_ascii_case(&family))
-                    && market_matches(sku)
+                predefined_compute_sku(sku, &family, "RAM") && market_matches(sku)
             })?;
             let (cpu_unit_rate, cpu_effective) = sku_hourly(cpu)?;
             let cpu_rate = cpu_unit_rate
@@ -417,6 +403,41 @@ pub(super) fn image_license_hourly(
         },
         effective_at,
     })
+}
+
+fn predefined_compute_sku(sku: &BillingSku, family: &str, group: &str) -> bool {
+    let component = match group {
+        "CPU" => "Core",
+        "RAM" => "Ram",
+        _ => return false,
+    };
+    if !sku.category.resource_group.eq_ignore_ascii_case(group)
+        || !sku.category.resource_family.eq_ignore_ascii_case("Compute")
+    {
+        return false;
+    }
+
+    let mut words = sku.description.split_whitespace();
+    let mut family_word = words.next();
+    if family_word.is_some_and(|word| word.eq_ignore_ascii_case("Spot")) {
+        if !words
+            .next()
+            .is_some_and(|word| word.eq_ignore_ascii_case("Preemptible"))
+            || !sku.category.usage_type.eq_ignore_ascii_case("Preemptible")
+        {
+            return false;
+        }
+
+        family_word = words.next();
+    }
+
+    family_word.is_some_and(|word| word.eq_ignore_ascii_case(family))
+        && words
+            .next()
+            .is_some_and(|word| word.eq_ignore_ascii_case("Instance"))
+        && words
+            .next()
+            .is_some_and(|word| word.eq_ignore_ascii_case(component))
 }
 
 pub(super) fn conservative_effective(current: u64, next: u64) -> u64 {
