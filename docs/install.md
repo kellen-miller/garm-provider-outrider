@@ -9,6 +9,12 @@ Windows amd64 targets when run on that same host. A target binary is not
 interchangeable with a host binary. Runner OS/architecture is selected
 separately and described in [limits](limits.md).
 
+Outrider owns the install script for its snapshot-backed pools. After validating
+the allocation request, it replaces GARM's incoming `runner_install_template`
+with its generated script. Templates manually set on these pools are also
+replaced. Pre-install scripts, extra context, and unknown bootstrap options
+remain unsupported; configure runners through Outrider profiles instead.
+
 The manifest's `darwin/arm64` hashes identify only observed local artifacts.
 They are not Linux or Windows hashes and do not qualify those hosts.
 

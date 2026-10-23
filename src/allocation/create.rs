@@ -589,6 +589,13 @@ pub(super) fn map_bootstrap(
     child.image = offer.selection.image.clone();
     child.os_type = offer.candidate.os.clone();
     child.os_arch = offer.candidate.architecture.clone();
+    // GARM injects its install wrapper before invoking external providers.
+    // Outrider owns guest bootstrap and replaces it after snapshot validation;
+    // never execute or forward the incoming template to a child provider.
+    if let Some(Value::Object(extras)) = child.extra_specs.as_mut() {
+        extras.remove("runner_install_template");
+    }
+
     let hook = generate_provider_hook(
         &child,
         BootstrapTarget {
