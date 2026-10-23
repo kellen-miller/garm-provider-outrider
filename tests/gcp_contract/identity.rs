@@ -268,7 +268,7 @@ pub(super) fn machine_page(shape: MockShape, paginated: bool) -> String {
 pub(super) fn machine_json(shape: MockShape) -> String {
     match shape {
         MockShape::Standard => r#"{"name":"n2-standard-4","guestCpus":4,"memoryMb":16384,"architecture":"X86_64","isSharedCpu":false,"accelerators":[]}"#.to_owned(),
-        MockShape::NativeSpot => r#"{"name":"e2-standard-8","guestCpus":8,"memoryMb":32768,"architecture":"X86_64","isSharedCpu":false,"accelerators":[]}"#.to_owned(),
+        MockShape::NativeSpot => r#"{"name":"e2-standard-8","guestCpus":8,"memoryMb":32768,"isSharedCpu":false,"accelerators":[]}"#.to_owned(),
         MockShape::WindowsSql => r#"{"name":"n2-standard-2","guestCpus":2,"memoryMb":8192,"architecture":"X86_64","isSharedCpu":false,"accelerators":[]}"#.to_owned(),
         MockShape::GpuSpot => r#"{"name":"a2-highgpu-1g","guestCpus":12,"memoryMb":87040,"architecture":"X86_64","isSharedCpu":false,"accelerators":[{"guestAcceleratorType":"nvidia-tesla-a100","guestAcceleratorCount":1}]}"#.to_owned(),
         MockShape::BundledSsd => r#"{"name":"n2-local-ssd-synthetic","guestCpus":4,"memoryMb":16384,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":{"partitionCount":1,"defaultInterface":"NVME"}}"#.to_owned(),
@@ -438,6 +438,7 @@ pub(super) fn settings(endpoint: &str, enabled_advice: bool, shape: MockShape) -
             }
             .to_owned(),
             GcpMachineFacts {
+                architecture: matches!(shape, MockShape::NativeSpot).then(|| "amd64".to_owned()),
                 shared_cpu_billing_sku: None,
                 bundled_local_ssd_gib: matches!(shape, MockShape::BundledSsd).then_some(375),
                 bundled_local_ssd_partitions: matches!(shape, MockShape::BundledSsd).then_some(1),
@@ -472,6 +473,111 @@ pub(super) fn settings(endpoint: &str, enabled_advice: bool, shape: MockShape) -
         compute_endpoint: endpoint.to_owned(),
         billing_endpoint: endpoint.to_owned(),
     }
+}
+
+#[tokio::test]
+async fn missing_machine_architecture_is_not_assumed_from_the_image() {
+    let server = start_server_with_routes(MockRoutes {
+        shape: MockShape::NativeSpot,
+        advice_status: 200,
+        advice_body: "{}".to_owned(),
+        instances_status: 200,
+        instances_body: r#"{"items":[]}"#.to_owned(),
+    })
+    .await
+    .unwrap();
+    let mut configuration = settings(&server.endpoint, false, MockShape::NativeSpot);
+    configuration
+        .machine_facts
+        .get_mut("e2-standard-8")
+        .unwrap()
+        .architecture = None;
+    let backend = GcpBackend::with_clients(
+        configuration,
+        reqwest::Client::new(),
+        AccessTokenCredentials::from(StaticCredential),
+        tokio::time::Instant::now() + Duration::from_secs(5),
+    )
+    .await
+    .unwrap();
+    let mut request = query("spot");
+    request
+        .profile
+        .administrator_limits
+        .allowed_machine_types
+        .insert(
+            "gcp".to_owned(),
+            BTreeSet::from(["e2-standard-8".to_owned()]),
+        );
+    let discovery = backend
+        .catalog(
+            request,
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .unwrap();
+    assert!(discovery.offers.is_empty());
+    assert!(discovery.exclusions.iter().any(|exclusion| {
+        exclusion
+            .reason
+            .contains("lacks native or attested architecture")
+    }));
+    assert!(
+        server
+            .requests
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|request| !request.path.contains("/images/"))
+    );
+}
+
+#[tokio::test]
+async fn attested_architecture_cannot_override_native_facts_or_requotes() {
+    let server = start_server().await.unwrap();
+    let original = backend(&server, false).await;
+    let offers = original
+        .catalog(
+            query("spot"),
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .unwrap()
+        .offers;
+    let mut configuration = settings(&server.endpoint, false, MockShape::Standard);
+    configuration
+        .machine_facts
+        .get_mut("n2-standard-4")
+        .unwrap()
+        .architecture = Some("arm64".to_owned());
+    let conflicting = GcpBackend::with_clients(
+        configuration,
+        reqwest::Client::new(),
+        AccessTokenCredentials::from(StaticCredential),
+        tokio::time::Instant::now() + Duration::from_secs(5),
+    )
+    .await
+    .unwrap();
+    let error = conflicting
+        .catalog(
+            query("spot"),
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .err()
+        .unwrap();
+    assert!(error.to_string().contains("architectures conflict"));
+    let error = conflicting
+        .quote(
+            &offers[0],
+            Duration::from_secs(60),
+            Duration::from_secs(600),
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .err()
+        .unwrap();
+    assert!(error.to_string().contains("architectures conflict"));
 }
 
 pub(super) async fn backend(server: &MockServer, enabled_advice: bool) -> GcpBackend {

@@ -80,6 +80,14 @@ the repository file selects a profile and permitted selector lists only.
 
 ## Explain a live selection
 
+GCP can omit architecture from older machine types such as E2 and N2. For those
+exact machine names, administrators may set `machine_facts.NAME.architecture`
+to `amd64` or `arm64`, with the evidence recorded in that entry's required
+`source`. Verify it against the provider's machine-family documentation.
+Native and attested values must agree when both exist; missing both excludes
+the machine. The image architecture is checked separately. This fact belongs
+in central catalog configuration and cannot be supplied by repository/job overrides.
+
 Run `outrider explain` from a host with access to the configured daemon. With no
 selector it analyzes the current central `default` profile; `--profile NAME`
 selects another current central profile. `--snapshot ID` analyzes the exact

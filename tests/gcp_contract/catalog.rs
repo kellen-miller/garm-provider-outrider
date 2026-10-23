@@ -9,6 +9,33 @@ use outrider::{
 use rust_decimal::Decimal;
 
 #[tokio::test]
+async fn hardware_filters_exclude_machines_before_image_reads() {
+    let server = start_server().await.unwrap();
+    let backend = backend(&server, false).await;
+    let mut request = query("spot");
+    request.profile.vcpu_min = 8;
+    request.profile.vcpu_max = 8;
+    let discovery = backend
+        .catalog(
+            request,
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .unwrap();
+    assert!(discovery.offers.is_empty());
+    assert_eq!(discovery.exclusions.len(), 1);
+    assert_eq!(discovery.exclusions[0].observed_count, 1);
+    assert!(
+        server
+            .requests
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|request| !request.path.contains("/images/"))
+    );
+}
+
+#[tokio::test]
 async fn native_spot_sku_names_price_predefined_compute_without_custom_or_committed_rates() {
     // Descriptions and selected SKU IDs reflect the native catalog observation.
     // Prices, region, credential and compute responses are controlled fixtures.

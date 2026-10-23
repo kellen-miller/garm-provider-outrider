@@ -171,7 +171,7 @@ pub fn json_schema() -> Value {
     schema["$defs"]["GcpMachineFacts"] = json!({
         "type":"object","additionalProperties":false,
         "required":["source"],
-        "properties":{"shared_cpu_billing_sku":{"type":["string","null"]},"bundled_local_ssd_gib":{"type":["integer","null"]},"bundled_local_ssd_partitions":{"type":["integer","null"]},"local_ssd_billing_sku":{"type":["string","null"]},"local_ssd_billing_quantity":{"type":["number","string","null"]},"max_pd_iops":{"type":["integer","null"]},"max_pd_throughput_mib_s":{"type":["number","string","null"]},"source":{"type":"string"}}
+        "properties":{"architecture":{"type":["string","null"],"enum":["amd64","arm64",null]},"shared_cpu_billing_sku":{"type":["string","null"]},"bundled_local_ssd_gib":{"type":["integer","null"]},"bundled_local_ssd_partitions":{"type":["integer","null"]},"local_ssd_billing_sku":{"type":["string","null"]},"local_ssd_billing_quantity":{"type":["number","string","null"]},"max_pd_iops":{"type":["integer","null"]},"max_pd_throughput_mib_s":{"type":["number","string","null"]},"source":{"type":"string"}}
     });
     schema["$defs"]["GcpDiskPerformance"] = json!({
         "type":"object","additionalProperties":false,"required":["base_iops","iops_per_gib","maximum_iops","base_throughput_mib_s","throughput_per_gib_mib_s","maximum_throughput_mib_s","source"],
