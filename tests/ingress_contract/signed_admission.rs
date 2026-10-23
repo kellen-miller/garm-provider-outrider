@@ -308,7 +308,7 @@ pub(super) fn webhook(
         ("X-GitHub-Delivery".into(), delivery_id.into()),
         (
             "X-GitHub-Hook-Installation-Target-Type".into(),
-            "repository".into(),
+            "integration".into(),
         ),
         ("X-Hub-Signature-256".into(), signature.clone()),
     ]
@@ -408,7 +408,7 @@ async fn exact_repository_pool_before_forward() {
         ("x-github-delivery".into(), "delivery-2".into()),
         (
             "x-github-hook-installation-target-type".into(),
-            "repository".into(),
+            "integration".into(),
         ),
         ("x-hub-signature-256".into(), signature.clone()),
     ];
@@ -453,6 +453,7 @@ async fn exact_repository_pool_before_forward() {
     assert_eq!(forward.body, body);
     assert_eq!(forward.signature.as_deref(), Some(signature.as_str()));
     assert_eq!(forward.authorization, None);
+    assert_eq!(forward.hook_target.as_deref(), Some("repository"));
 }
 
 #[tokio::test]
@@ -517,5 +518,6 @@ async fn full_signed_out_rider_pipeline() {
     assert_eq!(forward.body, body);
     assert_eq!(forward.signature.as_deref(), Some(signature.as_str()));
     assert_eq!(forward.authorization, None);
+    assert_eq!(forward.hook_target.as_deref(), Some("repository"));
     assert!(journal.pending_outbox(10).expect("outbox").is_empty());
 }

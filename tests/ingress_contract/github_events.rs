@@ -54,6 +54,7 @@ pub(super) struct RecordedRequest {
     pub(super) body: Vec<u8>,
     pub(super) authorization: Option<String>,
     pub(super) signature: Option<String>,
+    pub(super) hook_target: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -238,6 +239,11 @@ pub(super) async fn handle_request(
         .get("x-hub-signature-256")
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
+    let hook_target = request
+        .headers()
+        .get("x-github-hook-installation-target-type")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
     let body = request.into_body().collect().await?.to_bytes().to_vec();
     if let Ok(mut requests) = state.requests.lock() {
         requests.push(RecordedRequest {
@@ -246,6 +252,7 @@ pub(super) async fn handle_request(
             body: body.clone(),
             authorization,
             signature,
+            hook_target,
         });
     }
     let (status, response_body) = match state.mode {

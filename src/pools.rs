@@ -509,7 +509,8 @@ impl GarmClient {
         Ok(Some(pool.id))
     }
 
-    /// Forward the original signed body and selected original webhook headers to GARM.
+    /// Forward original signed bytes to GARM's repository-scoped webhook handler.
+    /// Header names must be lowercase, as persisted by authenticated intake.
     ///
     /// # Errors
     /// Returns `PoolError` when the configured webhook route cannot accept the event.
@@ -527,14 +528,16 @@ impl GarmClient {
         if url.origin() != self.origin.origin() || !url.path().starts_with(self.origin.path()) {
             return Err(PoolError::Configuration);
         }
-        let mut request = self.client.post(url).body(body.to_vec());
+        // App deliveries say "integration"; these pools always register at repository scope.
+        let mut request = self
+            .client
+            .post(url)
+            .header("x-github-hook-installation-target-type", "repository")
+            .body(body.to_vec());
         for (name, value) in headers {
             if matches!(
                 name.as_str(),
-                "x-github-event"
-                    | "x-github-delivery"
-                    | "x-github-hook-installation-target-type"
-                    | "x-hub-signature-256"
+                "x-github-event" | "x-github-delivery" | "x-hub-signature-256"
             ) {
                 request = request.header(name, value);
             }

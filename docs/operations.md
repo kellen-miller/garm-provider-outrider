@@ -11,6 +11,9 @@ repository entity's webhook secret must have the same value. Outrider checks
 the signature, then forwards the original signed body and signature to GARM
 without re-signing it. GARM verifies that signature with the repository
 entity's secret ([GARM v0.2.1 source](https://github.com/cloudbase/garm/blob/154638445c3949c1958b01812f69d9a1e4d82684/runner/runner.go#L887-L895)).
+Outrider sets GARM's hook target header to `repository`, matching its pool
+registration scope. GitHub App deliveries use `integration`, which GARM rejects.
+The original headers remain in the inbox; signed body bytes stay unchanged.
 Set `allow_forks: true` only when an administrator has explicitly approved
 fork workflows; the default is denial. Keep the secret file readable only by
 the daemon account.
