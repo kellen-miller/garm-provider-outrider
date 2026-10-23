@@ -396,6 +396,7 @@ async fn exact_repository_pool_before_forward() {
             &journal,
             RepositoryPoolRequest {
                 snapshot: &snapshot,
+                admission: None,
             },
         )
         .await

@@ -138,6 +138,10 @@ impl IngressService {
                 .await?;
             return Ok(());
         }
+        if !crate::admission::allocation_is_open(self.config.admission.as_ref()) {
+            return Err(true);
+        }
+
         let snapshot = match self.prepare_snapshot(&request, &verified).await {
             Ok(snapshot) => snapshot,
             Err(SnapshotFailure::Dependency) => return Err(true),
@@ -175,6 +179,7 @@ impl IngressService {
                 &self.journal,
                 RepositoryPoolRequest {
                     snapshot: &snapshot,
+                    admission: self.config.admission.as_ref(),
                 },
             )
             .await
@@ -200,6 +205,7 @@ impl IngressService {
                     self.enqueue_forward(delivery, &headers).map_err(|_| true)?;
                 }
             }
+            Err(PoolError::AdmissionClosed) => return Err(true),
             Err(PoolError::UnsupportedOs) => {
                 self.enqueue_rejection_check(
                     &verified.base_repository,
@@ -372,6 +378,30 @@ impl IngressService {
             )
             .map_err(|_| true)?;
         Ok(submission == RerunSubmission::Acknowledged)
+    }
+
+    pub(super) fn forward_allocation_is_open(&self, message: &OutboxMessage) -> bool {
+        let Ok(headers) = serde_json::from_str::<ForwardHeaders>(&message.headers_json) else {
+            return true;
+        };
+        if headers.0.get("x-github-event").map(String::as_str) != Some("workflow_job") {
+            return true;
+        }
+
+        let Ok(event) = serde_json::from_slice::<WorkflowJobEvent>(&message.body) else {
+            return true;
+        };
+        if event.workflow_job.status != "queued"
+            || !event
+                .workflow_job
+                .labels
+                .iter()
+                .any(|label| label.starts_with("outrider:"))
+        {
+            return true;
+        }
+
+        crate::admission::allocation_is_open(self.config.admission.as_ref())
     }
 
     pub(super) async fn forward_admission_is_current(

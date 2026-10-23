@@ -12,7 +12,7 @@ impl AzureBackend {
         deadline: Instant,
     ) -> Result<Vec<RetailMeter>, CloudError> {
         let url = format!(
-            "{}/api/retail/prices?api-version={}&currencyCode='USD'&$filter=(serviceName%20eq%20'Virtual%20Machines'%20or%20serviceName%20eq%20'Storage')%20and%20armRegionName%20eq%20'{}'",
+            "{}/api/retail/prices?api-version={}&currencyCode='USD'&$filter=(serviceName%20eq%20'Virtual%20Machines'%20or%20serviceName%20eq%20'Storage'%20or%20(serviceName%20eq%20'Virtual%20Network'%20and%20productName%20eq%20'IP%20Addresses'))%20and%20armRegionName%20eq%20'{}'",
             self.settings.retail_endpoint.trim_end_matches('/'),
             RETAIL_API,
             location

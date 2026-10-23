@@ -88,6 +88,8 @@ pub enum AllocationError {
     DeletedName,
     #[error("allocation identity is definitely absent")]
     NotFound,
+    #[error("administrator allocation admission is closed")]
+    AdmissionClosed,
     #[error("allocation concurrency limit reached")]
     Limit,
     #[error("allocation catalog is unavailable")]

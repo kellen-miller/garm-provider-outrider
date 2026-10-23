@@ -97,7 +97,7 @@ pub(super) async fn start_server(responses: Vec<MockResponse>) -> io::Result<Moc
                 .map_err(|_| io::Error::other("request capture lock poisoned"))?
                 .push(CapturedRequest {
                     method,
-                    path,
+                    path: path.clone(),
                     authorization,
                 });
             let reason = if response.status == 200 {
@@ -105,7 +105,19 @@ pub(super) async fn start_server(responses: Vec<MockResponse>) -> io::Result<Moc
             } else {
                 "Bad Request"
             };
-            let rendered_body = response.body.replace("{{endpoint}}", &response_endpoint);
+            let mut rendered_body = response.body.replace("{{endpoint}}", &response_endpoint);
+            if path.starts_with("/api/retail/prices?")
+                && let Ok(decoded) = urlencoding::decode(&path)
+                && decoded.contains("$filter=")
+                && !decoded
+                    .contains("serviceName eq 'Virtual Network' and productName eq 'IP Addresses'")
+                && let Ok(mut page) = serde_json::from_str::<Value>(&rendered_body)
+                && let Some(items) = page["Items"].as_array_mut()
+            {
+                items.retain(|item| item["productName"] != "IP Addresses");
+                rendered_body = page.to_string();
+            }
+
             let body = rendered_body.as_bytes();
             let head = format!(
                 "HTTP/1.1 {} {}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
@@ -160,7 +172,7 @@ pub(super) fn settings(endpoint: &str, config_path: PathBuf) -> AzureSettings {
         storage_classes: BTreeMap::from([("standard".to_owned(), "Standard_LRS".to_owned())]),
         accelerator_facts: BTreeMap::new(),
         binding_id: "azure-child".to_owned(),
-        source_revision: "395847a0bec078c5dd88b31f54f0025f63b662c6".to_owned(),
+        source_revision: "10659879c5d91979c7f077439bd78e17622452a6".to_owned(),
         binary_sha256: "a".repeat(64),
         configuration_sha256: hex::encode(Sha256::digest(bytes)),
         provider_configuration_path: config_path,

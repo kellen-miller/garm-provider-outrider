@@ -72,13 +72,13 @@
       "upstream_repository": "cloudbase/garm-provider-azure",
       "upstream_base_revision": "0b0effee0f653ac2f93810a6105049355735fa88",
       "fork_repository": "kellen-miller/garm-provider-azure",
-      "source_revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
-      "expected_version": "395847a",
+      "source_revision": "10659879c5d91979c7f077439bd78e17622452a6",
+      "expected_version": "1065987",
       "license": {
         "spdx": "Apache-2.0",
         "path": "LICENSE",
         "sha256": "b1f07bbb8200af534878c8dc80f7f86ba1a64293ec6a03ed4de515d2ad97118e",
-        "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/LICENSE"
+        "url": "https://github.com/kellen-miller/garm-provider-azure/blob/10659879c5d91979c7f077439bd78e17622452a6/LICENSE"
       },
       "contributions": [
         {
@@ -90,6 +90,11 @@
           "purpose": "failed-create rollback, named error only",
           "url": "https://github.com/cloudbase/garm-provider-azure/pull/81",
           "head_revision": "03953dc913425d0ea749d0882193bd7b94283adf"
+        },
+        {
+          "purpose": "Standard Regional static IPv4 public IP",
+          "url": "https://github.com/cloudbase/garm-provider-azure/pull/82",
+          "head_revision": "147ec1a5b71668dfaa1428f0218e7bde47e8922f"
         }
       ],
       "integrated_commits": [
@@ -112,6 +117,11 @@
           "integrated_sha": "395847a0bec078c5dd88b31f54f0025f63b662c6",
           "subject": "refactor: name only the create error result",
           "source_sha": "03953dc913425d0ea749d0882193bd7b94283adf"
+        },
+        {
+          "integrated_sha": "10659879c5d91979c7f077439bd78e17622452a6",
+          "subject": "fix: select Standard public IPv4 addresses",
+          "source_sha": "147ec1a5b71668dfaa1428f0218e7bde47e8922f"
         }
       ],
       "purchasing": [
@@ -127,9 +137,9 @@
       "qualified_binaries": [
         {
           "host": "darwin/arm64",
-          "sha256": "13432c213611f402a7006a8ae183882029afd0772337dd3dd4243ea7d04e7ecb",
-          "go_version": "go1.27.2",
-          "version_stdout": "395847a",
+          "sha256": "24d44393c8eac3c690e55a2d5c9f42af5e446afad3ae513e94fa01701117073f",
+          "go_version": "go1.27.3",
+          "version_stdout": "1065987",
           "scope": "offline GetVersion only"
         }
       ],

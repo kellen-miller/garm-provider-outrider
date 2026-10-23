@@ -170,14 +170,15 @@ impl AzureBackend {
                 "Azure custom identity client options are not verified against the pinned provider",
             ));
         }
-        if settings
-            .locations
-            .values()
-            .any(|location| location.public_ip_sku.is_some())
-        {
+        if settings.locations.values().any(|location| {
+            location.public_ip_sku.as_deref().is_some_and(|sku| {
+                sku != "Standard"
+                    || settings.source_revision != "10659879c5d91979c7f077439bd78e17622452a6"
+            })
+        }) {
             return Err(failure(
                 "unsupported",
-                "qualified Azure child does not dispatch a selected public IP SKU",
+                "Azure public IP allocation requires exact SKU Standard and qualified child revision 10659879c5d91979c7f077439bd78e17622452a6 (static IPv4, Regional tier)",
             ));
         }
         if child.use_ephemeral_storage {

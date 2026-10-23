@@ -77,6 +77,25 @@ impl AllocationService {
             return Err(AllocationError::Catalog);
         }
 
+        if let Some(existing) = self
+            .journal
+            .allocation(&request.controller_id, &bootstrap.name)
+            .map_err(|_| AllocationError::Journal)?
+            .filter(|existing| existing.state == "created" && !existing.tombstone)
+        {
+            if existing.snapshot_id != snapshot.id
+                || existing.pool_id != snapshot.garm_pool_id.as_deref().unwrap_or_default()
+            {
+                return Err(AllocationError::Conflict);
+            }
+
+            return stored_provider_instance(&existing).map(CreateOutcome::Created);
+        }
+
+        if !crate::admission::allocation_is_open(self.config.admission.as_ref()) {
+            return Err(AllocationError::AdmissionClosed);
+        }
+
         let (allocation, is_new) = self
             .journal
             .reserve_allocation(
@@ -242,6 +261,10 @@ impl AllocationService {
                 serde_json::to_string(offer).map_err(|_| AllocationError::Configuration)?;
             let binding_json =
                 serde_json::to_string(binding).map_err(|_| AllocationError::Configuration)?;
+            if !crate::admission::allocation_is_open(self.config.admission.as_ref()) {
+                return Err(AllocationError::AdmissionClosed);
+            }
+
             self.journal
                 .set_allocation_selection(
                     &allocation.allocation_id,
@@ -294,6 +317,10 @@ impl AllocationService {
                     .map_err(|_| AllocationError::Journal)?;
                 return Err(AllocationError::Snapshot);
             }
+            if !crate::admission::allocation_is_open(self.config.admission.as_ref()) {
+                return Err(AllocationError::AdmissionClosed);
+            }
+
             let dispatched = self
                 .journal
                 .mark_child_dispatched(
@@ -492,6 +519,9 @@ impl AllocationService {
                 self.journal
                     .reset_local_allocation(&allocation.allocation_id)
                     .map_err(|_| AllocationError::Journal)?;
+                if local == LocalFailure::AdmissionClosed {
+                    return Err(AllocationError::AdmissionClosed);
+                }
             }
             Err(_) => {
                 self.mark_ambiguous(
@@ -603,6 +633,7 @@ pub(super) fn local_failure_label(error: &LocalFailure) -> &'static str {
         LocalFailure::InvalidResult => "invalid_result",
         LocalFailure::OutputLimit => "output_limit",
         LocalFailure::Supervision => "supervision_failed",
+        LocalFailure::AdmissionClosed => "administrator allocation admission is closed",
         LocalFailure::Deadline => "deadline_before_dispatch",
         LocalFailure::UnsupportedHost => "unsupported_host",
     }

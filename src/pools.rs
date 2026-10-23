@@ -18,6 +18,8 @@ use crate::{
 pub enum PoolError {
     #[error("invalid GARM configuration")]
     Configuration,
+    #[error("administrator allocation admission is closed")]
+    AdmissionClosed,
     #[error("GARM request failed")]
     Request,
     #[error("GARM pool state is ambiguous")]
@@ -93,6 +95,7 @@ pub struct CreatePool {
 /// Immutable inputs used to reconcile one repository-scoped GARM pool.
 pub struct RepositoryPoolRequest<'a> {
     pub snapshot: &'a PoolSnapshot,
+    pub admission: Option<&'a crate::config::AdmissionSettings>,
 }
 
 #[derive(Clone)]
@@ -152,6 +155,10 @@ impl GarmClient {
         request: RepositoryPoolRequest<'_>,
     ) -> Result<GarmPool, PoolError> {
         let snapshot = request.snapshot;
+        if !crate::admission::allocation_is_open(request.admission) {
+            return Err(PoolError::AdmissionClosed);
+        }
+
         if !matches!(
             snapshot.state.as_str(),
             "prepared" | "creating" | "disabled" | "enabled"
@@ -242,6 +249,10 @@ impl GarmClient {
                 if durable.state != "prepared" {
                     return Err(PoolError::Ambiguous);
                 }
+                if !crate::admission::allocation_is_open(request.admission) {
+                    return Err(PoolError::AdmissionClosed);
+                }
+
                 journal
                     .set_pool_snapshot_state(&snapshot.id, "creating", None)
                     .map_err(|_| PoolError::Request)?;
@@ -274,6 +285,10 @@ impl GarmClient {
                 .await?;
             return Err(PoolError::Limit);
         }
+        if !crate::admission::allocation_is_open(request.admission) {
+            return Err(PoolError::AdmissionClosed);
+        }
+
         if !pool.enabled {
             let path = format!(
                 "api/v1/repositories/{repository_id}/pools/{}",
@@ -290,6 +305,12 @@ impl GarmClient {
                 .await?;
             return Err(PoolError::Limit);
         }
+        if !crate::admission::allocation_is_open(request.admission) {
+            self.disable_repository_pool(repository_id, &pool.id)
+                .await?;
+            return Err(PoolError::AdmissionClosed);
+        }
+
         journal
             .set_pool_snapshot_state(&snapshot.id, "enabled", Some(&pool.id))
             .map_err(|_| PoolError::Request)?;

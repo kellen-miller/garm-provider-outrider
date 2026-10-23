@@ -20,6 +20,7 @@ pub fn json_schema() -> Value {
             "max_price_age_seconds": {"type":"integer", "minimum":0},
             "history": {"$ref":"#/$defs/HistorySettings"},
             "control": {"$ref":"#/$defs/ControlSettings"},
+            "admission": {"$ref":"#/$defs/AdmissionSettings"},
             "ingress": {"$ref":"#/$defs/IngressSettings"},
             "provider_bindings":{"type":"array","items":{"$ref":"#/$defs/ProviderBinding"}}
         },
@@ -117,6 +118,11 @@ pub fn json_schema() -> Value {
             "StringSetMap":{"type":"object","additionalProperties":{"$ref":"#/$defs/StringSet"}}
 
         }
+    });
+    schema["$defs"]["AdmissionSettings"] = json!({
+        "type":"object", "additionalProperties":false,
+        "required":["state_file","max_window_seconds"],
+        "properties":{"state_file":{"type":"string","pattern":"^/"},"max_window_seconds":{"type":"integer","minimum":1}}
     });
     schema["properties"]["effective_prices"] = json!({
         "type":"array","items":{"$ref":"#/$defs/EffectivePrice"}

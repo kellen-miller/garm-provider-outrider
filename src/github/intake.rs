@@ -12,7 +12,9 @@ impl IngressService {
     /// Returns an error when validation, provenance, persistence, or a dependency request fails.
     pub fn new(config: ConfigPatch, journal: Arc<Journal>) -> Result<Self, IngressError> {
         let settings = config.ingress.clone().ok_or(IngressError::Configuration)?;
-        if config.validate_rerun_settings().is_err() {
+        if config.validate_rerun_settings().is_err()
+            || config.validate_admission_settings().is_err()
+        {
             return Err(IngressError::Configuration);
         }
         if settings.max_dynamic_pools == 0
@@ -249,8 +251,23 @@ impl IngressService {
                         continue;
                     }
                 }
+
+                if !self.forward_allocation_is_open(&message) {
+                    self.journal
+                        .set_outbox_state(
+                            &message.id,
+                            "retry",
+                            Some("administrator allocation admission is closed"),
+                        )
+                        .map_err(|_| IngressError::Journal)?;
+                    continue;
+                }
             }
             let dispatch = tokio::time::timeout_at(deadline, async {
+                if message.kind == "forward" && !self.forward_allocation_is_open(&message) {
+                    return Ok(false);
+                }
+
                 match message.kind.as_str() {
                     "forward" => {
                         let headers: ForwardHeaders = serde_json::from_str(&message.headers_json)

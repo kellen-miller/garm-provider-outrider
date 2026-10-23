@@ -330,6 +330,7 @@ fn allocation_error_label(error: AllocationError) -> &'static str {
         AllocationError::Conflict => "allocation identity conflicts with an existing request",
         AllocationError::DeletedName => "runner name was deleted before allocation reservation",
         AllocationError::NotFound => "allocation is definitely absent",
+        AllocationError::AdmissionClosed => "administrator allocation admission is closed",
         AllocationError::Limit => "allocation concurrency limit reached",
         AllocationError::Catalog => "allocation catalog is unavailable",
         AllocationError::NoCandidate => "no eligible provider candidate",
