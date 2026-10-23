@@ -70,7 +70,7 @@ impl CloudCatalog for GcpBackend {
                 exclusion_counts.record("boot disk size is outside the provider limits");
                 continue;
             }
-            if query.profile.local_scratch_gib > 0 && machine.bundled_local_ssds.is_empty() {
+            if query.profile.local_scratch_gib > 0 && machine.bundled_local_ssds.is_none() {
                 exclusion_counts.record("machine type does not provide bundled local SSDs");
                 continue;
             }

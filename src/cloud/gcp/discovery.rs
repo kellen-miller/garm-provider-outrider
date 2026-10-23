@@ -51,7 +51,7 @@ impl GcpBackend {
                     candidate: CapacityCandidate {
                         machine_types: vec![machine.name.clone()],
                         guest_accelerators: Vec::new(),
-                        disks: if machine.bundled_local_ssds.is_empty() {
+                        disks: if machine.bundled_local_ssds.is_none() {
                             Vec::new()
                         } else {
                             vec![CapacityDisk {

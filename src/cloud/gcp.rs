@@ -132,7 +132,7 @@ struct GcpMachineType {
     #[serde(default)]
     accelerators: Vec<GcpMachineAccelerator>,
     #[serde(default)]
-    bundled_local_ssds: Vec<GcpBundledLocalSsd>,
+    bundled_local_ssds: Option<GcpBundledLocalSsd>,
     #[serde(default)]
     deprecated: Option<GcpDeprecated>,
 }

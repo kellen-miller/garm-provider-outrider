@@ -267,11 +267,11 @@ pub(super) fn machine_page(shape: MockShape, paginated: bool) -> String {
 
 pub(super) fn machine_json(shape: MockShape) -> String {
     match shape {
-        MockShape::Standard => r#"{"name":"n2-standard-4","guestCpus":4,"memoryMb":16384,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":[]}"#.to_owned(),
-        MockShape::NativeSpot => r#"{"name":"e2-standard-8","guestCpus":8,"memoryMb":32768,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":[]}"#.to_owned(),
-        MockShape::WindowsSql => r#"{"name":"n2-standard-2","guestCpus":2,"memoryMb":8192,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":[]}"#.to_owned(),
-        MockShape::GpuSpot => r#"{"name":"a2-highgpu-1g","guestCpus":12,"memoryMb":87040,"architecture":"X86_64","isSharedCpu":false,"accelerators":[{"guestAcceleratorType":"nvidia-tesla-a100","guestAcceleratorCount":1}],"bundledLocalSsds":[]}"#.to_owned(),
-        MockShape::BundledSsd => r#"{"name":"n2-local-ssd-synthetic","guestCpus":4,"memoryMb":16384,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":[{"partitionCount":1,"defaultInterface":"NVME"}]}"#.to_owned(),
+        MockShape::Standard => r#"{"name":"n2-standard-4","guestCpus":4,"memoryMb":16384,"architecture":"X86_64","isSharedCpu":false,"accelerators":[]}"#.to_owned(),
+        MockShape::NativeSpot => r#"{"name":"e2-standard-8","guestCpus":8,"memoryMb":32768,"architecture":"X86_64","isSharedCpu":false,"accelerators":[]}"#.to_owned(),
+        MockShape::WindowsSql => r#"{"name":"n2-standard-2","guestCpus":2,"memoryMb":8192,"architecture":"X86_64","isSharedCpu":false,"accelerators":[]}"#.to_owned(),
+        MockShape::GpuSpot => r#"{"name":"a2-highgpu-1g","guestCpus":12,"memoryMb":87040,"architecture":"X86_64","isSharedCpu":false,"accelerators":[{"guestAcceleratorType":"nvidia-tesla-a100","guestAcceleratorCount":1}]}"#.to_owned(),
+        MockShape::BundledSsd => r#"{"name":"n2-local-ssd-synthetic","guestCpus":4,"memoryMb":16384,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":{"partitionCount":1,"defaultInterface":"NVME"}}"#.to_owned(),
     }
 }
 

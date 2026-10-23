@@ -298,7 +298,7 @@ pub(super) fn azure_system_prices() -> Value {
 }
 
 pub(super) fn gcp_system_machine() -> Value {
-    json!({"name":"n2-standard-8","guestCpus":8,"memoryMb":32768,"architecture":"X86_64","isSharedCpu":false,"accelerators":[],"bundledLocalSsds":[]})
+    json!({"name":"n2-standard-8","guestCpus":8,"memoryMb":32768,"architecture":"X86_64","isSharedCpu":false,"accelerators":[]})
 }
 
 pub(super) fn gcp_system_image() -> Value {
