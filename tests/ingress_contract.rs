@@ -9,7 +9,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use http_body_util::{BodyExt, Full};
 use hyper::{
     Request, Response, StatusCode, body::Incoming, server::conn::http1, service::service_fn,

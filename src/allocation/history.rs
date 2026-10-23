@@ -322,5 +322,5 @@ pub(super) fn candidate_history_key(
         configuration_sha256: &binding.configuration_sha256,
     };
     let bytes = serde_json::to_vec(&material).map_err(|_| AllocationError::Journal)?;
-    Ok(format!("{:x}", sha2::Sha256::digest(bytes)))
+    Ok(hex::encode(sha2::Sha256::digest(bytes)))
 }
