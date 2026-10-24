@@ -50,6 +50,10 @@ enum Command {
         #[arg(long)]
         config: PathBuf,
     },
+    Inventory {
+        #[arg(long)]
+        config: PathBuf,
+    },
     Cleanup {
         #[command(subcommand)]
         command: CleanupCommand,
@@ -121,6 +125,15 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     snapshot_id: snapshot,
                 },
             ))?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+        }
+
+        Command::Inventory { config } => {
+            let patch = ConfigPatch::from_yaml(&fs::read_to_string(config)?)?;
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()?;
+            let report = runtime.block_on(outrider::daemon::inventory_remote(&patch))?;
             println!("{}", serde_json::to_string_pretty(&report)?);
         }
 

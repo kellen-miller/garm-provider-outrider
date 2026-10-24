@@ -263,10 +263,7 @@ impl AzureBackend {
                 "Azure management request returned an error",
             ));
         }
-        timeout_at(deadline, response.json())
-            .await
-            .map_err(|_| failure("timeout", "Azure management response timed out"))?
-            .map_err(|_| failure("protocol", "Azure management response was invalid"))
+        management_json(response, deadline).await
     }
 
     pub(super) async fn get_management_optional(
@@ -285,10 +282,7 @@ impl AzureBackend {
                 "Azure management request returned an error",
             ));
         }
-        let value = timeout_at(deadline, response.json())
-            .await
-            .map_err(|_| failure("timeout", "Azure management response timed out"))?
-            .map_err(|_| failure("protocol", "Azure management response was invalid"))?;
+        let value = management_json(response, deadline).await?;
         Ok(Some(value))
     }
 
@@ -339,18 +333,7 @@ impl AzureBackend {
                 "Azure Resource Graph request returned an error",
             ));
         }
-        let bytes = timeout_at(deadline, response.bytes())
-            .await
-            .map_err(|_| failure("timeout", "Azure Resource Graph response timed out"))?
-            .map_err(|_| failure("protocol", "Azure Resource Graph response was invalid"))?;
-        if bytes.len() > MAX_API_RESPONSE_BYTES {
-            return Err(failure(
-                "response",
-                "Azure Resource Graph response exceeded the configured size limit",
-            ));
-        }
-        serde_json::from_slice(&bytes)
-            .map_err(|_| failure("protocol", "Azure Resource Graph response was invalid"))
+        management_json(response, deadline).await
     }
 
     pub(super) async fn send_management(
@@ -485,6 +468,30 @@ async fn read_child_configuration(
     let parsed = toml_edit::de::from_slice::<AzureChildConfiguration>(&bytes)
         .map_err(|_| failure("configuration", "Azure child configuration is invalid"))?;
     Ok((parsed, bytes))
+}
+
+async fn management_json(
+    mut response: reqwest::Response,
+    deadline: Instant,
+) -> Result<serde_json::Value, CloudError> {
+    let mut bytes = Vec::new();
+    while let Some(chunk) = timeout_at(deadline, response.chunk())
+        .await
+        .map_err(|_| failure("timeout", "Azure management response timed out"))?
+        .map_err(|_| failure("protocol", "Azure management response was invalid"))?
+    {
+        if bytes.len().saturating_add(chunk.len()) > MAX_API_RESPONSE_BYTES {
+            return Err(failure(
+                "response",
+                "Azure management response exceeded the configured size limit",
+            ));
+        }
+
+        bytes.extend_from_slice(&chunk);
+    }
+
+    serde_json::from_slice(&bytes)
+        .map_err(|_| failure("protocol", "Azure management response was invalid"))
 }
 
 pub(super) fn validate_child_binding(

@@ -37,6 +37,7 @@ mod catalog;
 mod connection;
 mod discovery;
 mod identity;
+mod inventory;
 #[cfg(test)]
 #[path = "gcp/tests.rs"]
 mod tests;

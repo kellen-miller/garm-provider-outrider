@@ -6,5 +6,7 @@ mod catalog;
 mod cloud_server;
 #[path = "gcp_contract/identity.rs"]
 mod identity;
+#[path = "gcp_contract/inventory.rs"]
+mod inventory;
 #[path = "gcp_contract/ownership.rs"]
 mod ownership;

@@ -3,6 +3,7 @@ mod cleanup;
 mod create;
 mod explain;
 mod history;
+mod inventory;
 mod lifecycle;
 mod native;
 mod observation;

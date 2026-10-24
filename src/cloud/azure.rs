@@ -42,6 +42,7 @@ mod catalog;
 mod connection;
 mod discovery;
 mod identity;
+mod inventory;
 #[cfg(test)]
 #[path = "azure/tests.rs"]
 mod tests;

@@ -4,6 +4,8 @@ mod catalog;
 mod cloud_server;
 #[path = "azure_contract/hardware.rs"]
 mod hardware;
+#[path = "azure_contract/inventory.rs"]
+mod inventory;
 #[path = "azure_contract/native_pricing.rs"]
 mod native_pricing;
 #[path = "azure_contract/ownership.rs"]

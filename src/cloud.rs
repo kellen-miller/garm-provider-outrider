@@ -9,6 +9,7 @@ use crate::policy::{CatalogOffer, PriceQuote};
 pub mod aws;
 pub mod azure;
 pub mod gcp;
+pub mod inventory;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CloudError {

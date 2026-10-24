@@ -124,6 +124,27 @@ catalog diagnostics; they do not imply that unqueried machine shapes were
 evaluated. The report omits provider configuration, credential paths/values,
 child stderr, bootstrap labels, and opaque provider pins.
 
+Collect native VM, disk and allocated IP metadata through the same daemon:
+
+```sh
+outrider inventory --config /etc/outrider/central.yaml
+```
+
+Inventory uses each connected current or retained catalog's verified credentials.
+It includes untagged resources and resources tagged for another controller,
+classifying ownership without exporting tag values or bootstrap data. AWS uses
+the configured region, Azure the subscription, and GCP the configured zone for
+VMs/disks and that zone's region for allocated addresses, including internal
+addresses. Azure VM power state is left unknown. These scopes appear in the JSON;
+unconfigured scopes remain unobserved. Failed requests, malformed identities,
+pagination errors and resource limits fail the report. The command makes no
+cloud changes or journal writes. It requires disk/address read permissions in
+addition to those used for runner selection. Collection spans the reported
+start/end times rather than an atomic cloud snapshot.
+
+This command supplies observations for monitoring. It does not identify or
+delete orphans, save a baseline, schedule comparisons or deliver alarms.
+
 Administrators can add a dated absolute component price under central
 `effective_prices`. Copy the complete `financial_price_scope` object from a
 live Explain result into the record; optional fields absent from the report
