@@ -135,7 +135,7 @@ fn map_resource(
     let incarnation_field = match kind {
         InventoryKind::VirtualMachine => Some("vmId"),
         InventoryKind::Disk => Some("uniqueId"),
-        InventoryKind::AllocatedAddress => None,
+        InventoryKind::AllocatedAddress => Some("resourceGuid"),
     };
     let incarnation = incarnation_field
         .map(|field| {
@@ -183,6 +183,14 @@ fn map_resource(
             .ok_or_else(|| failure("protocol", "Azure address attachment is invalid"))?;
         resource_id(reference, subscription)?;
         attached_to.push(reference.to_owned());
+        let parts = resource_id(reference, subscription)?;
+        if parts.len() == 11
+            && parts[6].eq_ignore_ascii_case("Microsoft.Network")
+            && parts[7].eq_ignore_ascii_case("networkInterfaces")
+            && parts[9].eq_ignore_ascii_case("ipConfigurations")
+        {
+            attached_to.push(parts[..9].join("/"));
+        }
     }
 
     attached_to.sort();
@@ -223,7 +231,53 @@ fn map_resource(
                 .map(str::to_owned)
         },
         attached_to,
+        dependencies: if kind == InventoryKind::VirtualMachine {
+            vm_dependencies(&row, subscription)?
+        } else {
+            Vec::new()
+        },
     })
+}
+
+fn vm_dependencies(row: &Value, subscription: &str) -> Result<Vec<String>, CloudError> {
+    let properties = &row["properties"];
+    let mut references = Vec::new();
+    if let Some(disk) = properties["storageProfile"].get("osDisk")
+        && let Some(id) = disk["managedDisk"].get("id")
+    {
+        references.push(id);
+    }
+
+    if let Some(disks) = properties["storageProfile"].get("dataDisks") {
+        for disk in disks
+            .as_array()
+            .ok_or_else(|| failure("protocol", "Azure data disk references are invalid"))?
+        {
+            if let Some(id) = disk["managedDisk"].get("id") {
+                references.push(id);
+            }
+        }
+    }
+
+    if let Some(interfaces) = properties["networkProfile"].get("networkInterfaces") {
+        for interface in interfaces
+            .as_array()
+            .ok_or_else(|| failure("protocol", "Azure network references are invalid"))?
+        {
+            references.push(&interface["id"]);
+        }
+    }
+
+    references
+        .into_iter()
+        .map(|value| {
+            let reference = value.as_str().ok_or_else(|| {
+                failure("protocol", "Azure VM dependency lacks a resource reference")
+            })?;
+            resource_id(reference, subscription)?;
+            Ok(reference.to_owned())
+        })
+        .collect()
 }
 
 fn resource_id<'a>(id: &'a str, subscription: &str) -> Result<Vec<&'a str>, CloudError> {

@@ -18,8 +18,56 @@ fn native_resource(kind: InventoryKind) -> Value {
         "id":format!("/subscriptions/{SUBSCRIPTION}/resourceGroups/runner-rg/providers/{resource_type}/native-resource"),
         "name":"native-resource", "location":"eastus",
         "tags":{"GARM-CONTROLLER-ID":"controller-1", "secret":"never-export-this"},
-        "properties":{"vmId":"incarnation-1", "uniqueId":"disk-1", "provisioningState":"Succeeded", "osProfile":{"customData":"never-export-this"}}
+        "properties":{"vmId":"incarnation-1", "uniqueId":"disk-1", "resourceGuid":"ip-1", "provisioningState":"Succeeded", "osProfile":{"customData":"never-export-this"}}
     })
+}
+
+#[tokio::test]
+async fn vm_dependencies_and_ip_attachment_retain_native_ids_only() {
+    let nic = format!(
+        "/subscriptions/{SUBSCRIPTION}/resourceGroups/runner-rg/providers/Microsoft.Network/networkInterfaces/runner-nic"
+    );
+    let disk = format!(
+        "/subscriptions/{SUBSCRIPTION}/resourceGroups/runner-rg/providers/Microsoft.Compute/disks/runner-disk"
+    );
+    let mut vm = native_resource(InventoryKind::VirtualMachine);
+    vm["properties"]["networkProfile"] = json!({"networkInterfaces":[{"id":nic}]});
+    vm["properties"]["storageProfile"] = json!({"osDisk":{"managedDisk":{"id":disk}}});
+    let mut ip = native_resource(InventoryKind::AllocatedAddress);
+    ip["properties"]["ipConfiguration"] = json!({"id":format!("{nic}/ipConfigurations/ipconfig1")});
+    let server = start_server(vec![
+        MockResponse {
+            status: 200,
+            body: json!({"value":[vm]}).to_string(),
+        },
+        MockResponse {
+            status: 200,
+            body: json!({"value":[ip]}).to_string(),
+        },
+    ])
+    .await
+    .unwrap();
+    let client = backend(&server).await;
+    let vms = client
+        .inventory(
+            InventoryKind::VirtualMachine,
+            "controller-1",
+            Instant::now() + Duration::from_secs(3),
+        )
+        .await
+        .unwrap();
+    assert_eq!(vms.resources[0].dependencies, [disk, nic.clone()]);
+    let ips = client
+        .inventory(
+            InventoryKind::AllocatedAddress,
+            "controller-1",
+            Instant::now() + Duration::from_secs(3),
+        )
+        .await
+        .unwrap();
+    assert!(ips.resources[0].attached_to.contains(&nic));
+    assert_eq!(ips.resources[0].incarnation.as_deref(), Some("ip-1"));
+    server.task.abort();
 }
 
 #[tokio::test]

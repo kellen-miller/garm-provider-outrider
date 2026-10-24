@@ -187,6 +187,26 @@ fn map_resource(
             .collect::<Result<Vec<_>, _>>()?,
         Some(_) => return Err(failure("protocol", "GCP inventory users must be a list")),
     };
+    let mut dependencies = Vec::new();
+    if kind == InventoryKind::VirtualMachine
+        && let Some(disks) = row.get("disks")
+    {
+        for disk in disks
+            .as_array()
+            .ok_or_else(|| failure("protocol", "GCP attached disks must be a list"))?
+        {
+            // Local scratch disks have no independently allocated disk resource.
+            if disk["type"] == "SCRATCH" {
+                continue;
+            }
+
+            let source = disk["source"].as_str().ok_or_else(|| {
+                failure("protocol", "GCP attached disk lacks a resource reference")
+            })?;
+            dependencies.push(compute_reference(source, &scope.account)?);
+        }
+    }
+
     Ok(InventoryResource {
         id: format!("{root}/{}", path_segment(name)?),
         incarnation: Some(incarnation.to_string()),
@@ -198,6 +218,7 @@ fn map_resource(
         ),
         state: row["status"].as_str().map(str::to_owned),
         attached_to,
+        dependencies,
     })
 }
 

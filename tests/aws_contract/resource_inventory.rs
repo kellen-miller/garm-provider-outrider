@@ -10,7 +10,7 @@ async fn native_inventory_is_unfiltered_and_strips_tag_values() {
     let responses = [
         (
             InventoryKind::VirtualMachine,
-            "<DescribeInstancesResponse><reservationSet><item><ownerId>synthetic-account</ownerId><instancesSet><item><instanceId>i-abc123</instanceId><tagSet><item><key>GARM_CONTROLLER_ID</key><value>controller-1</value></item><item><key>Name</key><value>never-export-this</value></item></tagSet></item></instancesSet></item></reservationSet></DescribeInstancesResponse>",
+            "<DescribeInstancesResponse><reservationSet><item><ownerId>synthetic-account</ownerId><instancesSet><item><instanceId>i-abc123</instanceId><blockDeviceMapping><item><ebs><volumeId>vol-abc123</volumeId></ebs></item></blockDeviceMapping><networkInterfaceSet><item><networkInterfaceId>eni-abc123</networkInterfaceId></item></networkInterfaceSet><tagSet><item><key>GARM_CONTROLLER_ID</key><value>controller-1</value></item><item><key>Name</key><value>never-export-this</value></item></tagSet></item></instancesSet></item></reservationSet></DescribeInstancesResponse>",
         ),
         (
             InventoryKind::Disk,
@@ -46,6 +46,13 @@ async fn native_inventory_is_unfiltered_and_strips_tag_values() {
                 .unwrap()
                 .contains("never-export-this")
         );
+        if kind == InventoryKind::VirtualMachine {
+            assert_eq!(
+                result.resources[0].dependencies,
+                ["vol-abc123", "eni-abc123"]
+            );
+        }
+
         if kind == InventoryKind::AllocatedAddress {
             assert_eq!(result.resources[0].attached_to, ["eni-abc123"]);
         }

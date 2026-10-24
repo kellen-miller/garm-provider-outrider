@@ -113,7 +113,13 @@ async fn collects_all_billable_kinds_without_exporting_labels_or_bootstrap() {
                 "addresses",
             ),
         };
-        let owned = resource(field, location);
+        let mut owned = resource(field, location);
+        if kind == InventoryKind::VirtualMachine {
+            owned["disks"] = json!([
+                {"type":"PERSISTENT","source":"https://www.googleapis.com/compute/v1/projects/synthetic-project/zones/us-central1-a/disks/boot"},
+                {"type":"SCRATCH"}
+            ]);
+        }
         let mut foreign = owned.clone();
         foreign["id"] = json!("2");
         foreign["name"] = json!("foreign");
@@ -134,6 +140,12 @@ async fn collects_all_billable_kinds_without_exporting_labels_or_bootstrap() {
             .await
             .unwrap();
         assert_eq!(inventory.kind, kind);
+        if kind == InventoryKind::VirtualMachine {
+            assert_eq!(
+                inventory.resources[0].dependencies,
+                ["projects/synthetic-project/zones/us-central1-a/disks/boot"]
+            );
+        }
         assert_eq!(
             inventory.resources.len(),
             3,

@@ -57,6 +57,18 @@ impl CloudInventory for AwsBackend {
 
                         for instance in reservation.instances() {
                             let id = required_id(instance.instance_id(), "i-")?;
+                            let dependencies = instance
+                                .block_device_mappings()
+                                .iter()
+                                .filter_map(|mapping| mapping.ebs())
+                                .map(|disk| {
+                                    required_id(disk.volume_id(), "vol-").map(str::to_owned)
+                                })
+                                .chain(instance.network_interfaces().iter().map(|interface| {
+                                    required_id(interface.network_interface_id(), "eni-")
+                                        .map(str::to_owned)
+                                }))
+                                .collect::<Result<Vec<_>, _>>()?;
                             page.push(InventoryResource {
                                 id: id.to_owned(),
                                 incarnation: None,
@@ -72,6 +84,7 @@ impl CloudInventory for AwsBackend {
                                     .and_then(|state| state.name())
                                     .map(|state| state.as_str().to_owned()),
                                 attached_to: Vec::new(),
+                                dependencies,
                             });
                         }
                     }
@@ -115,6 +128,7 @@ impl CloudInventory for AwsBackend {
                                 ownership: ownership(volume.tags(), controller_id),
                                 state: volume.state().map(|state| state.as_str().to_owned()),
                                 attached_to,
+                                dependencies: Vec::new(),
                             })
                         })
                         .collect::<Result<Vec<_>, CloudError>>()?;
@@ -150,6 +164,7 @@ impl CloudInventory for AwsBackend {
                                 ownership: ownership(address.tags(), controller_id),
                                 state: address.association_id().map(|_| "associated".to_owned()),
                                 attached_to,
+                                dependencies: Vec::new(),
                             })
                         })
                         .collect::<Result<Vec<_>, CloudError>>()?;

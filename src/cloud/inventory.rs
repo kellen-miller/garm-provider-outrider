@@ -55,6 +55,8 @@ pub struct InventoryResource {
     pub ownership: InventoryOwnership,
     pub state: Option<String>,
     pub attached_to: Vec<String>,
+    /// Native resources referenced by this resource; no credentials or metadata.
+    pub dependencies: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
