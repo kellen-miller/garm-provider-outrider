@@ -21,6 +21,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: '1.27.3'
+          cache-dependency-path: tests/fixtures/**/go.sum
       # Linux owns shared policy checks; acceptance compiles and runs the full Mac graph.
       - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f
         with:
@@ -45,6 +46,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: '1.27.3'
+          cache-dependency-path: tests/fixtures/**/go.sum
       - uses: kellen-miller/ci/.github/actions/rust-check@b08ba515b64f3563e51722faaea3d20d22283ed7
         with:
           toolchain: '1.99.1'
