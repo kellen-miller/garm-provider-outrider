@@ -35,6 +35,12 @@ impl AzureCleanupHarness {
             .as_mut()
             .unwrap_or_else(|| panic!("Azure allocation control"))
             .provider_timeout_seconds = 5;
+        let ingress = config
+            .ingress
+            .as_mut()
+            .unwrap_or_else(|| panic!("Azure ingress"));
+        ingress.allocation_timeout_seconds = 6;
+        ingress.timeout_margin_seconds = 1;
         config.provider_bindings = Some(vec![binding.clone()]);
         config.aws_catalog_bindings = None;
         let catalog: outrider::config::AzureCatalogBinding = serde_json::from_value(json!({
@@ -157,7 +163,7 @@ pub(super) fn azure_allocation_vm(mode: u64) -> Value {
     json!({
         "id":format!("/subscriptions/{AZURE_SUBSCRIPTION}/resourceGroups/runner-old-image/providers/Microsoft.Compute/virtualMachines/runner-old-image"),
         "name":"runner-old-image", "location":"eastus",
-        "tags":{"garm-controller-id":if mode == 3 {"foreign-controller"} else {"controller-1"},"garm-pool-id":"pool-1"},
+        "tags":{"garm-controller-id":if mode == 3 {"foreign-controller"} else {"controller-1"},"garm-pool-id":if mode == 7 {"foreign-pool"} else {"pool-1"}},
         "properties":{"vmId":if mode == 4 {"replacement-vm"} else {"original-vm"}, "instanceView":{"statuses":[{"code":"PowerState/running"}]}}
     })
 }
@@ -197,7 +203,17 @@ pub(super) fn azure_allocation_response(
             azure_allocation_vm(mode)
         }
     } else if path.ends_with("/virtualMachines") {
-        json!({"value":if mode == 0 || mode == 2 {vec![]} else {vec![azure_allocation_vm(mode)]}})
+        if mode == 6 {
+            native_mode.store(1, Ordering::Relaxed);
+            status = 503;
+        }
+
+        if mode == 5 {
+            // The successful create precedes visibility in subscription inventory.
+            native_mode.store(1, Ordering::Relaxed);
+        }
+
+        json!({"value":if mode == 0 || mode == 2 || mode == 5 {vec![]} else {vec![azure_allocation_vm(mode)]}})
     } else if path.ends_with("/skus") {
         json!({"value":[{"name":"Standard_D2s_v3","family":"Dsv3","resourceType":"virtualMachines","locations":["eastus"],"capabilities":[
             {"name":"CpuArchitectureType","value":"x64"},{"name":"PremiumIO","value":"True"},{"name":"vCPUs","value":"16"},{"name":"vCPUsAvailable","value":"8"},
@@ -366,6 +382,144 @@ async fn azure_vmless_cleanup_blocks_failed_probe_or_foreign_replacement() {
         );
         assert!(harness.base.allocation().tombstone);
     }
+}
+
+#[tokio::test]
+async fn azure_create_waits_for_native_inventory_visibility() {
+    let harness = AzureCleanupHarness::new("normal").await;
+    harness.server.native_mode.store(5, Ordering::Relaxed);
+    harness
+        .service
+        .handle(harness.base.request.clone())
+        .await
+        .unwrap_or_else(|error| panic!("delayed Azure ownership must resolve: {error}"));
+    let allocation = harness.base.allocation();
+    assert_eq!(allocation.state, "created");
+    assert!(!allocation.tombstone);
+    assert!(allocation.native_identity_json.is_some());
+    assert!(
+        !harness
+            .base
+            .lifecycle_commands()
+            .iter()
+            .any(|command| command == "DeleteInstance")
+    );
+    assert_eq!(
+        harness
+            .base
+            .journal
+            .child_attempts(&allocation.allocation_id)
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn azure_create_does_not_retry_inventory_errors() {
+    let harness = AzureCleanupHarness::new("normal").await;
+    harness.server.native_mode.store(6, Ordering::Relaxed);
+    assert!(
+        harness
+            .service
+            .handle(harness.base.request.clone())
+            .await
+            .is_err()
+    );
+    let allocation = harness.base.allocation();
+    assert_eq!(allocation.state, "deleting");
+    assert!(
+        allocation
+            .detail
+            .as_deref()
+            .is_some_and(|detail| { detail.starts_with("native identity lookup failed:") })
+    );
+    assert_eq!(harness.server.native_mode.load(Ordering::Relaxed), 1);
+    assert_eq!(
+        harness
+            .base
+            .journal
+            .child_attempts(&allocation.allocation_id)
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn azure_create_bounds_unresolved_inventory_by_original_deadline() {
+    let harness = AzureCleanupHarness::new("normal").await;
+    harness.server.native_mode.store(7, Ordering::Relaxed);
+    let result = tokio::time::timeout(
+        Duration::from_secs(10),
+        harness.service.handle(harness.base.request.clone()),
+    )
+    .await
+    .unwrap_or_else(|_| panic!("five-second provider budget must bound visibility wait"));
+    assert!(result.is_err());
+    let allocation = harness.base.allocation();
+    assert_eq!(allocation.state, "deleting");
+    assert!(allocation.tombstone);
+    assert!(allocation.native_identity_json.is_none());
+    assert!(allocation.detail.as_deref().is_some_and(|detail| {
+        detail.contains("same_name=") && detail.ends_with("rejected=pool-tag")
+    }));
+    assert_eq!(
+        harness
+            .base
+            .journal
+            .child_attempts(&allocation.allocation_id)
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn azure_tombstone_during_visibility_wait_cannot_become_created() {
+    let harness = AzureCleanupHarness::new("normal").await;
+    let cancel = async {
+        loop {
+            if let Some(allocation) = harness
+                .base
+                .journal
+                .allocation("controller-1", "runner-old-image")
+                .unwrap()
+                && allocation.returned_at.is_some()
+            {
+                harness
+                    .base
+                    .journal
+                    .schedule_allocation_cleanup(
+                        &allocation.allocation_id,
+                        "test terminal cancellation",
+                    )
+                    .unwrap();
+                break;
+            }
+
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    };
+    let (result, ()) = tokio::time::timeout(Duration::from_secs(10), async {
+        tokio::join!(harness.service.handle(harness.base.request.clone()), cancel)
+    })
+    .await
+    .unwrap_or_else(|_| panic!("tombstone must stop visibility wait"));
+    assert!(result.is_err());
+    let allocation = harness.base.allocation();
+    assert!(allocation.tombstone);
+    assert_ne!(allocation.state, "created");
+    assert!(allocation.native_identity_json.is_none());
+    assert_eq!(
+        harness
+            .base
+            .journal
+            .child_attempts(&allocation.allocation_id)
+            .unwrap()
+            .len(),
+        1
+    );
 }
 
 #[tokio::test]

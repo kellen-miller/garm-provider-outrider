@@ -361,6 +361,14 @@ struct NativeIdentityLookup<'a> {
     deadline: Instant,
 }
 
+#[derive(Default)]
+struct NativeIdentityResolution {
+    identity: Option<PlacementIdentity>,
+    listed: usize,
+    same_name: usize,
+    first_rejection: Option<&'static str>,
+}
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 struct ProviderPinKey {
     binding_id: String,

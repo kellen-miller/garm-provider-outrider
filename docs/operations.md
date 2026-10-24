@@ -214,6 +214,14 @@ filtered result, or expired TTL does not prove a late create is absent. Do not
 reuse a reserved runner name while its operation is unresolved. Escalate with
 the retained controller, pool, cloud scope, request name, and child evidence.
 
+A successful child return can precede native inventory visibility. Outrider
+repeats empty ownership lookups every two seconds for at most thirty seconds,
+within the original allocation deadline. It dispatches no additional create;
+lookup errors fail immediately and cancellation retains the cleanup fence.
+Unresolved handoffs report returned owned-inventory/same-name counts and a
+redacted rejection category. Adapter ownership filters still apply to those
+counts; they do not describe foreign resources hidden by the adapter.
+
 Unresolved cleanup remains owned and counts against allocation limits while
 Outrider retries it with exponential delays from one second up to five minutes.
 The journal retains one logical Delete action and its first intent time across
