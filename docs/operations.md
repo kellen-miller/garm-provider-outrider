@@ -222,6 +222,12 @@ Unresolved handoffs report returned owned-inventory/same-name counts and a
 redacted rejection category. Adapter ownership filters still apply to those
 counts; they do not describe foreign resources hidden by the adapter.
 
+Azure ownership inventory requests full VM models. The `statusOnly=true`
+projection can omit tags required to establish ownership, as reproduced in
+[Azure's API specification issue](https://github.com/Azure/azure-rest-api-specs/issues/42411).
+Full inventory may omit runtime state; inspect the retained VM identity when
+runtime state is required. Missing ownership tags never count as ownership.
+
 Unresolved cleanup remains owned and counts against allocation limits while
 Outrider retries it with exponential delays from one second up to five minutes.
 The journal retains one logical Delete action and its first intent time across

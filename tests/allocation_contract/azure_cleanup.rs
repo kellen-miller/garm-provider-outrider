@@ -213,7 +213,24 @@ pub(super) fn azure_allocation_response(
             native_mode.store(1, Ordering::Relaxed);
         }
 
-        json!({"value":if mode == 0 || mode == 2 || mode == 5 {vec![]} else {vec![azure_allocation_vm(mode)]}})
+        let mut vm = azure_allocation_vm(mode);
+        if request
+            .uri()
+            .query()
+            .is_some_and(|query| query.contains("statusOnly=true"))
+        {
+            // Azure's status-only response omits ownership metadata.
+            vm.as_object_mut()
+                .unwrap_or_else(|| panic!("Azure VM fixture object"))
+                .remove("tags");
+        } else {
+            vm["properties"]
+                .as_object_mut()
+                .unwrap_or_else(|| panic!("Azure VM fixture properties"))
+                .remove("instanceView");
+        }
+
+        json!({"value":if mode == 0 || mode == 2 || mode == 5 {vec![]} else {vec![vm]}})
     } else if path.ends_with("/skus") {
         json!({"value":[{"name":"Standard_D2s_v3","family":"Dsv3","resourceType":"virtualMachines","locations":["eastus"],"capabilities":[
             {"name":"CpuArchitectureType","value":"x64"},{"name":"PremiumIO","value":"True"},{"name":"vCPUs","value":"16"},{"name":"vCPUsAvailable","value":"8"},

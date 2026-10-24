@@ -449,8 +449,10 @@ impl CloudCatalog for AzureBackend {
                 "Azure inventory requires a controller identity",
             ));
         }
+
+        // Ownership needs full VM metadata; statusOnly can omit its tags.
         let url = format!(
-            "{}/subscriptions/{}/providers/Microsoft.Compute/virtualMachines?api-version={}&statusOnly=true",
+            "{}/subscriptions/{}/providers/Microsoft.Compute/virtualMachines?api-version={}",
             self.settings.management_endpoint.trim_end_matches('/'),
             self.settings.subscription_id,
             COMPUTE_API
