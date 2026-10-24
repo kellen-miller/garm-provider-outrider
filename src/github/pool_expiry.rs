@@ -79,14 +79,22 @@ impl IngressService {
                 .journal
                 .pool_outstanding_operations(&pool_id)
                 .map_err(|_| IngressError::Journal)?;
-            match tokio::time::timeout_at(
-                deadline,
-                self.garm.delete_drained_pool(
-                    &repository.garm_repository_id,
-                    &pool_id,
-                    outstanding,
-                ),
-            )
+            match tokio::time::timeout_at(deadline, async {
+                if outstanding == 0 {
+                    self.garm
+                        .delete_failed_unspawned_instances(
+                            &pool_id,
+                            &snapshot.id,
+                            ingress_settings,
+                            &self.journal,
+                        )
+                        .await?;
+                }
+
+                self.garm
+                    .delete_drained_pool(&repository.garm_repository_id, &pool_id, outstanding)
+                    .await
+            })
             .await
             {
                 Ok(Ok(())) => {

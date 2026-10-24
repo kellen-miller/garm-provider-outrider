@@ -233,6 +233,20 @@ dispatched resource. Deleted allocations retain their pins and audit history in
 the journal but do not require their old provider files or credentials at
 startup.
 
+During pool drain, Outrider removes failed, unregistered GARM records only when
+the matching allocation is deleted and tombstoned, has no dispatch or child
+attempts, and retains no provider result or native identity. Controller, pool,
+snapshot and runner identities must match. The GARM record must still report
+`error`/`pending`, with no provider ID, registered agent, addresses or job. It is
+read again before deletion; the pool remains owned until GARM reports it empty.
+Unknown records, including failures before allocation reservation, require
+operator reconciliation. This cleanup does not infer cloud absence or delete
+resources that may have reached a provider.
+
+The provider wrapper reports the fixed concurrency-limit and closed-admission
+reasons alongside their HTTP status. Other failed daemon responses retain only
+the HTTP status; arbitrary response text is not copied into GARM logs.
+
 After a create may have reached a provider, timeout, error, or restart does not
 prove no VM exists. Outrider fences duplicate creates and reconciles with
 provider observations and journaled ownership. A failed List call, empty

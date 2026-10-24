@@ -87,6 +87,10 @@ pub(super) struct FixtureState {
     pub(super) force_empty_pool_inventory: AtomicBool,
     pub(super) pool_detail_status: AtomicUsize,
     pub(super) delete_pool_removes_remote: AtomicBool,
+    pub(super) pool_instances: Mutex<Vec<Value>>,
+    pub(super) instance_detail_override: Mutex<Option<Value>>,
+    pub(super) instance_delete_status: AtomicUsize,
+    pub(super) defer_instance_delete: AtomicBool,
 }
 
 pub(super) struct HttpFixture {
@@ -157,6 +161,10 @@ impl HttpFixture {
             force_empty_pool_inventory: AtomicBool::new(false),
             pool_detail_status: AtomicUsize::new(0),
             delete_pool_removes_remote: AtomicBool::new(false),
+            pool_instances: Mutex::new(Vec::new()),
+            instance_detail_override: Mutex::new(None),
+            instance_delete_status: AtomicUsize::new(200),
+            defer_instance_delete: AtomicBool::new(false),
         });
         let shared = state.clone();
         let task = tokio::spawn(async move {
@@ -366,7 +374,9 @@ pub(super) async fn handle_request(
             }
         }
     };
-    let response_body = if path.ends_with("/rerun") {
+    let response_body = if path.ends_with("/rerun")
+        || (method == "DELETE" && path.starts_with("/api/v1/instances/") && status == 200)
+    {
         bytes::Bytes::new()
     } else {
         bytes::Bytes::from(response_body.to_string())
@@ -479,7 +489,39 @@ pub(super) fn handle_garm_request(
             };
             (status, pool)
         }
-        ("GET", "/api/v1/pools/pool-201/instances") => (200, json!([])),
+        ("GET", "/api/v1/pools/pool-201/instances") => match state.pool_instances.lock() {
+            Ok(instances) => (200, json!(instances.clone())),
+            Err(_) => (500, json!({"error":"instance fixture poisoned"})),
+        },
+        ("GET", "/api/v1/instances/instance-201") => {
+            let (Ok(current), Ok(instances)) = (
+                state.instance_detail_override.lock(),
+                state.pool_instances.lock(),
+            ) else {
+                return (500, json!({"error":"instance fixture poisoned"}));
+            };
+            current.as_ref().or_else(|| instances.first()).map_or_else(
+                || (404, json!({"error":"not found"})),
+                |instance| (200, instance.clone()),
+            )
+        }
+        ("DELETE", "/api/v1/instances/instance-201") => {
+            let status = state.instance_delete_status.load(Ordering::SeqCst);
+            if status == 200 {
+                let Ok(mut instances) = state.pool_instances.lock() else {
+                    return (500, json!({"error":"instance fixture poisoned"}));
+                };
+                if state.defer_instance_delete.load(Ordering::SeqCst) {
+                    for instance in &mut *instances {
+                        instance["status"] = json!("pending_delete");
+                    }
+                } else {
+                    instances.clear();
+                }
+            }
+
+            (status as u16, json!({}))
+        }
         ("DELETE", "/api/v1/repositories/00000000-0000-0000-0000-000000000101/pools/pool-201") => {
             if state.delete_pool_removes_remote.load(Ordering::SeqCst)
                 && let Ok(mut pool) = state.created_pool.lock()

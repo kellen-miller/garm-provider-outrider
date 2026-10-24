@@ -39,6 +39,8 @@ use github_events::*;
 #[path = "ingress_contract/signed_admission.rs"]
 mod signed_admission;
 use signed_admission::*;
+#[path = "ingress_contract/failed_creation_drain.rs"]
+mod failed_creation_drain;
 #[path = "ingress_contract/job_provenance.rs"]
 mod job_provenance;
 #[path = "ingress_contract/job_terminal_barriers.rs"]

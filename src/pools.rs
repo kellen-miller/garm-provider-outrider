@@ -1,3 +1,5 @@
+mod drain;
+
 use std::{
     fs,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -396,48 +398,6 @@ impl GarmClient {
         Ok(pools)
     }
 
-    /// Delete a pool only when GARM reports no instances and no operations remain.
-    ///
-    /// # Errors
-    /// Returns `PoolError::Limit` while work remains, or `PoolError::Request` on GARM errors.
-    pub async fn delete_drained_pool(
-        &self,
-        repository_id: &str,
-        pool_id: &str,
-        outstanding_operations: usize,
-    ) -> Result<(), PoolError> {
-        let detail_path = format!(
-            "api/v1/repositories/{}/pools/{}",
-            path_component(repository_id),
-            path_component(pool_id)
-        );
-        let pool: Value = self
-            .request_json_optional(reqwest::Method::GET, &detail_path, None)
-            .await?
-            .ok_or(PoolError::NotFound)?;
-        if pool.get("enabled").and_then(Value::as_bool) == Some(true) {
-            self.request_json(
-                reqwest::Method::PUT,
-                &detail_path,
-                Some(&json!({"enabled": false})),
-            )
-            .await?;
-        }
-        if outstanding_operations != 0 {
-            return Err(PoolError::Limit);
-        }
-        let instances_path = format!("api/v1/pools/{}/instances", path_component(pool_id));
-        let instances: Value = self
-            .request_json(reqwest::Method::GET, &instances_path, None)
-            .await?;
-        if !instances.as_array().is_some_and(Vec::is_empty) {
-            return Err(PoolError::Limit);
-        }
-        self.request_json(reqwest::Method::DELETE, &detail_path, None)
-            .await?;
-        Ok(())
-    }
-
     /// Disable one pool immediately when its admission became terminal or expired in flight.
     ///
     /// # Errors
@@ -620,6 +580,7 @@ impl GarmClient {
         path: &str,
         body: Option<&Value>,
     ) -> Result<Option<Value>, PoolError> {
+        let delete_request = method == reqwest::Method::DELETE;
         let url = self
             .origin
             .join(path)
@@ -652,7 +613,9 @@ impl GarmClient {
         if response.status() == StatusCode::NOT_FOUND {
             return Ok(None);
         }
-        if response.status() == StatusCode::NO_CONTENT {
+        if response.status() == StatusCode::NO_CONTENT
+            || (delete_request && response.status() == StatusCode::OK)
+        {
             return Ok(Some(Value::Null));
         }
         response

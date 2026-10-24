@@ -447,6 +447,17 @@ fn write_provider_response(
     }
 
     if !status.is_success() {
+        if let Some(
+            message @ ("allocation concurrency limit reached"
+            | "administrator allocation admission is closed"),
+        ) = output.error.as_deref()
+        {
+            return Err(ProviderFailure::Message(format!(
+                "{message} (HTTP {})",
+                status.as_u16()
+            )));
+        }
+
         return Err(ProviderFailure::Message(format!(
             "daemon returned HTTP {}",
             status.as_u16()
