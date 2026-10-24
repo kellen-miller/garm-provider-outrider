@@ -206,7 +206,6 @@ async fn local_scratch_requires_reported_capacity() {
             status: 200,
             body: serde_json::json!({"value":[sku("Standard_D2s_v3")]}).to_string(),
         },
-        retail_response(),
     ])
     .await
     .unwrap_or_else(|_| panic!("mock server"));
@@ -248,18 +247,6 @@ async fn gpu_unknown_and_mismatched_facts_are_rejected() {
         source: "operator verified synthetic T4 hardware row with conflicting memory".to_owned(),
     };
     for (index, facts) in [None, Some(mismatched)].into_iter().enumerate() {
-        let mut retail = retail_response();
-        let mut retail_body: serde_json::Value =
-            serde_json::from_str(&retail.body).unwrap_or_else(|_| panic!("retail fixture"));
-        if let Some(items) = retail_body["Items"].as_array_mut() {
-            for item in items
-                .iter_mut()
-                .filter(|item| item["serviceName"] == "Virtual Machines")
-            {
-                item["armSkuName"] = serde_json::json!("Standard_NC4as_T4_v3");
-            }
-        }
-        retail.body = retail_body.to_string();
         let path = std::env::temp_dir().join(format!(
             "outrider-azure-gpu-unknown-{}-{index}.toml",
             std::process::id()
@@ -271,7 +258,6 @@ async fn gpu_unknown_and_mismatched_facts_are_rejected() {
                 status: 200,
                 body: serde_json::json!({"value":[gpu_sku.clone()]}).to_string(),
             },
-            retail,
         ])
         .await
         .unwrap_or_else(|_| panic!("mock server"));

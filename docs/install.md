@@ -146,3 +146,20 @@ cleanup remain available after expiry. Closure does not terminate an existing
 instance or a create already accepted by a child/cloud. The check is a
 point-in-time dispatch boundary, not a cloud transaction: expiry or administrator
 closure after the final check cannot recall an operation already dispatched.
+
+Azure Retail pricing requests include only VM sizes qualified against native
+inventory and profile limits, plus supported managed-disk/IP products. Profiles
+can specify exact sizes or resource/family constraints. A narrower cached VM scope cannot satisfy a broader
+request. Throttled pages honor numeric `Retry-After` seconds, with at most three
+retries per page within the original analysis deadline. Missing/invalid delays
+or incomplete/stale snapshots reject the request. Concurrent refreshes share
+one complete snapshot; cache retention uses completion time without resetting
+the source price age.
+
+Azure disk prices use the exact LRS capacity meter; shared-mount and ZRS meters
+cannot substitute for it. Premium SSD capacity quotes include its fixed disk
+charge. Standard HDD/SSD I/O transaction usage is not modeled, so their complete
+disk component remains unknown and allocation policy rejects it unless covered
+by an explicit administrator financial-price override. Map Azure boot-disk
+aliases to `Premium_LRS` for current complete native quotes. See
+[Microsoft's managed disk billing FAQ](https://learn.microsoft.com/azure/virtual-machines/faq-for-disks).

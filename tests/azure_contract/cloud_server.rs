@@ -30,6 +30,12 @@ pub(super) struct MockResponse {
     pub(super) body: String,
 }
 
+pub(super) struct MockRoute {
+    pub(super) path_contains: Option<String>,
+    pub(super) response: MockResponse,
+    pub(super) headers: Vec<(String, String)>,
+}
+
 pub(super) struct CapturedRequest {
     pub(super) method: String,
     pub(super) path: String,
@@ -61,13 +67,39 @@ impl TokenCredential for TestCredential {
 }
 
 pub(super) async fn start_server(responses: Vec<MockResponse>) -> io::Result<MockServer> {
+    start_server_with_headers(
+        responses
+            .into_iter()
+            .map(|response| (response, Vec::new()))
+            .collect(),
+    )
+    .await
+}
+
+pub(super) async fn start_server_with_headers(
+    responses: Vec<(MockResponse, Vec<(String, String)>)>,
+) -> io::Result<MockServer> {
+    start_server_with_routes(
+        responses
+            .into_iter()
+            .map(|(response, headers)| MockRoute {
+                path_contains: None,
+                response,
+                headers,
+            })
+            .collect(),
+    )
+    .await
+}
+
+pub(super) async fn start_server_with_routes(mut routes: Vec<MockRoute>) -> io::Result<MockServer> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let endpoint = format!("http://{}", listener.local_addr()?);
     let requests = Arc::new(Mutex::new(Vec::new()));
     let recorded = requests.clone();
     let response_endpoint = endpoint.clone();
     let task = tokio::spawn(async move {
-        for response in responses {
+        for _ in 0..routes.len() {
             let (mut stream, _) = listener.accept().await?;
             let mut bytes = Vec::new();
             let mut chunk = [0_u8; 1024];
@@ -92,6 +124,18 @@ pub(super) async fn start_server(responses: Vec<MockResponse>) -> io::Result<Moc
                 name.eq_ignore_ascii_case("authorization")
                     .then(|| value.trim().to_owned())
             });
+            let route_index = routes
+                .iter()
+                .position(|route| {
+                    route
+                        .path_contains
+                        .as_ref()
+                        .is_none_or(|part| path.contains(part))
+                })
+                .ok_or_else(|| io::Error::other("unexpected Azure mock request path"))?;
+            let MockRoute {
+                response, headers, ..
+            } = routes.remove(route_index);
             recorded
                 .lock()
                 .map_err(|_| io::Error::other("request capture lock poisoned"))?
@@ -119,8 +163,12 @@ pub(super) async fn start_server(responses: Vec<MockResponse>) -> io::Result<Moc
             }
 
             let body = rendered_body.as_bytes();
+            let extra_headers = headers
+                .into_iter()
+                .map(|(name, value)| format!("{name}: {value}\r\n"))
+                .collect::<String>();
             let head = format!(
-                "HTTP/1.1 {} {}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
+                "HTTP/1.1 {} {}\r\ncontent-type: application/json\r\ncontent-length: {}\r\n{extra_headers}connection: close\r\n\r\n",
                 response.status,
                 reason,
                 body.len()
@@ -182,16 +230,28 @@ pub(super) fn settings(endpoint: &str, config_path: PathBuf) -> AzureSettings {
 }
 
 pub(super) async fn backend(server: &MockServer) -> AzureBackend {
-    backend_with_licensing(
+    backend_with_storage_and_licensing(
         server,
+        "Standard_LRS",
         AzureImageLicensing::NoAdditionalSoftwareCharge,
         "operator verified Canonical image pricing documentation",
     )
     .await
 }
 
-pub(super) async fn backend_with_licensing(
+pub(super) async fn premium_backend(server: &MockServer) -> AzureBackend {
+    backend_with_storage_and_licensing(
+        server,
+        "Premium_LRS",
+        AzureImageLicensing::NoAdditionalSoftwareCharge,
+        "operator verified Canonical image pricing documentation",
+    )
+    .await
+}
+
+pub(super) async fn backend_with_storage_and_licensing(
     server: &MockServer,
+    storage_sku: &str,
     licensing: AzureImageLicensing,
     licensing_source: &str,
 ) -> AzureBackend {
@@ -207,6 +267,9 @@ pub(super) async fn backend_with_licensing(
         .build()
         .unwrap_or_else(|_| panic!("HTTP client"));
     let mut settings = settings(&server.endpoint, path);
+    settings
+        .storage_classes
+        .insert("standard".to_owned(), storage_sku.to_owned());
     let image = settings
         .images
         .get_mut("ubuntu-24")
@@ -268,7 +331,7 @@ pub(super) fn image_response_for(
 
 pub(super) fn sku(name: &str) -> serde_json::Value {
     serde_json::json!({"name":name,"family":"Dsv3","resourceType":"virtualMachines","locations":["eastus"],"capabilities":[
-        {"name":"CpuArchitectureType","value":"x64"},{"name":"vCPUs","value":"16"},{"name":"vCPUsAvailable","value":"8"},
+        {"name":"CpuArchitectureType","value":"x64"},{"name":"PremiumIO","value":"True"},{"name":"vCPUs","value":"16"},{"name":"vCPUsAvailable","value":"8"},
         {"name":"MemoryGB","value":"16"},{"name":"MaxDataDiskCount","value":"4"},
         {"name":"UncachedDiskIOPS","value":"20000"},{"name":"UncachedDiskBytesPerSecond","value":"60000000.5"}
     ],"restrictions":[]})
@@ -283,6 +346,12 @@ pub(super) fn meter(
     price: &str,
     id: &str,
 ) -> serde_json::Value {
+    let (sku, name) = if service == "Storage" {
+        (format!("{sku} LRS"), format!("{name} LRS Disk"))
+    } else {
+        (sku.to_owned(), name.to_owned())
+    };
+
     serde_json::json!({"serviceName":service,"productName":product,"skuName":sku,"armSkuName":"Standard_D2s_v3","meterName":name,
         "armRegionName":"eastus","unitOfMeasure":unit,"type":"Consumption","isPrimaryMeterRegion":true,
         "effectiveStartDate":"2026-01-01T00:00:00Z","currencyCode":"USD","tierMinimumUnits":0,
@@ -309,6 +378,7 @@ pub(super) fn retail_response() -> MockResponse {
         low_priority,
         devtest,
         meter("Storage","Standard HDD Managed Disks","S6","S6","1/Month","3.00","disk-s6"),
+        meter("Storage","Premium SSD Managed Disks","P6","P6","1/Month","3.00","disk-p6"),
         meter("Storage","Standard HDD Managed Disks","S10","S10","1/Month","5.89","disk-s10"),
         meter("Storage","Standard HDD Managed Disks","S50","S50","1/Month","100.00","disk-s50"),
         meter("Virtual Network","IP Addresses","Standard","Standard IPv4 Static Public IP","1 Hour","0.005","ip-standard")

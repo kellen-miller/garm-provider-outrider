@@ -287,13 +287,13 @@ pub(super) fn azure_fixture_vm_id(name: &str) -> String {
 }
 
 pub(super) fn azure_system_skus() -> Value {
-    json!({"value":[{"name":"Standard_D8s_v5","family":"Dsv5","resourceType":"virtualMachines","locations":["eastus"],"capabilities":[{"name":"CpuArchitectureType","value":"x64"},{"name":"vCPUs","value":"8"},{"name":"vCPUsAvailable","value":"8"},{"name":"MemoryGB","value":"32"},{"name":"MaxDataDiskCount","value":"8"},{"name":"UncachedDiskIOPS","value":"20000"},{"name":"UncachedDiskBytesPerSecond","value":"60000000"}],"restrictions":[]}]})
+    json!({"value":[{"name":"Standard_D8s_v5","family":"Dsv5","resourceType":"virtualMachines","locations":["eastus"],"capabilities":[{"name":"CpuArchitectureType","value":"x64"},{"name":"PremiumIO","value":"True"},{"name":"vCPUs","value":"8"},{"name":"vCPUsAvailable","value":"8"},{"name":"MemoryGB","value":"32"},{"name":"MaxDataDiskCount","value":"8"},{"name":"UncachedDiskIOPS","value":"20000"},{"name":"UncachedDiskBytesPerSecond","value":"60000000"}],"restrictions":[]}]})
 }
 
 pub(super) fn azure_system_prices() -> Value {
     json!({"Items":[
         {"serviceName":"Virtual Machines","productName":"Virtual Machines Dsv5 Series","skuName":"D8s v5","armSkuName":"Standard_D8s_v5","meterName":"D8s v5","armRegionName":"eastus","unitOfMeasure":"1 Hour","type":"Consumption","isPrimaryMeterRegion":true,"effectiveStartDate":"2026-01-01T00:00:00Z","currencyCode":"USD","tierMinimumUnits":0,"retailPrice":"0.20","unitPrice":"0.20","meterId":"vm"},
-        {"serviceName":"Storage","productName":"Standard HDD Managed Disks","skuName":"S6","armSkuName":"Standard_D2s_v3","meterName":"S6","armRegionName":"eastus","unitOfMeasure":"1/Month","type":"Consumption","isPrimaryMeterRegion":true,"effectiveStartDate":"2026-01-01T00:00:00Z","currencyCode":"USD","tierMinimumUnits":0,"retailPrice":"3.00","unitPrice":"3.00","meterId":"disk"}
+        {"serviceName":"Storage","productName":"Premium SSD Managed Disks","skuName":"P6 LRS","armSkuName":"Standard_D2s_v3","meterName":"P6 LRS Disk","armRegionName":"eastus","unitOfMeasure":"1/Month","type":"Consumption","isPrimaryMeterRegion":true,"effectiveStartDate":"2026-01-01T00:00:00Z","currencyCode":"USD","tierMinimumUnits":0,"retailPrice":"3.00","unitPrice":"3.00","meterId":"disk"}
     ],"NextPageLink":null})
 }
 

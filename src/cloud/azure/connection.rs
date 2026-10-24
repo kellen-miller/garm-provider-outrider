@@ -410,12 +410,47 @@ impl AzureBackend {
                 "Azure Retail pagination target is outside the public Retail API",
             ));
         }
-        let response = timeout_at(deadline, self.client.get(target).send())
-            .await
-            .map_err(|_| failure("timeout", "Azure Retail request timed out"))?
-            .map_err(|_| failure("network", "Azure Retail request failed"))?
-            .error_for_status()
-            .map_err(|_| failure("upstream", "Azure Retail request returned an error"))?;
+        let mut throttle_retries = 0;
+        let response = loop {
+            let response = timeout_at(deadline, self.client.get(target.clone()).send())
+                .await
+                .map_err(|_| failure("timeout", "Azure Retail request timed out"))?
+                .map_err(|_| failure("network", "Azure Retail request failed"))?;
+            if response.status() != reqwest::StatusCode::TOO_MANY_REQUESTS {
+                break response
+                    .error_for_status()
+                    .map_err(|_| failure("upstream", "Azure Retail request returned an error"))?;
+            }
+
+            if throttle_retries >= 3 {
+                return Err(failure(
+                    "throttled",
+                    "Azure Retail throttle retries exhausted",
+                ));
+            }
+
+            let delay_seconds = response
+                .headers()
+                .get(reqwest::header::RETRY_AFTER)
+                .and_then(|value| value.to_str().ok())
+                .and_then(|value| value.parse::<u64>().ok())
+                .ok_or_else(|| {
+                    failure(
+                        "throttled",
+                        "Azure Retail Retry-After seconds are unavailable",
+                    )
+                })?;
+            let retry_at = Instant::now()
+                .checked_add(std::time::Duration::from_secs(delay_seconds.max(1)))
+                .filter(|retry_at| *retry_at < deadline)
+                .ok_or_else(|| {
+                    failure("timeout", "Azure Retail retry exceeds the request deadline")
+                })?;
+            drop(response);
+            tokio::time::sleep_until(retry_at).await;
+            throttle_retries += 1;
+        };
+
         timeout_at(deadline, response.json())
             .await
             .map_err(|_| failure("timeout", "Azure Retail response timed out"))?

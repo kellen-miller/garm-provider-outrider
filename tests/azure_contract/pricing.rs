@@ -12,8 +12,8 @@ use rust_decimal::Decimal;
 
 use super::cloud_server::{
     MockResponse, TestCredential, backend, changed_retail_page, child_config, image_response,
-    irrelevant_retail_page, large_retail_page, profile, query, retail_response, settings, sku,
-    start_server,
+    irrelevant_retail_page, large_retail_page, premium_backend, profile, query, retail_response,
+    settings, sku, start_server,
 };
 
 #[tokio::test]
@@ -31,7 +31,7 @@ async fn retail_snapshot_bounds_multi_offer_paging_and_keeps_exact_prices() {
     ])
     .await
     .unwrap_or_else(|_| panic!("snapshot mock server"));
-    let backend = backend(&server).await;
+    let backend = premium_backend(&server).await;
     let mut request_profile = profile();
     request_profile.purchasing_models = BTreeSet::from(["on_demand".to_owned(), "spot".to_owned()]);
     let offers = backend
@@ -121,13 +121,16 @@ async fn retail_snapshot_bounds_multi_offer_paging_and_keeps_exact_prices() {
         .filter(|request| request.path.starts_with("/api/retail/prices"))
         .collect::<Vec<_>>();
     assert_eq!(retail.len(), 2);
+    let decoded =
+        urlencoding::decode(&retail[0].path).unwrap_or_else(|_| panic!("valid query encoding"));
     assert!(
-        retail[0].path.contains(
-            "$filter=(serviceName%20eq%20%27Virtual%20Machines%27%20or%20serviceName%20eq%20%27Storage%27%20or%20(serviceName%20eq%20%27Virtual%20Network%27%20and%20productName%20eq%20%27IP%20Addresses%27))%20and%20armRegionName%20eq%20%27eastus%27"
-        ),
-        "unexpected Retail filter: {}",
-        retail[0].path
+        decoded
+            .contains("serviceName eq 'Storage' and (productName eq 'Standard HDD Managed Disks'")
     );
+    assert!(decoded.contains("productName eq 'Standard SSD Managed Disks'"));
+    assert!(decoded.contains("productName eq 'Premium SSD Managed Disks'"));
+    assert!(decoded.contains("serviceName eq 'Virtual Network' and productName eq 'IP Addresses'"));
+    assert!(decoded.contains("armRegionName eq 'eastus' and priceType eq 'Consumption'"));
     assert!(retail[0].path.contains("IP%20Addresses"));
 }
 
@@ -429,7 +432,7 @@ async fn provider_launch_defaults_and_quote() {
             .unwrap_or_else(|| panic!("quoted disk price is present"))
             .disk
             .hourly_rate,
-        Some(Decimal::new(3, 0) / Decimal::from(730))
+        None
     );
     let mut tampered = offer.clone();
     tampered

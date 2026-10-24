@@ -129,7 +129,7 @@ impl CrossCloudScenario {
             "images":{"ubuntu-24":{"image_id":"Canonical:UbuntuServer:22_04-lts-gen2:22.04.202601010","minimum_os_disk_gib":30,
                 "minimum_os_disk_source":"operator verified image metadata","capabilities":["docker","cloud-init"],
                 "licensing":"no_additional_software_charge","licensing_source":"operator verified image licensing"}},
-            "storage_classes":{"gp3":"Standard_LRS"},"accelerator_facts":{}
+            "storage_classes":{"gp3":"Premium_LRS"},"accelerator_facts":{}
         }))?;
         let gcp_catalog: GcpCatalogBinding = serde_json::from_value(json!({
             "id":"gcp-zonal","provider_binding_id":"gcp-child","project_id":"system-project","zone":"us-central1-a",

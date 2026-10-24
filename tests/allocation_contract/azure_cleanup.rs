@@ -45,7 +45,7 @@ impl AzureCleanupHarness {
             "images":{"ubuntu-24":{"image_id":"Canonical:UbuntuServer:22_04-lts-gen2:22.04.202601010","minimum_os_disk_gib":30,
                 "minimum_os_disk_source":"operator-verified image","capabilities":["docker","cloud-init"],
                 "licensing":"no_additional_software_charge","licensing_source":"operator-verified image licensing"}},
-            "storage_classes":{"standard":"Standard_LRS"},"accelerator_facts":{}
+            "storage_classes":{"standard":"Premium_LRS"},"accelerator_facts":{}
         })).unwrap_or_else(|error| panic!("allocation fixture: {error}"));
         config.azure_catalog_bindings = Some(vec![catalog.clone()]);
         let limits = config
@@ -169,8 +169,13 @@ pub(super) fn azure_allocation_meter(
     unit: &str,
     rate: &str,
 ) -> Value {
+    let meter_name = if service == "Storage" {
+        format!("{sku} Disk")
+    } else {
+        sku.to_owned()
+    };
     json!({
-        "serviceName":service, "productName":product,"skuName":sku,"armSkuName":"Standard_D2s_v3","meterName":sku,
+        "serviceName":service, "productName":product,"skuName":sku,"armSkuName":"Standard_D2s_v3","meterName":meter_name,
         "armRegionName":"eastus","unitOfMeasure":unit,"type":"Consumption","isPrimaryMeterRegion":true,
         "effectiveStartDate":"2026-01-01T00:00:00Z","currencyCode":"USD","tierMinimumUnits":0,
         "retailPrice":rate,"unitPrice":rate,"meterId":sku
@@ -195,7 +200,7 @@ pub(super) fn azure_allocation_response(
         json!({"value":if mode == 0 || mode == 2 {vec![]} else {vec![azure_allocation_vm(mode)]}})
     } else if path.ends_with("/skus") {
         json!({"value":[{"name":"Standard_D2s_v3","family":"Dsv3","resourceType":"virtualMachines","locations":["eastus"],"capabilities":[
-            {"name":"CpuArchitectureType","value":"x64"},{"name":"vCPUs","value":"16"},{"name":"vCPUsAvailable","value":"8"},
+            {"name":"CpuArchitectureType","value":"x64"},{"name":"PremiumIO","value":"True"},{"name":"vCPUs","value":"16"},{"name":"vCPUsAvailable","value":"8"},
             {"name":"MemoryGB","value":"16"},{"name":"MaxDataDiskCount","value":"4"},
             {"name":"UncachedDiskIOPS","value":"20000"},{"name":"UncachedDiskBytesPerSecond","value":"60000000.5"}
         ],"restrictions":[]}]})
@@ -204,7 +209,7 @@ pub(super) fn azure_allocation_response(
     } else {
         json!({"Items":[
             azure_allocation_meter("Virtual Machines","Virtual Machines Dsv3 Series","D2s v3","1 Hour","0.10"),
-            azure_allocation_meter("Storage","Standard HDD Managed Disks","S6","1/Month","3.00")
+            azure_allocation_meter("Storage","Premium SSD Managed Disks","P6 LRS","1/Month","3.00")
         ],"NextPageLink":null})
     };
     Ok(hyper::Response::builder()
