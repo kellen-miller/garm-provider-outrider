@@ -29,6 +29,7 @@ use std::{
 };
 
 pub use self::catalog::catalog_configuration_fingerprint;
+pub use self::inventory::{CatalogInventory, InventoryReport};
 pub use self::native::canonical_native_account_scope;
 pub use crate::policy::{ExplanationGcpLicense, ExplanationLaunchFacts, FinancialPriceScope};
 use serde_json::Value;

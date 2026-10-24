@@ -1,5 +1,27 @@
 use super::{AllocationError, AllocationService, CatalogBackend, Duration, Instant, unix_now};
-use crate::cloud::inventory::{CatalogInventory, CloudInventory, InventoryKind, InventoryReport};
+use crate::cloud::inventory::{CloudInventory, InventoryCollection, InventoryKind};
+use crate::journal::InventorySnapshot;
+use serde::{Deserialize, Serialize};
+
+/// Bounded native facts bracketed by journal-owned allocation snapshots.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct InventoryReport {
+    pub schema_version: u64,
+    pub controller_id: String,
+    pub started_at_unix_seconds: u64,
+    pub finished_at_unix_seconds: u64,
+    pub journal_before: InventorySnapshot,
+    pub journal_after: InventorySnapshot,
+    pub catalogs: Vec<CatalogInventory>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogInventory {
+    pub catalog_id: String,
+    pub collections: Vec<InventoryCollection>,
+}
 
 impl AllocationService {
     /// Observe every connected current/retained catalog using its verified native credentials.
@@ -26,6 +48,10 @@ impl AllocationService {
 
         let deadline = Instant::now() + Duration::from_secs(budget);
         let started_at_unix_seconds = unix_now();
+        let journal_before = self
+            .journal
+            .inventory_snapshot(&ingress.controller_id)
+            .map_err(|_| AllocationError::Journal)?;
         let mut catalogs = Vec::new();
         let mut count = 0usize;
         for catalog in &self.catalogs {
@@ -54,11 +80,18 @@ impl AllocationService {
             });
         }
 
+        let journal_after = self
+            .journal
+            .inventory_snapshot(&ingress.controller_id)
+            .map_err(|_| AllocationError::Journal)?;
         Ok(InventoryReport {
+            schema_version: 1,
             controller_id: ingress.controller_id.clone(),
             started_at_unix_seconds,
             finished_at_unix_seconds: unix_now(),
             catalogs,
+            journal_before,
+            journal_after,
         })
     }
 }

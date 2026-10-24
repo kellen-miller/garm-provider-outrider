@@ -67,23 +67,6 @@ pub struct InventoryCollection {
     pub resources: Vec<InventoryResource>,
 }
 
-/// A bounded observation of connected catalog scopes, never an account-wide clean bill.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct InventoryReport {
-    pub controller_id: String,
-    pub started_at_unix_seconds: u64,
-    pub finished_at_unix_seconds: u64,
-    pub catalogs: Vec<CatalogInventory>,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct CatalogInventory {
-    pub catalog_id: String,
-    pub collections: Vec<InventoryCollection>,
-}
-
 #[async_trait]
 pub trait CloudInventory: Send + Sync {
     /// List every resource of this kind in the declared scope, including untagged ones.

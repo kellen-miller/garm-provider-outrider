@@ -30,6 +30,8 @@ pub enum JournalError {
     AllocationPoolMismatch,
     #[error("rerun intent state is invalid")]
     InvalidRerunState,
+    #[error("inventory journal projection is invalid or exceeds its limit")]
+    InvalidInventory,
 }
 
 #[derive(Debug)]
@@ -373,6 +375,8 @@ mod actions;
 mod allocations;
 mod cleanup;
 mod history;
+mod inventory;
+pub use inventory::{InventoryActiveAllocation, InventorySnapshot, InventoryVmIdentity};
 mod operations;
 mod runs;
 mod schema;

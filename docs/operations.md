@@ -144,6 +144,11 @@ start/end times rather than an atomic cloud snapshot.
 
 This command supplies observations for monitoring. It does not identify or
 delete orphans, save a baseline, schedule comparisons or deliver alarms.
+The versioned report brackets cloud reads with journal-owned allocation snapshots
+and dispatch-history fingerprints. Those snapshots contain only projected native
+scope/path/incarnation, allocation ID and creation time. Private binding/provider
+JSON and arbitrary dependency maps are excluded. Operators consume this API rather
+than reading the journal's private schema.
 
 Administrators can add a dated absolute component price under central
 `effective_prices`. Copy the complete `financial_price_scope` object from a

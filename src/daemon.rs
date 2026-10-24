@@ -14,8 +14,9 @@ use serde_json::Value;
 use sha2::Sha256;
 
 use crate::{
-    allocation::{AllocationError, AllocationService, ExplainRequest, ExplanationReport},
-    cloud::inventory::InventoryReport,
+    allocation::{
+        AllocationError, AllocationService, ExplainRequest, ExplanationReport, InventoryReport,
+    },
     config::{ConfigPatch, ControlSettings},
     garm::{ProviderRequest, ProviderResponse},
     github::{IngressError, IngressService},
