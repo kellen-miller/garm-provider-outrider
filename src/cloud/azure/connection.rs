@@ -170,14 +170,15 @@ impl AzureBackend {
                 "Azure custom identity client options are not verified against the pinned provider",
             ));
         }
-        if settings
-            .locations
-            .values()
-            .any(|location| location.public_ip_sku.is_some())
-        {
+        if settings.locations.values().any(|location| {
+            location.public_ip_sku.as_deref().is_some_and(|sku| {
+                sku != "Standard"
+                    || settings.source_revision != "10659879c5d91979c7f077439bd78e17622452a6"
+            })
+        }) {
             return Err(failure(
                 "unsupported",
-                "qualified Azure child does not dispatch a selected public IP SKU",
+                "Azure public IP allocation requires exact SKU Standard and qualified child revision 10659879c5d91979c7f077439bd78e17622452a6 (static IPv4, Regional tier)",
             ));
         }
         if child.use_ephemeral_storage {
@@ -262,10 +263,7 @@ impl AzureBackend {
                 "Azure management request returned an error",
             ));
         }
-        timeout_at(deadline, response.json())
-            .await
-            .map_err(|_| failure("timeout", "Azure management response timed out"))?
-            .map_err(|_| failure("protocol", "Azure management response was invalid"))
+        management_json(response, deadline).await
     }
 
     pub(super) async fn get_management_optional(
@@ -284,10 +282,7 @@ impl AzureBackend {
                 "Azure management request returned an error",
             ));
         }
-        let value = timeout_at(deadline, response.json())
-            .await
-            .map_err(|_| failure("timeout", "Azure management response timed out"))?
-            .map_err(|_| failure("protocol", "Azure management response was invalid"))?;
+        let value = management_json(response, deadline).await?;
         Ok(Some(value))
     }
 
@@ -338,18 +333,7 @@ impl AzureBackend {
                 "Azure Resource Graph request returned an error",
             ));
         }
-        let bytes = timeout_at(deadline, response.bytes())
-            .await
-            .map_err(|_| failure("timeout", "Azure Resource Graph response timed out"))?
-            .map_err(|_| failure("protocol", "Azure Resource Graph response was invalid"))?;
-        if bytes.len() > MAX_API_RESPONSE_BYTES {
-            return Err(failure(
-                "response",
-                "Azure Resource Graph response exceeded the configured size limit",
-            ));
-        }
-        serde_json::from_slice(&bytes)
-            .map_err(|_| failure("protocol", "Azure Resource Graph response was invalid"))
+        management_json(response, deadline).await
     }
 
     pub(super) async fn send_management(
@@ -409,12 +393,47 @@ impl AzureBackend {
                 "Azure Retail pagination target is outside the public Retail API",
             ));
         }
-        let response = timeout_at(deadline, self.client.get(target).send())
-            .await
-            .map_err(|_| failure("timeout", "Azure Retail request timed out"))?
-            .map_err(|_| failure("network", "Azure Retail request failed"))?
-            .error_for_status()
-            .map_err(|_| failure("upstream", "Azure Retail request returned an error"))?;
+        let mut throttle_retries = 0;
+        let response = loop {
+            let response = timeout_at(deadline, self.client.get(target.clone()).send())
+                .await
+                .map_err(|_| failure("timeout", "Azure Retail request timed out"))?
+                .map_err(|_| failure("network", "Azure Retail request failed"))?;
+            if response.status() != reqwest::StatusCode::TOO_MANY_REQUESTS {
+                break response
+                    .error_for_status()
+                    .map_err(|_| failure("upstream", "Azure Retail request returned an error"))?;
+            }
+
+            if throttle_retries >= 3 {
+                return Err(failure(
+                    "throttled",
+                    "Azure Retail throttle retries exhausted",
+                ));
+            }
+
+            let delay_seconds = response
+                .headers()
+                .get(reqwest::header::RETRY_AFTER)
+                .and_then(|value| value.to_str().ok())
+                .and_then(|value| value.parse::<u64>().ok())
+                .ok_or_else(|| {
+                    failure(
+                        "throttled",
+                        "Azure Retail Retry-After seconds are unavailable",
+                    )
+                })?;
+            let retry_at = Instant::now()
+                .checked_add(std::time::Duration::from_secs(delay_seconds.max(1)))
+                .filter(|retry_at| *retry_at < deadline)
+                .ok_or_else(|| {
+                    failure("timeout", "Azure Retail retry exceeds the request deadline")
+                })?;
+            drop(response);
+            tokio::time::sleep_until(retry_at).await;
+            throttle_retries += 1;
+        };
+
         timeout_at(deadline, response.json())
             .await
             .map_err(|_| failure("timeout", "Azure Retail response timed out"))?
@@ -449,6 +468,30 @@ async fn read_child_configuration(
     let parsed = toml_edit::de::from_slice::<AzureChildConfiguration>(&bytes)
         .map_err(|_| failure("configuration", "Azure child configuration is invalid"))?;
     Ok((parsed, bytes))
+}
+
+async fn management_json(
+    mut response: reqwest::Response,
+    deadline: Instant,
+) -> Result<serde_json::Value, CloudError> {
+    let mut bytes = Vec::new();
+    while let Some(chunk) = timeout_at(deadline, response.chunk())
+        .await
+        .map_err(|_| failure("timeout", "Azure management response timed out"))?
+        .map_err(|_| failure("protocol", "Azure management response was invalid"))?
+    {
+        if bytes.len().saturating_add(chunk.len()) > MAX_API_RESPONSE_BYTES {
+            return Err(failure(
+                "response",
+                "Azure management response exceeded the configured size limit",
+            ));
+        }
+
+        bytes.extend_from_slice(&chunk);
+    }
+
+    serde_json::from_slice(&bytes)
+        .map_err(|_| failure("protocol", "Azure management response was invalid"))
 }
 
 pub(super) fn validate_child_binding(

@@ -1,0 +1,94 @@
+{
+  "skus": [
+    {
+      "name": "services/6F81-5844-456A/skus/F179-E1EA-D97A",
+      "description": "Spot Preemptible E2 Instance Core running in Americas",
+      "category": {"resourceFamily":"Compute","resourceGroup":"CPU","usageType":"Preemptible"},
+      "serviceRegions": ["us-central1"],
+      "pricingInfo": [{"effectiveTime":"2025-01-01T00:00:00Z","pricingExpression":{
+        "usageUnit":"h",
+        "tieredRates":[{"startUsageAmount":0,"unitPrice":{"currencyCode":"USD","units":"0","nanos":10000000}}]
+      }}]
+    },
+    {
+      "name": "services/6F81-5844-456A/skus/9B1F-1E62-4061",
+      "description": "Spot Preemptible E2 Instance Ram running in Americas",
+      "category": {"resourceFamily":"Compute","resourceGroup":"RAM","usageType":"Preemptible"},
+      "serviceRegions": ["us-central1"],
+      "pricingInfo": [{"effectiveTime":"2025-01-01T00:00:00Z","pricingExpression":{
+        "usageUnit":"GiBy.h",
+        "tieredRates":[{"startUsageAmount":0,"unitPrice":{"currencyCode":"USD","units":"0","nanos":5000000}}]
+      }}]
+    },
+    {
+      "name": "services/6F81-5844-456A/skus/CPU-E2-CUSTOM-SPOT",
+      "description": "Spot Preemptible E2 Custom Instance Core running in Americas",
+      "category": {"resourceFamily":"Compute","resourceGroup":"CPU","usageType":"Preemptible"},
+      "serviceRegions": ["us-central1"],
+      "pricingInfo": [{"effectiveTime":"2025-01-01T00:00:00Z","pricingExpression":{
+        "usageUnit":"h",
+        "tieredRates":[{"startUsageAmount":0,"unitPrice":{"currencyCode":"USD","units":"0","nanos":1}}]
+      }}]
+    },
+    {
+      "name": "services/6F81-5844-456A/skus/RAM-E2-CUSTOM-SPOT",
+      "description": "Spot Preemptible E2 Custom Instance Ram running in Americas",
+      "category": {"resourceFamily":"Compute","resourceGroup":"RAM","usageType":"Preemptible"},
+      "serviceRegions": ["us-central1"],
+      "pricingInfo": [{"effectiveTime":"2025-01-01T00:00:00Z","pricingExpression":{
+        "usageUnit":"GiBy.h",
+        "tieredRates":[{"startUsageAmount":0,"unitPrice":{"currencyCode":"USD","units":"0","nanos":1}}]
+      }}]
+    },
+    {
+      "name": "services/6F81-5844-456A/skus/CPU-N2-SPOT-DECOY",
+      "description": "Spot Preemptible N2 Instance Core running in Americas",
+      "category": {"resourceFamily":"Compute","resourceGroup":"CPU","usageType":"Preemptible"},
+      "serviceRegions": ["us-central1"],
+      "pricingInfo": [{"effectiveTime":"2025-01-01T00:00:00Z","pricingExpression":{
+        "usageUnit":"h",
+        "tieredRates":[{"startUsageAmount":0,"unitPrice":{"currencyCode":"USD","units":"0","nanos":1}}]
+      }}]
+    },
+    {
+      "name": "services/6F81-5844-456A/skus/RAM-E2-COMMITTED-DECOY",
+      "description": "E2 Instance Ram running in Americas",
+      "category": {"resourceFamily":"Compute","resourceGroup":"RAM","usageType":"Commit1Yr"},
+      "serviceRegions": ["us-central1"],
+      "pricingInfo": [{"effectiveTime":"2025-01-01T00:00:00Z","pricingExpression":{
+        "usageUnit":"GiBy.h",
+        "tieredRates":[{"startUsageAmount":0,"unitPrice":{"currencyCode":"USD","units":"0","nanos":1}}]
+      }}]
+    },
+    {
+      "name": "services/6F81-5844-456A/skus/CPU-E2-CONFLICTING-MARKET",
+      "description": "Spot Preemptible E2 Instance Core running in Americas",
+      "category": {"resourceFamily":"Compute","resourceGroup":"CPU","usageType":"OnDemand"},
+      "serviceRegions": ["us-central1"],
+      "pricingInfo": [{"effectiveTime":"2025-01-01T00:00:00Z","pricingExpression":{
+        "usageUnit":"h",
+        "tieredRates":[{"startUsageAmount":0,"unitPrice":{"currencyCode":"USD","units":"0","nanos":1}}]
+      }}]
+    },
+    {
+      "name": "services/6F81-5844-456A/skus/RAM-E2-CONFLICTING-MARKET",
+      "description": "Spot Preemptible E2 Instance Ram running in Americas",
+      "category": {"resourceFamily":"Compute","resourceGroup":"RAM","usageType":"OnDemand"},
+      "serviceRegions": ["us-central1"],
+      "pricingInfo": [{"effectiveTime":"2025-01-01T00:00:00Z","pricingExpression":{
+        "usageUnit":"GiBy.h",
+        "tieredRates":[{"startUsageAmount":0,"unitPrice":{"currencyCode":"USD","units":"0","nanos":1}}]
+      }}]
+    },
+    {
+      "name": "services/6F81-5844-456A/skus/PD-BALANCED",
+      "description": "Balanced PD",
+      "category": {"resourceFamily":"Storage","resourceGroup":"PD","usageType":"OnDemand"},
+      "serviceRegions": ["us-central1"],
+      "pricingInfo": [{"effectiveTime":"2025-01-01T00:00:00Z","pricingExpression":{
+        "usageUnit":"GiBy.mo",
+        "tieredRates":[{"startUsageAmount":0,"unitPrice":{"currencyCode":"USD","units":"0","nanos":100000}}]
+      }}]
+    }
+  ]
+}

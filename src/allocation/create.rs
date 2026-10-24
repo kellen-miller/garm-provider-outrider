@@ -9,10 +9,10 @@ use super::{
     AllocationAdmission, AllocationError, AllocationExecution, AllocationService,
     BootstrapInstance, BootstrapPlatform, BootstrapProvider, BootstrapTarget, CatalogOffer,
     ChildAttemptRecord, ChildCreateResult, ConfigPatch, CreateHistoryRecord, CreateOutcome,
-    Duration, File, Instant, JournalError, LocalFailure, NativeIdentityLookup, PoolSnapshotId,
-    ProviderBinding, ProviderError, ProviderRequest, ProviderRequirements, ProviderResult,
-    RankingResult, SnapshotDocument, SystemTime, UNIX_EPOCH, Value, generate_provider_hook,
-    unix_now, unix_now_millis,
+    Duration, File, Instant, JournalError, LocalFailure, NativeIdentityLookup,
+    NativeIdentityResolution, PoolSnapshotId, ProviderBinding, ProviderError, ProviderRequest,
+    ProviderRequirements, ProviderResult, RankingResult, SnapshotDocument, SystemTime, UNIX_EPOCH,
+    Value, generate_provider_hook, unix_now, unix_now_millis,
 };
 use crate::providers::provider_pin_json;
 use sha2::Digest;
@@ -75,6 +75,25 @@ impl AllocationService {
                 .any(|catalog| &catalog.configuration_fingerprint == fingerprint)
         }) {
             return Err(AllocationError::Catalog);
+        }
+
+        if let Some(existing) = self
+            .journal
+            .allocation(&request.controller_id, &bootstrap.name)
+            .map_err(|_| AllocationError::Journal)?
+            .filter(|existing| existing.state == "created" && !existing.tombstone)
+        {
+            if existing.snapshot_id != snapshot.id
+                || existing.pool_id != snapshot.garm_pool_id.as_deref().unwrap_or_default()
+            {
+                return Err(AllocationError::Conflict);
+            }
+
+            return stored_provider_instance(&existing).map(CreateOutcome::Created);
+        }
+
+        if !crate::admission::allocation_is_open(self.config.admission.as_ref()) {
+            return Err(AllocationError::AdmissionClosed);
         }
 
         let (allocation, is_new) = self
@@ -175,7 +194,12 @@ impl AllocationService {
                 self.journal
                     .schedule_allocation_cleanup(
                         &allocation.allocation_id,
-                        "dispatched create did not produce a usable provider result",
+                        current
+                            .as_ref()
+                            .and_then(|current| current.detail.as_deref())
+                            .unwrap_or(
+                                "dispatched create did not produce a usable provider result",
+                            ),
                     )
                     .map_err(|_| AllocationError::Journal)?;
             }
@@ -242,6 +266,10 @@ impl AllocationService {
                 serde_json::to_string(offer).map_err(|_| AllocationError::Configuration)?;
             let binding_json =
                 serde_json::to_string(binding).map_err(|_| AllocationError::Configuration)?;
+            if !crate::admission::allocation_is_open(self.config.admission.as_ref()) {
+                return Err(AllocationError::AdmissionClosed);
+            }
+
             self.journal
                 .set_allocation_selection(
                     &allocation.allocation_id,
@@ -294,6 +322,10 @@ impl AllocationService {
                     .map_err(|_| AllocationError::Journal)?;
                 return Err(AllocationError::Snapshot);
             }
+            if !crate::admission::allocation_is_open(self.config.admission.as_ref()) {
+                return Err(AllocationError::AdmissionClosed);
+            }
+
             let dispatched = self
                 .journal
                 .mark_child_dispatched(
@@ -401,19 +433,41 @@ impl AllocationService {
                     )
                     .map_err(|_| AllocationError::Journal)?;
 
-                let native_identity =
-                    Box::pin(self.resolve_native_identity(NativeIdentityLookup {
+                // A positive child return can precede native inventory visibility.
+                let visibility_deadline = (*deadline).min(Instant::now() + Duration::from_secs(30));
+                let native_identity = loop {
+                    let observed = Box::pin(self.resolve_native_identity(NativeIdentityLookup {
                         controller_id: &request.controller_id,
                         pool_id: &allocation.pool_id,
                         offer,
                         configuration_fingerprint,
                         runner_name: &bootstrap.name,
                         child_instance_id: Some(&instance.provider_id),
-                        deadline: *deadline,
+                        deadline: visibility_deadline,
                     }))
                     .await;
+                    if !matches!(&observed, Ok(resolution) if resolution.identity.is_none())
+                        || Instant::now() + Duration::from_secs(2) >= visibility_deadline
+                    {
+                        break observed;
+                    }
+
+                    let current = self
+                        .journal
+                        .allocation(&request.controller_id, &allocation.allocation_id)
+                        .map_err(|_| AllocationError::Journal)?
+                        .ok_or(AllocationError::Journal)?;
+                    if current.tombstone {
+                        break observed;
+                    }
+
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                };
                 match native_identity {
-                    Ok(Some(identity)) => {
+                    Ok(NativeIdentityResolution {
+                        identity: Some(identity),
+                        ..
+                    }) => {
                         if !self
                             .journal
                             .claim_allocation_native_identity(&allocation.allocation_id, &identity)
@@ -444,12 +498,21 @@ impl AllocationService {
                             )
                             .map_err(|_| AllocationError::Journal)?;
                     }
-                    Ok(None) | Err(_) => {
+                    unresolved => {
+                        let detail = match unresolved {
+                            Err(crate::cloud::CloudError::Failure(failure)) => {
+                                format!("native identity lookup failed: {}", failure.kind)
+                            }
+                            Err(_) => "native identity lookup failed".to_owned(),
+                            Ok(resolution) => format!(
+                                "native identity could not be observed: owned_inventory={} same_name={} rejected={}",
+                                resolution.listed,
+                                resolution.same_name,
+                                resolution.first_rejection.unwrap_or("none")
+                            ),
+                        };
                         self.journal
-                            .set_allocation_detail(
-                                &allocation.allocation_id,
-                                Some("native identity could not be observed"),
-                            )
+                            .set_allocation_detail(&allocation.allocation_id, Some(&detail))
                             .map_err(|_| AllocationError::Journal)?;
                     }
                 }
@@ -492,6 +555,9 @@ impl AllocationService {
                 self.journal
                     .reset_local_allocation(&allocation.allocation_id)
                     .map_err(|_| AllocationError::Journal)?;
+                if local == LocalFailure::AdmissionClosed {
+                    return Err(AllocationError::AdmissionClosed);
+                }
             }
             Err(_) => {
                 self.mark_ambiguous(
@@ -559,6 +625,13 @@ pub(super) fn map_bootstrap(
     child.image = offer.selection.image.clone();
     child.os_type = offer.candidate.os.clone();
     child.os_arch = offer.candidate.architecture.clone();
+    // GARM injects its install wrapper before invoking external providers.
+    // Outrider owns guest bootstrap and replaces it after snapshot validation;
+    // never execute or forward the incoming template to a child provider.
+    if let Some(Value::Object(extras)) = child.extra_specs.as_mut() {
+        extras.remove("runner_install_template");
+    }
+
     let hook = generate_provider_hook(
         &child,
         BootstrapTarget {
@@ -603,6 +676,7 @@ pub(super) fn local_failure_label(error: &LocalFailure) -> &'static str {
         LocalFailure::InvalidResult => "invalid_result",
         LocalFailure::OutputLimit => "output_limit",
         LocalFailure::Supervision => "supervision_failed",
+        LocalFailure::AdmissionClosed => "administrator allocation admission is closed",
         LocalFailure::Deadline => "deadline_before_dispatch",
         LocalFailure::UnsupportedHost => "unsupported_host",
     }

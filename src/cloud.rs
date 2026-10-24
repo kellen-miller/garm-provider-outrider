@@ -9,6 +9,7 @@ use crate::policy::{CatalogOffer, PriceQuote};
 pub mod aws;
 pub mod azure;
 pub mod gcp;
+pub mod inventory;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CloudError {
@@ -134,6 +135,8 @@ pub trait CloudCatalog: Send + Sync {
         deadline: Instant,
     ) -> Result<Option<ProviderInstance>, CloudError>;
 
+    /// Enumerate owned identities; runtime state may be unknown.
+    /// Use `inspect` when current runtime state is required.
     async fn list(
         &self,
         scope: &OwnershipScope,

@@ -86,8 +86,8 @@ async fn retry_limit_one_fairness_and_outbox_poison() {
                 id: id.into(),
                 kind: kind.into(),
                 destination: CONTROLLER_ID.into(),
-                headers_json: "{}".into(),
-                body: b"raw signed event".to_vec(),
+                headers_json: r#"{"x-github-event":"workflow_job"}"#.into(),
+                body: completed_failure_body(),
                 state: "pending".into(),
             })
             .expect("queue outbox message");
@@ -126,7 +126,7 @@ async fn malformed_forward_is_rejected_ahead_of_valid_retry() {
         open_service(&directory, "http://127.0.0.1:1/", "http://127.0.0.1:1/").expect("service");
     for (id, headers) in [
         ("malformed-forward", "not-json"),
-        ("valid-forward", r#"{"x-github-event":"workflow_run"}"#),
+        ("valid-forward", r#"{"x-github-event":"workflow_job"}"#),
     ] {
         journal
             .enqueue_outbox(&OutboxMessage {
@@ -134,7 +134,7 @@ async fn malformed_forward_is_rejected_ahead_of_valid_retry() {
                 kind: "forward".into(),
                 destination: CONTROLLER_ID.into(),
                 headers_json: headers.into(),
-                body: b"signed event".to_vec(),
+                body: completed_failure_body(),
                 state: "pending".into(),
             })
             .expect("queue outbox record");
@@ -542,5 +542,10 @@ async fn poison_no_head_of_line() {
             .as_deref(),
         Some("queued")
     );
-    assert_eq!(journal.pending_outbox(10).expect("forward outbox").len(), 1);
+    assert!(
+        journal
+            .pending_outbox(10)
+            .expect("forward outbox")
+            .is_empty()
+    );
 }

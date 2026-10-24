@@ -1,5 +1,5 @@
 use super::billing::{match_prices, quote_prices, requested_disk_performance};
-use super::discovery::{capability_u32, shape_matches_profile, sku_shape};
+use super::discovery::{capability_u32, shape_matches_profile, sku_in_scope, sku_shape};
 use super::identity::{provider_instance, valid_vm_resource_id};
 use super::{
     AzureBackend, AzureLaunchFacts, AzurePriceRequest, AzureVm, AzureVmPage, BTreeMap, BTreeSet,
@@ -50,33 +50,10 @@ impl CloudCatalog for AzureBackend {
                 continue;
             }
             let inventory = self.sku_inventory(&location.location, deadline).await?;
-            let snapshot = self
-                .retail_snapshot(
-                    &location.location,
-                    Duration::from_secs(profile.max_price_age_seconds),
-                    deadline,
-                )
-                .await?;
-            let meters = snapshot.meters.as_ref();
+            let mut shapes = Vec::new();
             for sku in inventory {
-                if !sku
-                    .locations
-                    .iter()
-                    .any(|value| value.eq_ignore_ascii_case(&location.location))
-                    || !sku.restrictions.is_empty()
-                {
-                    let reason = if sku.restrictions.is_empty() {
-                        "SKU is unavailable in the configured location"
-                    } else {
-                        "SKU has provider restrictions"
-                    };
+                if let Err(reason) = sku_in_scope(&sku, &location.location, &profile) {
                     exclusion_counts.record(reason);
-                    continue;
-                }
-                if let Some(requested) = profile.machine_types.get("azure")
-                    && !requested.contains(&sku.name)
-                {
-                    exclusion_counts.record("SKU is outside the requested machine types");
                     continue;
                 }
                 let Some(shape) = sku_shape(sku) else {
@@ -109,6 +86,28 @@ impl CloudCatalog for AzureBackend {
                     exclusion_counts.record("SKU does not meet requested compute capabilities");
                     continue;
                 }
+                shapes.push((shape, machine_family));
+            }
+
+            if shapes.is_empty() {
+                continue;
+            }
+
+            let machine_types = shapes
+                .iter()
+                .map(|(shape, _)| shape.sku.name.clone())
+                .collect::<Vec<_>>();
+            let snapshot = self
+                .retail_snapshot(
+                    &location.location,
+                    &machine_types,
+                    Duration::from_secs(profile.max_price_age_seconds),
+                    deadline,
+                )
+                .await?;
+            let meters = snapshot.meters.as_ref();
+            for (shape, machine_family) in shapes {
+                let accelerator = self.settings.accelerator_facts.get(&shape.sku.name);
                 for purchasing in profile.purchasing_models.iter().filter(|model| {
                     matches!(model.as_str(), "spot" | "on_demand")
                         && profile
@@ -127,11 +126,14 @@ impl CloudCatalog for AzureBackend {
                             )
                         });
                     let Some(disk_sku) = disk_sku else {
+                        exclusion_counts.record("boot disk storage class is unsupported");
                         continue;
                     };
                     let Some((size, iops, throughput)) =
                         requested_disk_performance(&profile, &shape, image, disk_sku)
                     else {
+                        exclusion_counts
+                            .record("boot disk does not meet requested performance or size");
                         continue;
                     };
                     let public_ip_sku = location.public_ip_sku.as_deref();
@@ -149,6 +151,8 @@ impl CloudCatalog for AzureBackend {
                             public_requested: public_ip_sku.is_some(),
                         },
                     ) else {
+                        exclusion_counts
+                            .record("required Azure price meters are missing or ambiguous");
                         continue;
                     };
                     let price = quote_prices(
@@ -341,7 +345,12 @@ impl CloudCatalog for AzureBackend {
             ));
         }
         let snapshot = self
-            .retail_snapshot(&location.location, maximum_price_age, deadline)
+            .retail_snapshot(
+                &location.location,
+                std::slice::from_ref(&candidate.machine_type),
+                maximum_price_age,
+                deadline,
+            )
             .await
             .map_err(CloudError::price_unavailable)?;
         let prices = match_prices(
@@ -364,7 +373,7 @@ impl CloudCatalog for AzureBackend {
                 "Azure has no unique current matching compute meter",
             ))
         })?;
-        if prices.disk.is_none() || (facts.public_ip_sku.is_some() && prices.public_ip.is_none()) {
+        if facts.public_ip_sku.is_some() && prices.public_ip.is_none() {
             return Err(CloudError::price_unavailable(failure(
                 "price",
                 "Azure disk or public IP meter is missing",
@@ -440,8 +449,10 @@ impl CloudCatalog for AzureBackend {
                 "Azure inventory requires a controller identity",
             ));
         }
+
+        // Ownership needs full VM metadata; statusOnly can omit its tags.
         let url = format!(
-            "{}/subscriptions/{}/providers/Microsoft.Compute/virtualMachines?api-version={}&statusOnly=true",
+            "{}/subscriptions/{}/providers/Microsoft.Compute/virtualMachines?api-version={}",
             self.settings.management_endpoint.trim_end_matches('/'),
             self.settings.subscription_id,
             COMPUTE_API

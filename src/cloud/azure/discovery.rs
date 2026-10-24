@@ -4,6 +4,41 @@ use super::{
     Instant, RESOURCE_SKUS_API, failure,
 };
 
+pub(super) fn sku_in_scope(
+    sku: &AzureSku,
+    location: &str,
+    profile: &crate::config::RunnerProfile,
+) -> Result<(), &'static str> {
+    if !sku.restrictions.is_empty() {
+        return Err("SKU has provider restrictions");
+    }
+
+    if !sku
+        .locations
+        .iter()
+        .any(|value| value.eq_ignore_ascii_case(location))
+    {
+        return Err("SKU is unavailable in the configured location");
+    }
+
+    if let Some(requested) = profile.machine_types.get("azure")
+        && !requested.contains(&sku.name)
+    {
+        return Err("SKU is outside the requested machine types");
+    }
+
+    if profile
+        .administrator_limits
+        .allowed_machine_types
+        .get("azure")
+        .is_some_and(|allowed| !allowed.contains(&sku.name))
+    {
+        return Err("SKU is outside the administrator machine types");
+    }
+
+    Ok(())
+}
+
 impl AzureBackend {
     pub(super) async fn sku_inventory(
         &self,
@@ -183,7 +218,7 @@ pub(super) fn sku_shape(sku: AzureSku) -> Option<AzureShape> {
             cap.name == "EphemeralOSDiskSupported" && cap.value.eq_ignore_ascii_case("true")
         }),
         premium_io_supported: capability_text(&sku, "PremiumIO")
-            .and_then(|value| value.parse::<bool>().ok()),
+            .and_then(|value| value.to_ascii_lowercase().parse::<bool>().ok()),
         sku,
         vcpu,
         cpu_architecture,

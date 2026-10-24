@@ -28,6 +28,10 @@ impl GitHubClient {
             return Err(GitHubError::Configuration);
         }
         let client = Client::builder()
+            .user_agent(concat!(
+                "garm-provider-outrider/",
+                env!("CARGO_PKG_VERSION")
+            ))
             .timeout(timeout)
             .redirect(reqwest::redirect::Policy::none())
             .build()

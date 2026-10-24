@@ -249,8 +249,8 @@ async fn delay_fixture_request(request_body: &str, get_products: bool, state: &A
         }
     } else {
         request_body
-            .split_whitespace()
-            .next()
+            .split(['?', '&', ' '])
+            .find_map(|part| part.strip_prefix("Action="))
             .unwrap_or("unknown")
             .to_owned()
     };
@@ -329,6 +329,11 @@ pub(super) async fn aws_response(
             &state.request_native_inspections,
             spot,
         )
+    } else if let Some(operation) = ["DescribeVolumes", "DescribeAddresses"]
+        .iter()
+        .find(|operation| request_body.contains(**operation))
+    {
+        format!("<{operation}Response/>")
     } else if request_body.contains("DescribeSpotInstanceRequests") {
         if request_body.contains("=sir-observed")
             && !request_body.contains("sir-observed-2")

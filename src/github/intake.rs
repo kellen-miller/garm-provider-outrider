@@ -12,7 +12,9 @@ impl IngressService {
     /// Returns an error when validation, provenance, persistence, or a dependency request fails.
     pub fn new(config: ConfigPatch, journal: Arc<Journal>) -> Result<Self, IngressError> {
         let settings = config.ingress.clone().ok_or(IngressError::Configuration)?;
-        if config.validate_rerun_settings().is_err() {
+        if config.validate_rerun_settings().is_err()
+            || config.validate_admission_settings().is_err()
+        {
             return Err(IngressError::Configuration);
         }
         if settings.max_dynamic_pools == 0
@@ -216,8 +218,7 @@ impl IngressService {
             let deadline = tokio::time::Instant::now() + self.operation_budget();
             if message.kind == "forward" {
                 let current =
-                    tokio::time::timeout_at(deadline, self.forward_admission_is_current(&message))
-                        .await;
+                    tokio::time::timeout_at(deadline, self.forward_job_is_current(&message)).await;
                 match current {
                     Ok(Ok(true)) => {}
                     Ok(Ok(false)) => {
@@ -236,7 +237,7 @@ impl IngressService {
                             .set_outbox_state(
                                 &message.id,
                                 "rejected",
-                                Some("forward record is malformed"),
+                                Some("forward does not identify a valid Outrider job"),
                             )
                             .map_err(|_| IngressError::Journal)?;
                         processed += 1;
@@ -249,8 +250,23 @@ impl IngressService {
                         continue;
                     }
                 }
+
+                if !self.forward_allocation_is_open(&message) {
+                    self.journal
+                        .set_outbox_state(
+                            &message.id,
+                            "retry",
+                            Some("administrator allocation admission is closed"),
+                        )
+                        .map_err(|_| IngressError::Journal)?;
+                    continue;
+                }
             }
             let dispatch = tokio::time::timeout_at(deadline, async {
+                if message.kind == "forward" && !self.forward_allocation_is_open(&message) {
+                    return Ok(false);
+                }
+
                 match message.kind.as_str() {
                     "forward" => {
                         let headers: ForwardHeaders = serde_json::from_str(&message.headers_json)

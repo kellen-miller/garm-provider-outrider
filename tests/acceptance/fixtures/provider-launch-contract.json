@@ -56,7 +56,7 @@
     }
   },
   "azure": {
-    "source_revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+    "source_revision": "10659879c5d91979c7f077439bd78e17622452a6",
     "flavor": "exact VM size",
     "image": "publisher:offer:sku:version or approved source format",
     "defaults": {
@@ -83,7 +83,7 @@
     },
     "quote_rules": [
       "disk tier follows provisioned size and selected account type",
-      "public IP billed only when selected",
+      "public IP billed only when selected: qualified child creates Standard Regional static IPv4",
       "Windows compute meter must not double-count licensing",
       "ephemeral root must fit supported VM cache/resource disk and cannot be billed as ordinary managed root"
     ],

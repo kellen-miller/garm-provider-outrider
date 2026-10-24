@@ -105,6 +105,8 @@ pub enum LocalFailure {
     OutputLimit,
     #[error("provider process could not be supervised")]
     Supervision,
+    #[error("administrator allocation admission is closed")]
+    AdmissionClosed,
     #[error("provider deadline expired")]
     Deadline,
     #[error("provider process supervision requires a Unix host")]
@@ -203,6 +205,7 @@ impl ProviderRegistry {
         binding_id: &str,
         request: &ProviderRequest,
         requirements: Option<&ProviderRequirements>,
+        admission: Option<&crate::config::AdmissionSettings>,
         deadline: Instant,
     ) -> Result<ProviderResult, ProviderError> {
         let binding = self
@@ -261,6 +264,7 @@ impl ProviderRegistry {
             &version_request,
             &self.environment_snapshot,
             self.limits,
+            admission,
             deadline,
         )
         .await
@@ -280,6 +284,7 @@ impl ProviderRegistry {
             request,
             &self.environment_snapshot,
             self.limits,
+            admission,
             deadline,
         )
         .await?;

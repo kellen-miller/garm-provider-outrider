@@ -54,6 +54,7 @@ pub(super) struct RecordedRequest {
     pub(super) body: Vec<u8>,
     pub(super) authorization: Option<String>,
     pub(super) signature: Option<String>,
+    pub(super) hook_target: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -208,6 +209,21 @@ pub(super) async fn handle_request(
     request: Request<Incoming>,
     state: Arc<FixtureState>,
 ) -> Result<Response<Full<bytes::Bytes>>, hyper::Error> {
+    // GitHub rejects requests without a valid User-Agent, even with valid auth.
+    if !matches!(state.mode, FixtureMode::GarmPool)
+        && request
+            .headers()
+            .get("user-agent")
+            .and_then(|value| value.to_str().ok())
+            .is_none_or(|value| value.trim().is_empty())
+    {
+        let mut response = Response::new(Full::new(bytes::Bytes::from_static(
+            b"User-Agent header is required",
+        )));
+        *response.status_mut() = StatusCode::FORBIDDEN;
+        return Ok(response);
+    }
+
     let method = request.method().to_string();
     let path = request.uri().path_and_query().map_or_else(
         || request.uri().path().to_owned(),
@@ -223,6 +239,11 @@ pub(super) async fn handle_request(
         .get("x-hub-signature-256")
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
+    let hook_target = request
+        .headers()
+        .get("x-github-hook-installation-target-type")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
     let body = request.into_body().collect().await?.to_bytes().to_vec();
     if let Ok(mut requests) = state.requests.lock() {
         requests.push(RecordedRequest {
@@ -231,6 +252,7 @@ pub(super) async fn handle_request(
             body: body.clone(),
             authorization,
             signature,
+            hook_target,
         });
     }
     let (status, response_body) = match state.mode {
@@ -379,12 +401,17 @@ pub(super) fn handle_garm_request(
             } else if state.force_empty_pool_inventory.load(Ordering::SeqCst) {
                 (200, json!([]))
             } else {
-                let pool = state
+                let mut pool = state
                     .created_pool
                     .lock()
                     .ok()
                     .and_then(|pool| pool.clone())
                     .unwrap_or_else(pool_response);
+                // GARM v0.2.1 lists omit extra_specs; only the detail endpoint returns it.
+                if let Some(fields) = pool.as_object_mut() {
+                    fields.remove("extra_specs");
+                }
+
                 (200, json!([pool]))
             }
         }
@@ -501,6 +528,8 @@ pub(super) fn snapshot_id() -> String {
 }
 
 pub(super) fn draining_pool_snapshot(settings: &IngressSettings) -> PoolSnapshot {
+    let mut retained = settings.clone();
+    retained.garm_api_origin = retained.garm_api_origin.trim_end_matches('/').to_owned();
     let document = outrider::github::SnapshotDocument {
         base_repository: RepositoryRef {
             id: REPOSITORY_ID,
@@ -516,7 +545,7 @@ pub(super) fn draining_pool_snapshot(settings: &IngressSettings) -> PoolSnapshot
         run_attempt: 1,
         job_id: 301,
         commit_sha: SHA.into(),
-        central: config_with_ingress(settings.clone()),
+        central: config_with_ingress(retained),
         repository: ConfigPatch::default(),
         resolved_profile: profile(),
         image_catalogs: vec![],

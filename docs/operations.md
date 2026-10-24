@@ -11,6 +11,15 @@ repository entity's webhook secret must have the same value. Outrider checks
 the signature, then forwards the original signed body and signature to GARM
 without re-signing it. GARM verifies that signature with the repository
 entity's secret ([GARM v0.2.1 source](https://github.com/cloudbase/garm/blob/154638445c3949c1958b01812f69d9a1e4d82684/runner/runner.go#L887-L895)).
+Outrider sets GARM's hook target header to `repository`, matching its pool
+registration scope. GitHub App deliveries use `integration`, which GARM rejects.
+The original headers remain in the inbox; signed body bytes stay unchanged.
+Only jobs carrying a complete Outrider routing label are relayed to GARM.
+Other authenticated deliveries are acknowledged locally. Run-completion events
+still persist terminal barriers and drive Outrider pool cleanup locally.
+Configure a separate GARM webhook for GARM-native jobs outside Outrider.
+The case-insensitive `outrider` label prefix is reserved; malformed request
+labels receive an admission check instead of being silently ignored.
 Set `allow_forks: true` only when an administrator has explicitly approved
 fork workflows; the default is denial. Keep the secret file readable only by
 the daemon account.
@@ -80,6 +89,14 @@ the repository file selects a profile and permitted selector lists only.
 
 ## Explain a live selection
 
+GCP can omit architecture from older machine types such as E2 and N2. For those
+exact machine names, administrators may set `machine_facts.NAME.architecture`
+to `amd64` or `arm64`, with the evidence recorded in that entry's required
+`source`. Verify it against the provider's machine-family documentation.
+Native and attested values must agree when both exist; missing both excludes
+the machine. The image architecture is checked separately. This fact belongs
+in central catalog configuration and cannot be supplied by repository/job overrides.
+
 Run `outrider explain` from a host with access to the configured daemon. With no
 selector it analyzes the current central `default` profile; `--profile NAME`
 selects another current central profile. `--snapshot ID` analyzes the exact
@@ -106,6 +123,32 @@ truncated lists explicitly. Empty or rejected analyses retain their policy and
 catalog diagnostics; they do not imply that unqueried machine shapes were
 evaluated. The report omits provider configuration, credential paths/values,
 child stderr, bootstrap labels, and opaque provider pins.
+
+Collect native VM, disk and allocated IP metadata through the same daemon:
+
+```sh
+outrider inventory --config /etc/outrider/central.yaml
+```
+
+Inventory uses each connected current or retained catalog's verified credentials.
+It includes untagged resources and resources tagged for another controller,
+classifying ownership without exporting tag values or bootstrap data. AWS uses
+the configured region, Azure the subscription, and GCP the configured zone for
+VMs/disks and that zone's region for allocated addresses, including internal
+addresses. Azure VM power state is left unknown. These scopes appear in the JSON;
+unconfigured scopes remain unobserved. Failed requests, malformed identities,
+pagination errors and resource limits fail the report. The command makes no
+cloud changes or journal writes. It requires disk/address read permissions in
+addition to those used for runner selection. Collection spans the reported
+start/end times rather than an atomic cloud snapshot.
+
+This command supplies observations for monitoring. It does not identify or
+delete orphans, save a baseline, schedule comparisons or deliver alarms.
+The versioned report brackets cloud reads with journal-owned allocation snapshots
+and dispatch-history fingerprints. Those snapshots contain only projected native
+scope/path/incarnation, allocation ID and creation time. Private binding/provider
+JSON and arbitrary dependency maps are excluded. Operators consume this API rather
+than reading the journal's private schema.
 
 Administrators can add a dated absolute component price under central
 `effective_prices`. Copy the complete `financial_price_scope` object from a
@@ -196,6 +239,20 @@ provider observations and journaled ownership. A failed List call, empty
 filtered result, or expired TTL does not prove a late create is absent. Do not
 reuse a reserved runner name while its operation is unresolved. Escalate with
 the retained controller, pool, cloud scope, request name, and child evidence.
+
+A successful child return can precede native inventory visibility. Outrider
+repeats empty ownership lookups every two seconds for at most thirty seconds,
+within the original allocation deadline. It dispatches no additional create;
+lookup errors fail immediately and cancellation retains the cleanup fence.
+Unresolved handoffs report returned owned-inventory/same-name counts and a
+redacted rejection category. Adapter ownership filters still apply to those
+counts; they do not describe foreign resources hidden by the adapter.
+
+Azure ownership inventory requests full VM models. The `statusOnly=true`
+projection can omit tags required to establish ownership, as reproduced in
+[Azure's API specification issue](https://github.com/Azure/azure-rest-api-specs/issues/42411).
+Full inventory may omit runtime state; inspect the retained VM identity when
+runtime state is required. Missing ownership tags never count as ownership.
 
 Unresolved cleanup remains owned and counts against allocation limits while
 Outrider retries it with exponential delays from one second up to five minutes.

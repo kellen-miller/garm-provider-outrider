@@ -45,3 +45,6 @@ mod pool_preparation;
 mod snapshot_admission;
 #[path = "allocation_contract/uncertain_create.rs"]
 mod uncertain_create;
+
+#[path = "allocation_contract/administrator_admission.rs"]
+mod administrator_admission;

@@ -6,6 +6,26 @@ use super::{
 };
 use rust_decimal::Decimal;
 
+#[test]
+fn gcp_machine_inventory_accepts_native_bundled_ssd_object() {
+    // Native us-east1-b inventory: an unrelated A4 machine must not prevent
+    // decoding E2 candidates. Google represents bundledLocalSsds as an object.
+    let page: super::ComputeList<GcpMachineType> = serde_json::from_str(
+        r#"{"items":[{"name":"a4-highgpu-8g","guestCpus":224,"memoryMb":4063232,"architecture":"X86_64","accelerators":[{"guestAcceleratorType":"nvidia-b200","guestAcceleratorCount":8}],"bundledLocalSsds":{"defaultInterface":"NVME","partitionCount":32}},{"name":"e2-standard-8","guestCpus":8,"memoryMb":32768,"architecture":"X86_64"}]}"#,
+    )
+    .expect("native machine inventory must deserialize");
+    assert_eq!(page.items.len(), 2);
+    assert_eq!(
+        page.items[0]
+            .bundled_local_ssds
+            .iter()
+            .map(|ssd| ssd.partition_count)
+            .sum::<u32>(),
+        32
+    );
+    assert_eq!(page.items[1].name, "e2-standard-8");
+}
+
 fn sku(pricing_info: Vec<BillingPricingInfo>) -> BillingSku {
     BillingSku {
         name: "services/6F81-5844-456A/skus/test".to_owned(),
@@ -119,7 +139,7 @@ fn gcp_machine_types_require_active_lifecycle() {
         architecture: Some("X86_64".to_owned()),
         is_shared_cpu: false,
         accelerators: Vec::new(),
-        bundled_local_ssds: Vec::new(),
+        bundled_local_ssds: None,
         deprecated: None,
     };
     assert!(machine_type_usable(&active));

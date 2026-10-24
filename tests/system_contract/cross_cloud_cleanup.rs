@@ -406,6 +406,9 @@ async fn tagged_garm_v010_wrapper_process() -> Result<(), Box<dyn std::error::Er
         serde_json::from_str(include_str!("../fixtures/system/bootstrap.json"))?;
     bootstrap["extra_specs"] = pool["extra_specs"].clone();
     bootstrap["pool_id"] = pool["id"].clone();
+    // GARM's Go nil slices marshal as null when optional settings are absent.
+    bootstrap["ssh-keys"] = Value::Null;
+    bootstrap["user_data_options"]["extra_packages"] = Value::Null;
     let bootstrap_path = scenario.fixture.directory.join("wrapper-bootstrap.json");
     fs::write(&bootstrap_path, serde_json::to_vec(&bootstrap)?)?;
     let wrapper_probe = scenario.fixture.directory.join("garm-wrapper-probe");

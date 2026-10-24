@@ -18,6 +18,8 @@ use crate::{
 pub enum PoolError {
     #[error("invalid GARM configuration")]
     Configuration,
+    #[error("administrator allocation admission is closed")]
+    AdmissionClosed,
     #[error("GARM request failed")]
     Request,
     #[error("GARM pool state is ambiguous")]
@@ -93,6 +95,7 @@ pub struct CreatePool {
 /// Immutable inputs used to reconcile one repository-scoped GARM pool.
 pub struct RepositoryPoolRequest<'a> {
     pub snapshot: &'a PoolSnapshot,
+    pub admission: Option<&'a crate::config::AdmissionSettings>,
 }
 
 #[derive(Clone)]
@@ -104,6 +107,15 @@ pub struct GarmClient {
 }
 
 impl GarmClient {
+    pub(crate) fn verify_origin(&self, expected: &str) -> Result<(), PoolError> {
+        let expected = Url::parse(expected).map_err(|_| PoolError::Configuration)?;
+        if self.origin != expected {
+            return Err(PoolError::Configuration);
+        }
+
+        Ok(())
+    }
+
     /// Build the authenticated transport using only the configured GARM origin and token file.
     ///
     /// # Errors
@@ -152,6 +164,10 @@ impl GarmClient {
         request: RepositoryPoolRequest<'_>,
     ) -> Result<GarmPool, PoolError> {
         let snapshot = request.snapshot;
+        if !crate::admission::allocation_is_open(request.admission) {
+            return Err(PoolError::AdmissionClosed);
+        }
+
         if !matches!(
             snapshot.state.as_str(),
             "prepared" | "creating" | "disabled" | "enabled"
@@ -189,9 +205,7 @@ impl GarmClient {
             .get(&document.base_repository_id.to_string())
             .ok_or(PoolError::Configuration)?;
         let repository_id = repository.garm_repository_id.as_str();
-        if self.origin.as_str() != settings.garm_api_origin {
-            return Err(PoolError::Configuration);
-        }
+        self.verify_origin(&settings.garm_api_origin)?;
         let profile = &document.resolved_profile;
         let template_id = repository.template_id;
         if matches!(
@@ -220,7 +234,7 @@ impl GarmClient {
             extra_specs: wanted_extra,
             template_id,
         };
-        let pools = self.repository_pools(repository_id).await?;
+        let pools = self.request_pools(repository_id, token).await?;
         let conflicting = pools.iter().any(|pool| {
             pool.tags.iter().any(|tag| tag.name == token)
                 && !pool_matches(pool, &create, repository_id)
@@ -242,12 +256,16 @@ impl GarmClient {
                 if durable.state != "prepared" {
                     return Err(PoolError::Ambiguous);
                 }
+                if !crate::admission::allocation_is_open(request.admission) {
+                    return Err(PoolError::AdmissionClosed);
+                }
+
                 journal
                     .set_pool_snapshot_state(&snapshot.id, "creating", None)
                     .map_err(|_| PoolError::Request)?;
                 let _create_result = self.post_pool(repository_id, &create).await;
                 let reconciled = self
-                    .repository_pools(repository_id)
+                    .request_pools(repository_id, token)
                     .await?
                     .into_iter()
                     .filter(|pool| pool_matches(pool, &create, repository_id))
@@ -274,6 +292,10 @@ impl GarmClient {
                 .await?;
             return Err(PoolError::Limit);
         }
+        if !crate::admission::allocation_is_open(request.admission) {
+            return Err(PoolError::AdmissionClosed);
+        }
+
         if !pool.enabled {
             let path = format!(
                 "api/v1/repositories/{repository_id}/pools/{}",
@@ -290,6 +312,12 @@ impl GarmClient {
                 .await?;
             return Err(PoolError::Limit);
         }
+        if !crate::admission::allocation_is_open(request.admission) {
+            self.disable_repository_pool(repository_id, &pool.id)
+                .await?;
+            return Err(PoolError::AdmissionClosed);
+        }
+
         journal
             .set_pool_snapshot_state(&snapshot.id, "enabled", Some(&pool.id))
             .map_err(|_| PoolError::Request)?;
@@ -320,18 +348,52 @@ impl GarmClient {
         Ok(state_open && !terminal && current.expires_at > unix_now())
     }
 
-    /// List dynamic pools for one explicitly mapped GARM repository UUID.
+    /// Read complete details for a request's candidate repository pools.
     ///
     /// # Errors
     /// Returns `PoolError` when GARM is unavailable or returns an invalid pool list.
-    pub async fn repository_pools(&self, repository_id: &str) -> Result<Vec<GarmPool>, PoolError> {
+    async fn request_pools(
+        &self,
+        repository_id: &str,
+        request_token: &str,
+    ) -> Result<Vec<GarmPool>, PoolError> {
         let path = format!(
             "api/v1/repositories/{}/pools",
             path_component(repository_id)
         );
         let value: Value = self.request_json(reqwest::Method::GET, &path, None).await?;
         let pools_value = value.get("pools").cloned().unwrap_or(value);
-        serde_json::from_value(pools_value).map_err(|_| PoolError::Request)
+        let summaries: Vec<GarmPool> =
+            serde_json::from_value(pools_value).map_err(|_| PoolError::Request)?;
+        let mut pools = Vec::with_capacity(summaries.len());
+        for summary in summaries {
+            // Empty/missing summary tags require detail before declaring absence.
+            if !summary.tags.is_empty() && !summary.tags.iter().any(|tag| tag.name == request_token)
+            {
+                continue;
+            }
+
+            let path = format!(
+                "api/v1/repositories/{}/pools/{}",
+                path_component(repository_id),
+                path_component(&summary.id)
+            );
+            let Some(detail) = self
+                .request_json_optional(reqwest::Method::GET, &path, None)
+                .await?
+            else {
+                continue;
+            };
+
+            let pool: GarmPool = serde_json::from_value(detail).map_err(|_| PoolError::Request)?;
+            if pool.id != summary.id || !pool.repo_id.eq_ignore_ascii_case(repository_id) {
+                return Err(PoolError::Ambiguous);
+            }
+
+            pools.push(pool);
+        }
+
+        Ok(pools)
     }
 
     /// Delete a pool only when GARM reports no instances and no operations remain.
@@ -417,9 +479,7 @@ impl GarmClient {
             .ingress
             .as_ref()
             .ok_or(PoolError::Configuration)?;
-        if self.origin.as_str() != settings.garm_api_origin {
-            return Err(PoolError::Configuration);
-        }
+        self.verify_origin(&settings.garm_api_origin)?;
         let repository = settings
             .repositories
             .get(&document.base_repository_id.to_string())
@@ -466,7 +526,7 @@ impl GarmClient {
             return Ok(Some(pool_id.to_owned()));
         }
         let matching = self
-            .repository_pools(&repository.garm_repository_id)
+            .request_pools(&repository.garm_repository_id, &snapshot.request_token)
             .await?
             .into_iter()
             .filter(|pool| {
@@ -488,7 +548,8 @@ impl GarmClient {
         Ok(Some(pool.id))
     }
 
-    /// Forward the original signed body and selected original webhook headers to GARM.
+    /// Forward original signed bytes to GARM's repository-scoped webhook handler.
+    /// Header names must be lowercase, as persisted by authenticated intake.
     ///
     /// # Errors
     /// Returns `PoolError` when the configured webhook route cannot accept the event.
@@ -506,14 +567,16 @@ impl GarmClient {
         if url.origin() != self.origin.origin() || !url.path().starts_with(self.origin.path()) {
             return Err(PoolError::Configuration);
         }
-        let mut request = self.client.post(url).body(body.to_vec());
+        // App deliveries say "integration"; these pools always register at repository scope.
+        let mut request = self
+            .client
+            .post(url)
+            .header("x-github-hook-installation-target-type", "repository")
+            .body(body.to_vec());
         for (name, value) in headers {
             if matches!(
                 name.as_str(),
-                "x-github-event"
-                    | "x-github-delivery"
-                    | "x-github-hook-installation-target-type"
-                    | "x-hub-signature-256"
+                "x-github-event" | "x-github-delivery" | "x-hub-signature-256"
             ) {
                 request = request.header(name, value);
             }

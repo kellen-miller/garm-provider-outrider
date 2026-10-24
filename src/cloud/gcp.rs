@@ -37,6 +37,7 @@ mod catalog;
 mod connection;
 mod discovery;
 mod identity;
+mod inventory;
 #[cfg(test)]
 #[path = "gcp/tests.rs"]
 mod tests;
@@ -132,7 +133,7 @@ struct GcpMachineType {
     #[serde(default)]
     accelerators: Vec<GcpMachineAccelerator>,
     #[serde(default)]
-    bundled_local_ssds: Vec<GcpBundledLocalSsd>,
+    bundled_local_ssds: Option<GcpBundledLocalSsd>,
     #[serde(default)]
     deprecated: Option<GcpDeprecated>,
 }

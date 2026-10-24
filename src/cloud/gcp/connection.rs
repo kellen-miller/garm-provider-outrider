@@ -76,6 +76,10 @@ impl GcpBackend {
             || catalog.machine_facts.iter().any(|(name, facts)| {
                 name.is_empty()
                     || facts.source.is_empty()
+                    || facts
+                        .architecture
+                        .as_deref()
+                        .is_some_and(|architecture| !matches!(architecture, "amd64" | "arm64"))
                     || facts.bundled_local_ssd_gib.is_some()
                         != facts.local_ssd_billing_sku.is_some()
                     || facts.bundled_local_ssd_gib.is_some()
