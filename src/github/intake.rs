@@ -212,7 +212,7 @@ impl IngressService {
 
         for message in self
             .journal
-            .pending_outbox(limit)
+            .due_outbox(limit)
             .map_err(|_| IngressError::Journal)?
         {
             let deadline = tokio::time::Instant::now() + self.operation_budget();

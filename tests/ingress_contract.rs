@@ -45,6 +45,8 @@ mod failed_creation_drain;
 mod job_provenance;
 #[path = "ingress_contract/job_terminal_barriers.rs"]
 mod job_terminal_barriers;
+#[path = "ingress_contract/outbox_retry.rs"]
+mod outbox_retry;
 #[path = "ingress_contract/pool_create_fencing.rs"]
 mod pool_create_fencing;
 #[path = "ingress_contract/pool_lifecycle.rs"]

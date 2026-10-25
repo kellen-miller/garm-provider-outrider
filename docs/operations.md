@@ -408,7 +408,21 @@ active create-failure policies follow `missing_data` while that coverage remains
 unknown within the configured window. Current pinned providers do not report a durable
 definitive failed-create outcome that can safely replace this unknown state.
 
-## Journal retention
+## Journal retries and retention
+
+Failed relay/check requests use persisted exponential retry delays of 1, 2, 4,
+8, 16, 32 and at most 60 seconds. Fresh outbox messages remain immediately
+eligible; deferred rows do not consume the dispatch batch limit. Restart retains
+the deadline. Unknown or obsolete deliveries are not discarded to reduce logs.
+The complete pending-outbox inspection still includes deferred intents.
+An already deferred forward can take up to 60 seconds after admission reopens
+to become due. Deadlines use wall-clock seconds; a backwards clock correction
+can extend the wait until the host clock catches up. Keep host time synchronized.
+
+This requires journal schema 16 (one retry deadline column and index). Upgrade
+with a fresh verified backup and one fenced controller. Schema-15 binaries
+cannot open a schema-16 journal. A binary downgrade requires its own reviewed
+recovery procedure; never restore a stale ownership database over live work.
 
 Recovery compacts terminal webhook and outbox headers and bodies after 30 days
 from their terminal transition. It keeps delivery IDs and a SHA-256 digest of

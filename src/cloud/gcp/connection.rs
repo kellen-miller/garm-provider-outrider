@@ -313,7 +313,7 @@ impl GcpBackend {
                 "GCP response exceeded the configured size limit",
             ));
         }
-        let parsed = parse_json_under_deadline(bytes.to_vec(), deadline).await?;
+        let parsed = parse_json_under_deadline(bytes, deadline).await?;
         Ok((parsed, request_id))
     }
 
@@ -418,12 +418,12 @@ pub(super) fn validate_origin(origin: &str) -> Result<(), CloudError> {
 }
 
 pub(super) async fn parse_json_under_deadline<T: for<'de> Deserialize<'de> + Send + 'static>(
-    bytes: Vec<u8>,
+    bytes: impl AsRef<[u8]> + Send + 'static,
     deadline: Instant,
 ) -> Result<T, CloudError> {
     timeout_at(
         deadline,
-        tokio::task::spawn_blocking(move || serde_json::from_slice(&bytes)),
+        tokio::task::spawn_blocking(move || serde_json::from_slice(bytes.as_ref())),
     )
     .await
     .map_err(|_| failure("timeout", "GCP response parsing timed out"))?

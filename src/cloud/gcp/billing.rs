@@ -17,7 +17,13 @@ impl GcpBackend {
     ) -> Result<GcpPriceSet, CloudError> {
         let service = "services/6F81-5844-456A";
         let base = format!("/v1/{service}/skus?pageSize=5000");
-        let mut pages = Vec::new();
+        let zone_region = self
+            .settings
+            .zone
+            .rsplit_once('-')
+            .map(|(region, _)| region)
+            .unwrap_or(&self.settings.zone);
+        let mut rates = Vec::new();
         let mut next: Option<String> = None;
         let mut seen_tokens = BTreeSet::new();
         let mut req_ids = Vec::new();
@@ -30,7 +36,17 @@ impl GcpBackend {
             let (page, request_id): (BillingSkuPage, Option<String>) = self
                 .request_json(&self.settings.billing_endpoint, &path, deadline)
                 .await?;
-            pages.extend(page.skus);
+            // Drop unrelated regional rows before reading the next page. Holding
+            // the worldwide catalog multiplies controller memory for each quote.
+            rates.extend(page.skus.into_iter().filter(|sku| {
+                sku.geo_taxonomy
+                    .as_ref()
+                    .is_some_and(|geo| matches!(geo.r#type, BillingGeoType::Global))
+                    || sku
+                        .service_regions
+                        .iter()
+                        .any(|region| region.eq_ignore_ascii_case(zone_region))
+            }));
             if let Some(id) = request_id {
                 req_ids.push(id);
             }
@@ -45,24 +61,6 @@ impl GcpBackend {
                 ));
             }
         }
-        let zone_region = self
-            .settings
-            .zone
-            .rsplit_once('-')
-            .map(|(region, _)| region)
-            .unwrap_or(&self.settings.zone);
-        let rates = pages
-            .into_iter()
-            .filter(|sku| {
-                sku.geo_taxonomy
-                    .as_ref()
-                    .is_some_and(|geo| matches!(geo.r#type, BillingGeoType::Global))
-                    || sku
-                        .service_regions
-                        .iter()
-                        .any(|region| region.eq_ignore_ascii_case(zone_region))
-            })
-            .collect::<Vec<_>>();
         let market_matches = |sku: &BillingSku| match purchasing {
             "spot" => sku.category.usage_type.eq_ignore_ascii_case("Preemptible"),
             "on_demand" => sku.category.usage_type.eq_ignore_ascii_case("OnDemand"),

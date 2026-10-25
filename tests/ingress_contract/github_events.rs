@@ -81,6 +81,7 @@ pub(super) struct FixtureState {
     pub(super) snapshot_visible_at_create: AtomicBool,
     pub(super) checks: Mutex<Vec<Value>>,
     pub(super) fail_check_after_store: AtomicBool,
+    pub(super) webhook_status: AtomicUsize,
     pub(super) fail_pool_list_after_create: AtomicBool,
     pub(super) terminal_during_pool_create: AtomicBool,
     pub(super) fail_enable_after_store: AtomicBool,
@@ -155,6 +156,7 @@ impl HttpFixture {
             snapshot_visible_at_create: AtomicBool::new(false),
             checks: Mutex::new(Vec::new()),
             fail_check_after_store: AtomicBool::new(false),
+            webhook_status: AtomicUsize::new(200),
             fail_pool_list_after_create: AtomicBool::new(false),
             terminal_during_pool_create: AtomicBool::new(false),
             fail_enable_after_store: AtomicBool::new(false),
@@ -530,7 +532,10 @@ pub(super) fn handle_garm_request(
             }
             (200, json!({}))
         }
-        ("POST", "/webhooks/00000000-0000-0000-0000-000000000901") => (200, json!({})),
+        ("POST", "/webhooks/00000000-0000-0000-0000-000000000901") => (
+            state.webhook_status.load(Ordering::SeqCst) as u16,
+            json!({}),
+        ),
         _ => (404, json!({"error":"not found"})),
     }
 }

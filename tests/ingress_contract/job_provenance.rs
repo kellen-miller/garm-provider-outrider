@@ -43,6 +43,16 @@ async fn rejection_check_remote_commit_reconciles_after_restart() {
 
     let recovered = directory.journal().expect("restart journal");
     let restarted = IngressService::new(config, recovered.clone()).expect("restarted service");
+    // Advance only this synthetic receipt's persisted retry deadline. Restart
+    // must preserve the delay rather than immediately repeating the request.
+    rusqlite::Connection::open(directory.path.join("journal.sqlite3"))
+        .expect("journal inspection")
+        .execute(
+            "UPDATE ingress_outbox SET next_attempt_at=0 WHERE id='check:101:201:1:301'",
+            [],
+        )
+        .expect("make synthetic retry due");
+
     assert_eq!(
         restarted
             .process_pending(1)
