@@ -19,7 +19,8 @@ struct NativeFixture {
 
 impl NativeFixture {
     fn new() -> Result<Self, std::io::Error> {
-        let directory = std::env::temp_dir().join(format!(
+        // Hard-link recursion checks need the executable's filesystem.
+        let directory = std::env::current_exe()?.with_file_name(format!(
             "outrider-native-garm-{}-{}",
             std::process::id(),
             NEXT_DIRECTORY.fetch_add(1, Ordering::Relaxed)
