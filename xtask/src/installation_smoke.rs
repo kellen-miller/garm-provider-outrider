@@ -82,6 +82,8 @@ pub fn check(options: &Options) -> Result<()> {
     native["apiserver"]["bind"] = value("127.0.0.1");
     native["apiserver"]["port"] = value(9980);
     native["apiserver"]["use_tls"] = value(false);
+    fs::write(base.join("gcp-key.json"), r#"{"type":"service_account"}"#)?;
+    protected_mode(&base.join("gcp-key.json"), 0o600)?;
     let mut providers = toml_edit::ArrayOfTables::new();
     for cloud in ["aws", "azure", "gcp"] {
         let child = base.join(format!("{cloud}.toml"));

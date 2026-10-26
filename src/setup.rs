@@ -82,10 +82,10 @@ pub struct SetupReport {
     pub next_step: &'static str,
 }
 
-/// Qualify local artifacts and adopt existing API identities without creating cloud resources.
+/// Qualify local artifacts and optionally register Outrider without making API calls.
 ///
 /// # Errors
-/// Rejects unsafe files, changed pins, unsupported packages or unverified existing identities.
+/// Rejects unsafe files, changed pins, unsupported packages or invalid configuration.
 pub fn setup(options: &SetupOptions) -> Result<SetupReport, SetupError> {
     let package = inspect_package(&options.package).map_err(|_| SetupError::Package)?;
     let configuration = ConfigurationFile::open(&options.config)?;
