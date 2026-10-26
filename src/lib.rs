@@ -1,5 +1,6 @@
 pub mod admission;
 pub mod allocation;
+pub mod authentication;
 pub mod bootstrap;
 pub mod cleanup;
 pub mod cloud;
