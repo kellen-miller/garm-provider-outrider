@@ -12,7 +12,7 @@ use std::{
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpListener,
+    net::{TcpListener, TcpStream},
     task::JoinHandle,
 };
 
@@ -79,7 +79,7 @@ impl Fixture {
 
 impl Drop for Fixture {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.directory);
+        fs::remove_dir_all(&self.directory).expect("remove authentication fixture directory");
     }
 }
 
@@ -135,70 +135,10 @@ impl Server {
         let replies = Arc::clone(&reply);
         let seen = Arc::clone(&requests);
         let task = tokio::spawn(async move {
-            while let Ok((mut stream, _)) = listener.accept().await {
+            while let Ok((stream, _)) = listener.accept().await {
                 let reply = Arc::clone(&replies);
                 let requests = Arc::clone(&seen);
-                tokio::spawn(async move {
-                    let mut bytes = Vec::new();
-                    loop {
-                        let mut chunk = [0; 2048];
-                        let Ok(length) = stream.read(&mut chunk).await else {
-                            return;
-                        };
-                        if length == 0 {
-                            return;
-                        }
-
-                        bytes.extend_from_slice(&chunk[..length]);
-                        if let Some(end) = bytes.windows(4).position(|window| window == b"\r\n\r\n")
-                        {
-                            let header = String::from_utf8_lossy(&bytes[..end]);
-                            let size = header
-                                .lines()
-                                .find_map(|line| {
-                                    line.to_ascii_lowercase()
-                                        .strip_prefix("content-length:")
-                                        .map(str::trim)
-                                        .and_then(|size| size.parse::<usize>().ok())
-                                })
-                                .unwrap_or(0);
-                            if bytes.len() >= end + 4 + size {
-                                break;
-                            }
-                        }
-                    }
-
-                    let request = String::from_utf8_lossy(&bytes).into_owned();
-                    let github = request
-                        .starts_with("POST /github/root/app/installations/456/access_tokens ");
-                    requests.lock().expect("request lock").push(request);
-                    let reply = reply.lock().expect("reply lock").clone();
-                    let (status, body) = if github {
-                        (reply.github_status, reply.github_body)
-                    } else {
-                        (reply.garm_status, reply.garm_body)
-                    };
-                    if github && !reply.github_delay.is_zero() {
-                        tokio::time::sleep(reply.github_delay).await;
-                    }
-
-                    if reply.disconnect {
-                        return;
-                    }
-
-                    let response = if reply.chunked {
-                        format!(
-                            "HTTP/1.1 {status} Fixture\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n{:x}\r\n{body}\r\n0\r\n\r\n",
-                            body.len()
-                        )
-                    } else {
-                        format!(
-                            "HTTP/1.1 {status} Fixture\r\nContent-Length: {}\r\nLocation: /must-not-follow\r\nConnection: close\r\n\r\n{body}",
-                            body.len()
-                        )
-                    };
-                    let _ = stream.write_all(response.as_bytes()).await;
-                });
+                tokio::spawn(Self::respond(stream, reply, requests));
             }
         });
         Ok(Self {
@@ -207,6 +147,82 @@ impl Server {
             requests,
             task,
         })
+    }
+
+    async fn respond(
+        mut stream: TcpStream,
+        reply: Arc<Mutex<Reply>>,
+        requests: Arc<Mutex<Vec<String>>>,
+    ) {
+        let mut bytes = Vec::new();
+        loop {
+            let mut chunk = [0; 2048];
+            let Ok(length) = stream.read(&mut chunk).await else {
+                return;
+            };
+            if length == 0 {
+                return;
+            }
+
+            bytes.extend_from_slice(&chunk[..length]);
+            let Some(end) = bytes.windows(4).position(|window| window == b"\r\n\r\n") else {
+                continue;
+            };
+            let header = String::from_utf8_lossy(&bytes[..end]);
+            let size = header
+                .lines()
+                .find_map(|line| {
+                    line.to_ascii_lowercase()
+                        .strip_prefix("content-length:")
+                        .map(str::trim)
+                        .and_then(|size| size.parse::<usize>().ok())
+                })
+                .unwrap_or(0);
+            if bytes.len() >= end + 4 + size {
+                break;
+            }
+        }
+
+        let request = String::from_utf8_lossy(&bytes).into_owned();
+        let github = request.starts_with("POST /github/root/app/installations/456/access_tokens ");
+        requests.lock().expect("request lock").push(request);
+        let reply = reply.lock().expect("reply lock").clone();
+        let (status, body) = if github {
+            (reply.github_status, reply.github_body)
+        } else {
+            (reply.garm_status, reply.garm_body)
+        };
+        if github && !reply.github_delay.is_zero() {
+            tokio::time::sleep(reply.github_delay).await;
+        }
+
+        if reply.disconnect {
+            return;
+        }
+
+        let response = if reply.chunked {
+            format!(
+                "HTTP/1.1 {status} Fixture\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n{:x}\r\n{body}\r\n0\r\n\r\n",
+                body.len()
+            )
+        } else {
+            format!(
+                "HTTP/1.1 {status} Fixture\r\nContent-Length: {}\r\nLocation: /must-not-follow\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            )
+        };
+        match stream.write_all(response.as_bytes()).await {
+            Ok(()) => {}
+            // Bounded-body and timeout tests deliberately drop their connection.
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::BrokenPipe
+                        | std::io::ErrorKind::ConnectionReset
+                        | std::io::ErrorKind::ConnectionAborted
+                ) => {}
+            Err(error) => panic!("fixture response write failed: {error}"),
+        }
     }
 }
 
