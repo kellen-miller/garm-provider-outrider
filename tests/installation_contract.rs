@@ -11,6 +11,49 @@ use std::{
 
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
+#[test]
+fn installed_setup_repeats_with_its_own_native_registration()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new();
+    let options = fixture.options();
+    install(&options)?;
+    let child = fixture.root.join("aws.toml");
+    write(&child, b"region='us-east-1'\nsubnet_id='subnet-fixture'\n[credentials]\ncredential_type='static'\n[credentials.static]\naccess_key_id='fixture'\nsecret_access_key='fixture'\n", 0o600);
+    let native = fixture.root.join("garm.toml");
+    let native_text = format!(
+        "[apiserver]\nbind='127.0.0.1'\nport=9980\n\n[[provider]]\nname='aws-main'\nprovider_type='external'\n[provider.external]\ninterface_version='v0.1.0'\nprovider_executable={:?}\nconfig_file={:?}\n",
+        options.prefix.join("providers/garm-provider-aws"),
+        child
+    );
+    write(&native, native_text.as_bytes(), 0o600);
+    let mut source = include_str!("../examples/config.toml").parse::<toml_edit::DocumentMut>()?;
+    source.remove("azure_catalog_bindings");
+    source.remove("gcp_catalog_bindings");
+    let selected = source["providers"]
+        .as_array_of_tables_mut()
+        .ok_or("missing providers")?;
+    selected.remove(2);
+    selected.remove(1);
+    source["garm"]["config_file"] = toml_edit::value(native.display().to_string());
+    write(&options.config, source.to_string().as_bytes(), 0o600);
+    let setup = outrider::setup::SetupOptions {
+        config: options.config.clone(),
+        package: options.prefix.clone(),
+        profile: "default".to_owned(),
+        register: true,
+    };
+    outrider::setup::setup(&setup)?;
+    let configured = fs::read(&options.config)?;
+    let registered = fs::read(&native)?;
+    outrider::config::CentralConfig::from_toml(std::str::from_utf8(&configured)?)?
+        .load_native_configuration(&std::env::vars_os().collect())?
+        .normalize_profile(None, "default", None)?;
+    outrider::setup::setup(&setup)?;
+    assert_eq!(fs::read(&options.config)?, configured);
+    assert_eq!(fs::read(&native)?, registered);
+    Ok(())
+}
+
 struct Fixture {
     root: PathBuf,
     package: PathBuf,

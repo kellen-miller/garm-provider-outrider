@@ -333,7 +333,15 @@ fn merge_registration(
         return Ok(());
     }
 
-    providers.push(expected.clone());
+    // Parsed table positions belong to the small registration document. Reusing
+    // them here can interleave its headers with the operator's existing tables.
+    let mut appended = expected.clone();
+    appended.set_position(None);
+    appended["external"]
+        .as_table_mut()
+        .ok_or(SetupError::Configuration)?
+        .set_position(None);
+    providers.push(appended);
     Ok(())
 }
 
