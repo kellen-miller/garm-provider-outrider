@@ -361,7 +361,7 @@ pub(crate) fn seed_job_and_assignment_for_attempt(
     interruption_at: Option<&str>,
     assignment: RerunAssignmentFixture<'_>,
 ) -> String {
-    let mut central = ConfigPatch::from_yaml(include_str!("../../examples/central.yaml"))
+    let mut central = ConfigPatch::from_toml(include_str!("../../examples/central.toml"))
         .unwrap_or_else(|_| panic!("load valid central snapshot config"));
     central.ingress = Some(settings.clone());
     let mut document = super::allocation_harness::snapshot_document(central, assignment.source_id);

@@ -119,6 +119,8 @@ pub fn json_schema() -> Value {
 
         }
     });
+    schema["description"] =
+        json!("Structured data model for central.toml and repository .outrider.toml documents.");
     schema["$defs"]["AdmissionSettings"] = json!({
         "type":"object", "additionalProperties":false,
         "required":["state_file","max_window_seconds"],

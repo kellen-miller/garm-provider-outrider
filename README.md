@@ -18,12 +18,12 @@ make a single SQLite database safe for multiple active daemon processes.
    binaries through your controlled distribution channel. See
    [provider installation](docs/install.md).
 3. Create immutable provider configuration files and record each file's
-   SHA-256. Start from [`examples/central-runtime.yaml`](examples/central-runtime.yaml),
+   SHA-256. Start from [`examples/central-runtime.toml`](examples/central-runtime.toml),
    replace every synthetic value and path, and verify provider-specific
    catalogs against the actual accounts and images. Keep credentials readable
    only by the daemon account.
-4. Run `outrider validate --config /path/to/central.yaml --profile default`,
-   then start `outrider serve --config /path/to/central.yaml` under a service
+4. Run `outrider validate --config /path/to/central.toml --profile default`,
+   then start `outrider serve --config /path/to/central.toml` under a service
    manager that waits for the previous process to exit.
 5. Register Outrider as GARM's external provider using interface `v0.1.0`
    and a separate GARM-facing control config. The control config supplies the
@@ -36,8 +36,8 @@ make a single SQLite database safe for multiple active daemon processes.
 
 The examples use fake account IDs, images, file paths, hashes, and credentials.
 They do not contain production pricing facts or qualify cloud access.
-`examples/central.yaml` is a small profile-normalization example;
-`examples/central-runtime.yaml` shows the complete configuration shape.
+`examples/central.toml` is a small profile-normalization example;
+`examples/central-runtime.toml` shows the complete configuration shape.
 
 ## Request flow
 

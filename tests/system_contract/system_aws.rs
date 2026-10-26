@@ -218,10 +218,13 @@ impl SystemScenario {
         control.database_path = database.display().to_string();
         control.auth_token_file = token_path.display().to_string();
         control.provider_timeout_seconds = provider_timeout_seconds;
-        let config_path = directory.join("system.yaml");
+        let config_path = directory.join("system.toml");
         let mut config_value = serde_json::to_value(&config)?;
         strip_null_configuration_fields(&mut config_value);
-        fs::write(&config_path, serde_yaml_ng::to_string(&config_value)?)?;
+        fs::write(
+            &config_path,
+            toml_edit::ser::to_string_pretty(&config_value)?,
+        )?;
         let daemon = start_daemon(&config_path, &address, &aws.endpoint, &lifecycle_log).await?;
         Ok(Self {
             fixture,

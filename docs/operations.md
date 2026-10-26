@@ -38,7 +38,7 @@ recovery state incomplete.
 Jobs from `push`, `merge_group`, and centrally permitted pull request events
 are supported, along with `workflow_dispatch`, `schedule`, `release`, and
 `repository_dispatch`. Outrider reads the authenticated run attempt and uses
-its exact `head_sha` to fetch `.outrider.yml`; branch and tag names are never
+its exact `head_sha` to fetch `.outrider.toml`; branch and tag names are never
 resolved to a moving tip. The repository's configured fork policy still
 applies to pull request events, and `pull_request_target` remains denied unless
 an administrator explicitly enables forks.
@@ -83,7 +83,7 @@ canonical token with:
 outrider label --token outrider:v1:7:8:1:default:vcpu=4
 ```
 
-Use the exact repository config path `.outrider.yml`. Central configuration
+Use the exact repository config path `.outrider.toml`. Central configuration
 owns provider credentials, hard limits, purchasing policy, and allowed clouds;
 the repository file selects a profile and permitted selector lists only.
 
@@ -104,8 +104,8 @@ retained repository/job snapshot, including its frozen profile and catalog pins,
 after checking snapshot eligibility and current hard limits.
 
 ```sh
-outrider explain --config /etc/outrider/central.yaml --profile linux-large
-outrider explain --config /etc/outrider/central.yaml --snapshot SNAPSHOT_ID
+outrider explain --config /etc/outrider/central.toml --profile linux-large
+outrider explain --config /etc/outrider/central.toml --snapshot SNAPSHOT_ID
 ```
 
 Explain sends an authenticated loopback request to the daemon. It performs the
@@ -127,7 +127,7 @@ child stderr, bootstrap labels, and opaque provider pins.
 Collect native VM, disk and allocated IP metadata through the same daemon:
 
 ```sh
-outrider inventory --config /etc/outrider/central.yaml
+outrider inventory --config /etc/outrider/central.toml
 ```
 
 Inventory uses each connected current or retained catalog's verified credentials.
@@ -152,8 +152,10 @@ than reading the journal's private schema.
 
 Administrators can add a dated absolute component price under central
 `effective_prices`. Copy the complete `financial_price_scope` object from a
-live Explain result into the record; optional fields absent from the report
-must stay absent. Each component rate is the USD hourly total for that exact
+live Explain result into the record as TOML fields under
+`[effective_prices.scope]`; convert its nested objects into nested TOML tables
+as shown below. Optional fields absent from the report must stay absent.
+Each component rate is the USD hourly total for that exact
 component and product, including the configured disk size where the component
 is `disk`. Quote the decimal rate so parsing never passes through binary
 floating point. `source` and `reference` are bounded, administrator-supplied
@@ -169,49 +171,52 @@ The adapter's included-charge flag and quote obligations remain authoritative.
 Some adapters, including GCP, reject incomplete quotes before returning them;
 an effective price cannot supply facts hidden by that adapter-level validation.
 
-```yaml
-effective_prices:
-  - id: negotiated-aws-large-2026q4
-    scope:
-      cloud: aws
-      configured_account: build-account
-      native_account: "123456789012"
-      configured_location: east-ci
-      native_location: us-east-1
-      binding_id: aws-east
-      machine_type: c7i.large
-      os: linux
-      architecture: amd64
-      image_alias: ubuntu-24
-      resolved_image: ami-0123456789abcdef0
-      purchasing: on_demand
-      vcpu: 2
-      memory_gib: 4
-      gpu_count: 0
-      boot_disk_class: gp3
-      boot_disk_gib: 30
-      boot_disk_iops: 3000
-      boot_disk_throughput_mib_s: 125
-      local_scratch_gib: 0
-      launch_facts:
-        cloud: aws
-        facts:
-          availability_zone: us-east-1a
-          subnet_id: subnet-123
-          security_group_ids: []
-          map_public_ip_on_launch: false
-          resolved_image_id: ami-0123456789abcdef0
-          windows_license_included: false
-          root_device_name: /dev/sda1
-          minimum_root_volume_gib: 30
-    component: compute
-    currency: USD
-    hourly_rate: "0.42"
-    source: vendor agreement
-    reference: agreement-section-4
-    observed_at_unix_seconds: 1792600000
-    valid_from_unix_seconds: 1792800000
-    valid_until_unix_seconds: 1800480000
+```toml
+[[effective_prices]]
+component = "compute"
+currency = "USD"
+hourly_rate = "0.42"
+id = "negotiated-aws-large-2026q4"
+observed_at_unix_seconds = 1792600000
+reference = "agreement-section-4"
+source = "vendor agreement"
+valid_from_unix_seconds = 1792800000
+valid_until_unix_seconds = 1800480000
+
+[effective_prices.scope]
+architecture = "amd64"
+binding_id = "aws-east"
+boot_disk_class = "gp3"
+boot_disk_gib = 30
+boot_disk_iops = 3000
+boot_disk_throughput_mib_s = 125
+cloud = "aws"
+configured_account = "build-account"
+configured_location = "east-ci"
+gpu_count = 0
+image_alias = "ubuntu-24"
+local_scratch_gib = 0
+machine_type = "c7i.large"
+memory_gib = 4
+native_account = "123456789012"
+native_location = "us-east-1"
+os = "linux"
+purchasing = "on_demand"
+resolved_image = "ami-0123456789abcdef0"
+vcpu = 2
+
+[effective_prices.scope.launch_facts]
+cloud = "aws"
+
+[effective_prices.scope.launch_facts.facts]
+availability_zone = "us-east-1a"
+map_public_ip_on_launch = false
+minimum_root_volume_gib = 30
+resolved_image_id = "ami-0123456789abcdef0"
+root_device_name = "/dev/sda1"
+security_group_ids = []
+subnet_id = "subnet-123"
+windows_license_included = false
 ```
 
 The example scope is specific to one AWS product; copy the complete matching

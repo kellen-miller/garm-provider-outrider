@@ -1,0 +1,275 @@
+# Synthetic complete configuration shape. Replace every identifier, path,
+# digest, image fact, network value, credential reference, and secret file.
+cost_horizon_seconds = 86400
+default_policy = "economy"
+default_purchasing = "on_demand"
+max_price_age_seconds = 3600
+version = 1
+
+[[aws_catalog_bindings]]
+account_id = "aws-synthetic"
+credential_reference = "provider-binding:aws-main:configuration"
+id = "aws-catalog"
+pricing_location = "US East (N. Virginia)"
+provider_binding_id = "aws-main"
+region = "us-east-1"
+
+[aws_catalog_bindings.images.linux-ci]
+architecture = "amd64"
+capabilities = []
+cloud_init = true
+ec2_launch_agent = false
+image_id = "ami-synthetic"
+os = "linux"
+windows_license_included = false
+
+[aws_catalog_bindings.locations.us-east-1]
+availability_zone = "us-east-1a"
+security_group_ids = ["sg-synthetic"]
+subnet_id = "subnet-synthetic"
+
+[aws_catalog_bindings.storage_classes]
+standard = "gp3"
+
+[[azure_catalog_bindings]]
+account_id = "azure-synthetic"
+credential_reference = "provider-binding:azure-main:configuration"
+id = "azure-catalog"
+pricing_location = "eastus"
+provider_binding_id = "azure-main"
+subscription_id = "00000000-0000-0000-0000-000000000002"
+
+[azure_catalog_bindings.accelerator_facts]
+
+[azure_catalog_bindings.images.linux-ci]
+capabilities = ["cloud-init"]
+image_id = "synthetic-publisher:synthetic-offer:synthetic-sku:1.0.0"
+licensing = "no_additional_software_charge"
+licensing_source = "synthetic image metadata"
+minimum_os_disk_gib = 30
+minimum_os_disk_source = "synthetic image metadata"
+
+[azure_catalog_bindings.locations.eastus]
+location = "eastus"
+vnet_subnet_id = "/subscriptions/synthetic"
+
+[azure_catalog_bindings.storage_classes]
+standard = "StandardSSD_LRS"
+
+[control]
+auth_token_file = "/etc/outrider/provider-token"
+database_path = "/var/lib/outrider/outrider.sqlite3"
+listen_address = "127.0.0.1:9191"
+provider_timeout_seconds = 900
+
+[defaults]
+accounts = [
+    "aws-synthetic",
+    "azure-synthetic",
+    "gcp-synthetic",
+]
+architecture = "amd64"
+capabilities = []
+image = "linux-ci"
+local_scratch_gib = 0
+locations = [
+    "us-east-1",
+    "eastus",
+    "us-central1",
+]
+memory_gib_max = 8
+memory_gib_min = 4
+os = "linux"
+purchasing = "on_demand"
+vcpu_max = 2
+vcpu_min = 2
+
+[defaults.boot_disk]
+class = "standard"
+size_gib = 40
+
+[defaults.machine_types]
+aws = ["m7i.large"]
+azure = ["Standard_D2s_v5"]
+gcp = ["e2-standard-2"]
+
+[[gcp_catalog_bindings]]
+capacity_advice_enabled = false
+credential_reference = "provider-binding:gcp-main:configuration"
+external_ip_billing_sku = "synthetic-ip-sku"
+id = "gcp-catalog"
+pricing_location = "us-central1"
+project_id = "gcp-synthetic"
+provider_binding_id = "gcp-main"
+zone = "us-central1-a"
+
+[gcp_catalog_bindings.accelerator_facts]
+
+[gcp_catalog_bindings.disk_performance.standard]
+base_iops = 3000
+base_throughput_mib_s = 0
+iops_per_gib = 6
+maximum_iops = 80000
+maximum_throughput_mib_s = 1200
+source = "synthetic disk facts"
+throughput_per_gib_mib_s = 0.12
+
+[gcp_catalog_bindings.images.linux-ci]
+architecture = "amd64"
+capabilities = ["cloud-init"]
+capabilities_source = "synthetic image metadata"
+image_id = "projects/synthetic/global/images/linux"
+license_free_source = "synthetic license fact"
+os = "linux"
+os_source = "synthetic image metadata"
+
+[gcp_catalog_bindings.images.linux-ci.license_facts]
+
+[gcp_catalog_bindings.machine_facts.e2-standard-2]
+source = "synthetic machine facts"
+
+[gcp_catalog_bindings.storage_billing_skus]
+standard = "synthetic-storage-sku"
+
+[gcp_catalog_bindings.storage_classes]
+standard = "pd-balanced"
+
+[ingress]
+allocation_timeout_seconds = 600
+bootstrap_timeout_minutes = 30
+controller_id = "00000000-0000-0000-0000-000000000001"
+garm_api_origin = "https://garm.example.invalid"
+garm_token_file = "/etc/outrider/garm-token"
+github_api_origin = "https://api.github.example.invalid"
+github_token_file = "/etc/outrider/github-token"
+max_dynamic_pools = 20
+max_runners_per_pool = 10
+pool_flavor = "outrider-synthetic"
+pool_image = "outrider-synthetic"
+pool_ttl_seconds = 3600
+provider_name = "outrider"
+runner_prefix = "outrider"
+timeout_margin_seconds = 60
+webhook_max_bytes = 1048576
+
+[ingress.repositories."owner/repository"]
+allow_forks = false
+garm_repository_id = "00000000-0000-0000-0000-000000000003"
+webhook_secret_file = "/etc/outrider/webhook-owner-repository"
+
+[limits]
+allowed_accounts = [
+    "aws-synthetic",
+    "azure-synthetic",
+    "gcp-synthetic",
+]
+allowed_architectures = ["amd64"]
+allowed_capabilities = []
+allowed_clouds = [
+    "aws",
+    "azure",
+    "gcp",
+]
+allowed_gpu_models = []
+allowed_gpu_vendors = []
+allowed_images = ["linux-ci"]
+allowed_locations = [
+    "us-east-1",
+    "eastus",
+    "us-central1",
+]
+allowed_os = ["linux"]
+allowed_purchasing = [
+    "on_demand",
+    "spot",
+]
+max_allocations_account = 30
+max_allocations_controller = 100
+max_allocations_pool = 10
+max_boot_disk_gib = 1024
+max_boot_disk_iops = 100000
+max_boot_disk_throughput_mib_s = 1000
+max_gpu_count = 8
+max_gpu_memory_gib = 256
+max_local_scratch_gib = 512
+max_memory_gib = 256
+max_total_cost = 1000
+max_vcpu = 32
+
+[limits.allowed_machine_families]
+
+[limits.allowed_machine_types]
+aws = ["m7i.large"]
+azure = ["Standard_D2s_v5"]
+gcp = ["e2-standard-2"]
+
+[policies.economy.missing_data]
+action = "reject"
+
+[policies.economy.strategy]
+max_price_age_seconds = 600
+strategy = "economy"
+
+[profiles.default]
+
+[[provider_bindings]]
+account = "aws-synthetic"
+cloud = "aws"
+configuration_path = "/etc/outrider/providers/aws.toml"
+configuration_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+executable_path = "/opt/outrider/providers/garm-provider-aws"
+executable_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+expected_version = "3c0e79d"
+id = "aws-main"
+inherited_environment = []
+location = "us-east-1"
+purchasing_capabilities = [
+    "on_demand",
+    "spot",
+]
+source_revision = "3c0e79dddd58ea04b95b163014061dd240d52308"
+supported_architectures = ["amd64"]
+supported_os = ["linux"]
+
+[[provider_bindings]]
+account = "azure-synthetic"
+cloud = "azure"
+configuration_path = "/etc/outrider/providers/azure.toml"
+configuration_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+executable_path = "/opt/outrider/providers/garm-provider-azure"
+executable_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+expected_version = "1065987"
+id = "azure-main"
+inherited_environment = []
+location = "eastus"
+purchasing_capabilities = [
+    "on_demand",
+    "spot",
+]
+source_revision = "10659879c5d91979c7f077439bd78e17622452a6"
+supported_architectures = ["amd64"]
+supported_os = ["linux"]
+
+[[provider_bindings]]
+account = "gcp-synthetic"
+cloud = "gcp"
+configuration_path = "/etc/outrider/providers/gcp.toml"
+configuration_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+executable_path = "/opt/outrider/providers/garm-provider-gcp"
+executable_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+expected_version = "98a362f"
+id = "gcp-main"
+inherited_environment = []
+location = "us-central1-a"
+purchasing_capabilities = [
+    "on_demand",
+    "spot",
+]
+source_revision = "98a362f5319928099b942a668c5a17a34170066a"
+supported_architectures = ["amd64"]
+supported_os = ["linux"]
+
+[reruns]
+actions_write_permission = false
+enabled = false
+max_per_run = 1

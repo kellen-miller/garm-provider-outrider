@@ -13,8 +13,8 @@ async fn explain_remote_bounds_chunked_body_and_uses_analysis_deadline()
     fs::create_dir(&fixture)?;
     let token_path = fixture.join("daemon.token");
     fs::write(&token_path, "explanation-transport-token")?;
-    let central_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/central.yaml");
-    let mut config = ConfigPatch::from_yaml(&fs::read_to_string(central_path)?)?;
+    let central_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/central.toml");
+    let mut config = ConfigPatch::from_toml(&fs::read_to_string(central_path)?)?;
     let control = config.control.as_mut().ok_or("control settings missing")?;
     control.auth_token_file = token_path.display().to_string();
     config.ingress = Some(outrider::config::IngressSettings {

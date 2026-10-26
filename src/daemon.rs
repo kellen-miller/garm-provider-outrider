@@ -50,7 +50,7 @@ struct SafeError {
 /// Returns an error when configuration, journal setup, socket binding, or
 /// server startup fails.
 pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let config = ConfigPatch::from_yaml(&std::fs::read_to_string(config_path)?)?;
+    let config = ConfigPatch::from_toml(&std::fs::read_to_string(config_path)?)?;
     let settings = config
         .control
         .as_ref()

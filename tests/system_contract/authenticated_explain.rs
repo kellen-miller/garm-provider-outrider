@@ -4,7 +4,7 @@ use super::*;
 async fn cli_explain_uses_authenticated_daemon_and_read_only_sdk_analysis()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut scenario = SystemScenario::start().await?;
-    let mut central = ConfigPatch::from_yaml(&fs::read_to_string(&scenario.config_path)?)?;
+    let mut central = ConfigPatch::from_toml(&fs::read_to_string(&scenario.config_path)?)?;
     central.history = Some(outrider::config::HistorySettings {
         window_seconds: 3600,
         sampling_interval_seconds: 60,
@@ -59,7 +59,7 @@ async fn cli_explain_uses_authenticated_daemon_and_read_only_sdk_analysis()
     strip_null_configuration_fields(&mut central_value);
     fs::write(
         &scenario.config_path,
-        serde_yaml_ng::to_string(&central_value)?,
+        toml_edit::ser::to_string_pretty(&central_value)?,
     )?;
     let endpoint = scenario.aws.endpoint.clone();
     scenario.restart(&endpoint).await?;
@@ -136,9 +136,9 @@ async fn cli_explain_uses_authenticated_daemon_and_read_only_sdk_analysis()
     let first_scope: outrider::allocation::FinancialPriceScope =
         serde_json::from_value(report["candidates"][0]["financial_price_scope"].clone())?;
     let scope_json = serde_json::to_value(&first_scope)?;
-    let scope_yaml = serde_yaml_ng::to_string(&scope_json)?;
-    let roundtripped_scope: Value = serde_yaml_ng::from_str(&scope_yaml)?;
-    if roundtripped_scope != scope_json || scope_yaml.contains("null") {
+    let scope_toml = toml_edit::ser::to_string_pretty(&scope_json)?;
+    let roundtripped_scope: Value = toml_edit::de::from_str(&scope_toml)?;
+    if roundtripped_scope != scope_json || scope_toml.contains("null") {
         return Err("financial price scope did not round-trip without null values".into());
     }
     let current_profile = tokio::process::Command::new(env!("CARGO_BIN_EXE_outrider"))

@@ -283,7 +283,7 @@ async fn drained_pool_reconnects_only_live_catalog_scope() -> Result<(), Box<dyn
     connection.execute("UPDATE allocations SET state='ambiguous'", [])?;
     drop(connection);
 
-    let old_config = ConfigPatch::from_yaml(&fs::read_to_string(&scenario.config_path)?)?;
+    let old_config = ConfigPatch::from_toml(&fs::read_to_string(&scenario.config_path)?)?;
     let allocation = scenario
         .fixture
         .journal()

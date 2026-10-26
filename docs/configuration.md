@@ -1,32 +1,36 @@
 # Configuration
 
-The daemon reads one central YAML document. Treat it and every referenced child
+The daemon reads one central TOML document. Treat it and every referenced child
 provider file as an immutable run revision: write new files, calculate their
 SHA-256 digests, then restart the single daemon. Every allocation retains its
 resolved profile and provider/catalog/configuration fingerprints for lifecycle
 calls and cleanup.
 
-Start from [`examples/central-runtime.yaml`](../examples/central-runtime.yaml).
+Start from [`examples/central-runtime.toml`](../examples/central-runtime.toml).
 It shows control settings, hard limits, policy, defaults, provider bindings,
 all three cloud catalogs, and GitHub/GARM ingress in one synthetic file. Its
 paths, hashes, IDs, account facts, images, network values, and pricing facts are
 placeholders; replace them with values verified in the real accounts.
-[`central.yaml`](../examples/central.yaml) is only a small normalization
+[`central.toml`](../examples/central.toml) is only a small normalization
 example and has no provider bindings, cloud catalogs, or ingress.
 
 Run profile normalization with:
 
 ```sh
-outrider validate --config /etc/outrider/central.yaml --profile default
+outrider validate --config /etc/outrider/central.toml --profile default
 ```
 
-This command parses the YAML, rejects unknown fields, and normalizes the named
+This command parses the TOML, rejects unknown fields, and normalizes the named
 profile against central defaults and limits. It does not check whether the
 config is complete enough to serve, whether files/hashes/binaries exist or
 match, whether cloud credentials or catalog facts are valid, whether GARM or
 GitHub is reachable, or whether a guest can bootstrap. `serve` performs runtime
 initialization and requires the full daemon configuration and reachable
 services.
+
+Central and repository documents accept TOML only. Use `version = 1`; omit an
+optional setting instead of assigning `null`. Required workflow and cloud-init
+documents keep their YAML syntax; API payloads and journal snapshots keep JSON.
 
 GARM's external-provider `config_file` must point to this same full central
 configuration. Create requires ingress allocation and bootstrap timeout
@@ -41,7 +45,7 @@ Other provider lifecycle commands continue to use
 1. Central limits define hard ceilings and allowed clouds, accounts, locations,
    machine types, images, operating systems, architectures, capabilities, and
    purchasing modes.
-2. A repository's `.outrider.yml` can select a named profile and replace
+2. A repository's `.outrider.toml` can select a named profile and replace
    permitted selector lists. Central limits remain authoritative.
 3. A job token selects a profile and supplies only explicitly configured,
    canonical overrides. Repository files cannot set credentials, bindings,

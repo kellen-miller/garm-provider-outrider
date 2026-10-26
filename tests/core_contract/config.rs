@@ -10,8 +10,8 @@ use outrider::{
 use rust_decimal::Decimal;
 
 pub(super) fn central_patch() -> Result<ConfigPatch, outrider::config::ConfigError> {
-    ConfigPatch::from_yaml(
-        "version: 1\ncost_horizon_seconds: 86400\nmax_price_age_seconds: 3600\ndefault_purchasing: on_demand\ndefault_policy: economy\npolicies:\n  economy:\n    strategy: {strategy: economy, max_price_age_seconds: 600}\n    missing_data: {action: reject}\nlimits:\n  max_vcpu: 32\n  max_memory_gib: 256\n  max_boot_disk_gib: 1024\n  max_boot_disk_iops: 100000\n  max_boot_disk_throughput_mib_s: 1000\n  max_local_scratch_gib: 512\n  max_gpu_count: 8\n  max_gpu_memory_gib: 256\n  max_allocations_controller: 1000\n  max_allocations_account: 100\n  max_allocations_pool: 25\n  max_total_cost: 1000\n  allowed_clouds: [aws, gcp]\n  allowed_accounts: [shared, build-account, repo-account]\n  allowed_locations: [us-east-1]\n  allowed_machine_types:\n    aws: [m7i.large, m7i.xlarge, c7i.xlarge]\n    gcp: [n2-standard-4]\n  allowed_machine_families: {}\n  allowed_gpu_vendors: []\n  allowed_gpu_models: []\n  allowed_os: [linux]\n  allowed_architectures: [amd64, arm64]\n  allowed_images: [ubuntu-24]\n  allowed_capabilities: [docker]\n  allowed_purchasing: [on_demand, spot]\ndefaults:\n  os: linux\n  architecture: amd64\n  image: ubuntu-24\n  vcpu_min: 4\n  vcpu_max: 8\n  memory_gib_min: 8\n  memory_gib_max: 16\n  machine_types:\n    aws: [m7i.large]\n  accounts: [shared]\n  locations: [us-east-1]\n  boot_disk: {class: gp3, size_gib: 40}\n  local_scratch_gib: 0\n  capabilities: [docker]\nprofiles:\n  build:\n    vcpu_min: 8\n    vcpu_max: 8\n    memory_gib_min: 16\n    memory_gib_max: 16\n    accounts: [build-account]\n    machine_types:\n      aws: [m7i.xlarge]\n      gcp: [n2-standard-4]\n",
+    ConfigPatch::from_toml(
+        "cost_horizon_seconds = 86400\ndefault_policy = \"economy\"\ndefault_purchasing = \"on_demand\"\nmax_price_age_seconds = 3600\nversion = 1\n\n[defaults]\naccounts = [\"shared\"]\narchitecture = \"amd64\"\ncapabilities = [\"docker\"]\nimage = \"ubuntu-24\"\nlocal_scratch_gib = 0\nlocations = [\"us-east-1\"]\nmemory_gib_max = 16\nmemory_gib_min = 8\nos = \"linux\"\nvcpu_max = 8\nvcpu_min = 4\n\n[defaults.boot_disk]\nclass = \"gp3\"\nsize_gib = 40\n\n[defaults.machine_types]\naws = [\"m7i.large\"]\n\n[limits]\nallowed_accounts = [\n    \"shared\",\n    \"build-account\",\n    \"repo-account\",\n]\nallowed_architectures = [\n    \"amd64\",\n    \"arm64\",\n]\nallowed_capabilities = [\"docker\"]\nallowed_clouds = [\n    \"aws\",\n    \"gcp\",\n]\nallowed_gpu_models = []\nallowed_gpu_vendors = []\nallowed_images = [\"ubuntu-24\"]\nallowed_locations = [\"us-east-1\"]\nallowed_os = [\"linux\"]\nallowed_purchasing = [\n    \"on_demand\",\n    \"spot\",\n]\nmax_allocations_account = 100\nmax_allocations_controller = 1000\nmax_allocations_pool = 25\nmax_boot_disk_gib = 1024\nmax_boot_disk_iops = 100000\nmax_boot_disk_throughput_mib_s = 1000\nmax_gpu_count = 8\nmax_gpu_memory_gib = 256\nmax_local_scratch_gib = 512\nmax_memory_gib = 256\nmax_total_cost = 1000\nmax_vcpu = 32\n\n[limits.allowed_machine_families]\n\n[limits.allowed_machine_types]\naws = [\n    \"m7i.large\",\n    \"m7i.xlarge\",\n    \"c7i.xlarge\",\n]\ngcp = [\"n2-standard-4\"]\n\n[policies.economy.missing_data]\naction = \"reject\"\n\n[policies.economy.strategy]\nmax_price_age_seconds = 600\nstrategy = \"economy\"\n\n[profiles.build]\naccounts = [\"build-account\"]\nmemory_gib_max = 16\nmemory_gib_min = 16\nvcpu_max = 8\nvcpu_min = 8\n\n[profiles.build.machine_types]\naws = [\"m7i.xlarge\"]\ngcp = [\"n2-standard-4\"]\n",
     )
 }
 
@@ -233,18 +233,22 @@ fn quote_age_rejects_future_required_observations_and_ignores_included_markers()
 
 #[test]
 fn precedence_replace_lists() {
-    let example_central = ConfigPatch::from_yaml(
+    let runtime =
+        ConfigPatch::from_toml(include_str!("../../examples/central-runtime.toml")).unwrap();
+    assert!(runtime.normalize_profile(None, "default", None).is_ok());
+
+    let example_central = ConfigPatch::from_toml(
         &std::fs::read_to_string(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/examples/central.yaml"
+            "/examples/central.toml"
         ))
         .unwrap(),
     )
     .unwrap();
-    let example_repository = ConfigPatch::from_yaml(
+    let example_repository = ConfigPatch::from_toml(
         &std::fs::read_to_string(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/examples/repository.yaml"
+            "/examples/repository.toml"
         ))
         .unwrap(),
     )
@@ -264,8 +268,8 @@ fn precedence_replace_lists() {
     );
 
     let central = central_patch().unwrap();
-    let local = ConfigPatch::from_yaml(
-        "version: 1\nprofiles:\n  build:\n    accounts: [repo-account]\n    machine_types:\n      aws: [c7i.xlarge]\n",
+    let local = ConfigPatch::from_toml(
+        "version = 1\n\n[profiles.build]\naccounts = [\"repo-account\"]\n\n[profiles.build.machine_types]\naws = [\"c7i.xlarge\"]\n",
     )
     .unwrap();
     let resolved = central
@@ -275,8 +279,8 @@ fn precedence_replace_lists() {
     assert_eq!(resolved.profile.machine_types["aws"], ["c7i.xlarge"]);
     assert_eq!(resolved.profile.machine_types["gcp"], ["n2-standard-4"]);
     assert_eq!(resolved.profile.memory_gib_min, 16);
-    assert!(ConfigPatch::from_yaml("version: 2\n").is_err());
-    assert!(ConfigPatch::from_yaml("profiles: {}\n").is_err());
+    assert!(ConfigPatch::from_toml("version = 2\n").is_err());
+    assert!(ConfigPatch::from_toml("[profiles]\n").is_err());
     let mut missing_version = central.clone();
     missing_version.version = None;
     assert!(
@@ -298,24 +302,29 @@ fn precedence_replace_lists() {
             .maximum_total_cost,
         Some(Decimal::from(5))
     );
-    assert!(ConfigPatch::from_yaml("version: 1\nversion: 1\n").is_err());
-    assert!(ConfigPatch::from_yaml("version: 1\ndefaults: null\n").is_err());
-    assert!(ConfigPatch::from_yaml("version: 1\nnot_a_field: true\n").is_err());
+    assert!(ConfigPatch::from_toml("version = 1\nversion = 1\n").is_err());
+    assert!(ConfigPatch::from_toml("version = 1\ndefaults = null\n").is_err());
+    assert!(ConfigPatch::from_toml("version: 1\n").is_err());
+    assert!(ConfigPatch::from_toml("not_a_field = true\nversion = 1\n").is_err());
     for malformed_policy in [
-        "version: 1\npolicies:\n  economy:\n    strategy: {strategy: economy, max_price_age_seconds: 600, typo: true}\n    missing_data: {action: reject}\n",
-        "version: 1\npolicies:\n  economy:\n    strategy: {strategy: economy, max_price_age_seconds: 600}\n    missing_data: {action: reject, typo: true}\n",
-        "version: 1\npolicies:\n  economy:\n    strategy: {strategy: economy, max_price_age_seconds: 600}\n    missing_data: {action: reject}\n    typo: true\n",
-        "version: 1\npolicies:\n  economy:\n    strategy: {strategy: economy, duration_seconds: 3600, max_price_age_seconds: 600}\n    missing_data: {action: reject}\n",
-        "version: 1\npolicies:\n  weighted:\n    strategy: {strategy: weighted, cost_weight: 1, failure_weight: 0, interruption_weight: 0, latency_weight: 0, cost_scale: 1, interruption_scale: 1, latency_scale: 1, min_samples: 10, max_observation_age_seconds: 600, duration_seconds: 3600, max_price_age_seconds: 600}\n    missing_data: {action: reject}\n",
+        "version = 1\n[policies.economy]\nstrategy = {strategy = 'economy', max_price_age_seconds = 600, typo = true}\nmissing_data = {action = 'reject'}\n",
+        "version = 1\n[policies.economy]\nstrategy = {strategy = 'economy', max_price_age_seconds = 600}\nmissing_data = {action = 'reject', typo = true}\n",
+        "version = 1\n\n[policies.economy.missing_data]\naction = \"reject\"\n\n[policies.economy.strategy]\nmax_price_age_seconds = 600\nstrategy = \"economy\"\ntypo = true\n",
+        "version = 1\n\n[policies.economy.missing_data]\naction = \"reject\"\ntypo = true\n\n[policies.economy.strategy]\nmax_price_age_seconds = 600\nstrategy = \"economy\"\n",
+        "version = 1\n\n[policies.economy]\ntypo = true\n\n[policies.economy.missing_data]\naction = \"reject\"\n\n[policies.economy.strategy]\nmax_price_age_seconds = 600\nstrategy = \"economy\"\n",
+        "version = 1\n\n[policies.economy.missing_data]\naction = \"reject\"\n\n[policies.economy.strategy]\nduration_seconds = 3600\nmax_price_age_seconds = 600\nstrategy = \"economy\"\n",
+        "version = 1\n\n[policies.weighted.missing_data]\naction = \"reject\"\n\n[policies.weighted.strategy]\ncost_scale = 1\ncost_weight = 1\nduration_seconds = 3600\nfailure_weight = 0\ninterruption_scale = 1\ninterruption_weight = 0\nlatency_scale = 1\nlatency_weight = 0\nmax_observation_age_seconds = 600\nmax_price_age_seconds = 600\nmin_samples = 10\nstrategy = \"weighted\"\n",
     ] {
-        assert!(ConfigPatch::from_yaml(malformed_policy).is_err());
+        assert!(matches!(
+            ConfigPatch::from_toml(malformed_policy),
+            Err(outrider::config::ConfigError::UnknownField(_))
+        ));
     }
 }
 
 #[test]
 fn hard_limit_reject() {
-    let local =
-        ConfigPatch::from_yaml("version: 1\nprofiles:\n  build:\n    vcpu_max: 64\n").unwrap();
+    let local = ConfigPatch::from_toml("version = 1\n\n[profiles.build]\nvcpu_max = 64\n").unwrap();
     assert!(matches!(
         central_patch()
             .unwrap()
@@ -341,7 +350,7 @@ fn hard_limit_reject() {
         Err(outrider::config::ConfigError::MissingProfile(_))
     ));
     let cost_bypass =
-        ConfigPatch::from_yaml("version: 1\nprofiles:\n  build:\n    maximum_total_cost: 1001\n")
+        ConfigPatch::from_toml("version = 1\n\n[profiles.build]\nmaximum_total_cost = 1001\n")
             .unwrap();
     assert!(matches!(
         central_patch()
@@ -349,10 +358,9 @@ fn hard_limit_reject() {
             .normalize_profile(Some(&cost_bypass), "build", None),
         Err(outrider::config::ConfigError::HardLimit(_))
     ));
-    let clear_selectors = ConfigPatch::from_yaml(
-        "version: 1\nprofiles:\n  build:\n    accounts: []\n    locations: []\n",
-    )
-    .unwrap();
+    let clear_selectors =
+        ConfigPatch::from_toml("version = 1\n\n[profiles.build]\naccounts = []\nlocations = []\n")
+            .unwrap();
     let mut outside_admin_scope = candidate("outside", Decimal::ONE);
     outside_admin_scope.account = "unlisted-account".to_owned();
     let normalized = central_patch()
@@ -384,7 +392,7 @@ fn hard_limit_reject() {
 #[test]
 fn repository_admin_settings_rejected() {
     let central = central_patch().unwrap();
-    let repository_base = ConfigPatch::from_yaml("version: 1\nprofiles:\n  build: {}\n").unwrap();
+    let repository_base = ConfigPatch::from_toml("version = 1\n\n[profiles.build]\n").unwrap();
     assert!(
         central
             .normalize_profile(Some(&repository_base), "build", None)
@@ -397,7 +405,7 @@ fn repository_admin_settings_rejected() {
         central.normalize_profile(Some(&repository), "build", None),
         Err(outrider::config::ConfigError::ForbiddenOverride(_))
     ));
-    let empty_repository = ConfigPatch::from_yaml("version: 1\neffective_prices: []\n").unwrap();
+    let empty_repository = ConfigPatch::from_toml("effective_prices = []\nversion = 1\n").unwrap();
     assert!(matches!(
         central.normalize_profile(Some(&empty_repository), "build", None),
         Err(outrider::config::ConfigError::ForbiddenOverride(_))

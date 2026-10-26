@@ -618,7 +618,7 @@ pub(super) async fn assert_quote_rejected(backend: &GcpBackend, offer: &CatalogO
 }
 
 pub(super) fn query(purchasing: &str) -> CatalogQuery {
-    let patch = ConfigPatch::from_yaml(include_str!("../../examples/central.yaml"))
+    let patch = ConfigPatch::from_toml(include_str!("../../examples/central.toml"))
         .unwrap_or_else(|_| panic!("central config"));
     let mut profile = patch
         .normalize_profile(None, "linux-large", None)

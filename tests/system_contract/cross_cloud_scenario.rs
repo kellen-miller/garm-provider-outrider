@@ -195,10 +195,13 @@ impl CrossCloudScenario {
         control.database_path = database.display().to_string();
         control.auth_token_file = fixture.directory.join("daemon.token").display().to_string();
         control.provider_timeout_seconds = 5;
-        let config_path = fixture.directory.join("cross-cloud.yaml");
+        let config_path = fixture.directory.join("cross-cloud.toml");
         let mut config_value = serde_json::to_value(&config)?;
         strip_null_configuration_fields(&mut config_value);
-        fs::write(&config_path, serde_yaml_ng::to_string(&config_value)?)?;
+        fs::write(
+            &config_path,
+            toml_edit::ser::to_string_pretty(&config_value)?,
+        )?;
 
         let journal = Arc::new(fixture.journal());
         let services = cross_cloud_services(
@@ -272,7 +275,10 @@ impl CrossCloudScenario {
         }
         let mut config_value = serde_json::to_value(&config)?;
         strip_null_configuration_fields(&mut config_value);
-        fs::write(&self.config_path, serde_yaml_ng::to_string(&config_value)?)?;
+        fs::write(
+            &self.config_path,
+            toml_edit::ser::to_string_pretty(&config_value)?,
+        )?;
 
         let journal = self
             .journal

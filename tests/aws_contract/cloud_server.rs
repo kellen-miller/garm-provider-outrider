@@ -320,7 +320,7 @@ pub(super) async fn aws_backend_with_settings(
 }
 
 pub(super) fn resolved_profile() -> Result<ResolvedRequest, Box<dyn std::error::Error>> {
-    let patch = ConfigPatch::from_yaml(include_str!("../../examples/central.yaml"))?;
+    let patch = ConfigPatch::from_toml(include_str!("../../examples/central.toml"))?;
     let mut resolved = patch.normalize_profile(None, "linux-large", None)?;
     resolved.profile.boot_disk.class = "ssd".to_owned();
     resolved.profile.boot_disk.iops = Some(4000);

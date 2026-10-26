@@ -194,7 +194,7 @@ fn create_requires_a_valid_ingress_timeout_budget_before_connecting() {
 
     let config = write_provider_config(&directory, "127.0.0.1:1", 1).unwrap();
     let complete = fs::read_to_string(&config).unwrap();
-    let control_only = complete.split_once("\ningress:").unwrap().0;
+    let control_only = complete.split_once("\n[ingress]").unwrap().0;
     fs::write(&config, control_only).unwrap();
     let missing = provider_process(
         &config,
@@ -213,9 +213,10 @@ fn create_requires_a_valid_ingress_timeout_budget_before_connecting() {
     );
 
     let config = write_provider_config(&directory, "127.0.0.1:1", 1).unwrap();
-    let invalid_margin = fs::read_to_string(&config)
-        .unwrap()
-        .replace("timeout_margin_seconds: 30", "timeout_margin_seconds: 600");
+    let invalid_margin = fs::read_to_string(&config).unwrap().replace(
+        "timeout_margin_seconds = 30",
+        "timeout_margin_seconds = 600",
+    );
     fs::write(&config, invalid_margin).unwrap();
     let invalid = provider_process(
         &config,
@@ -235,8 +236,8 @@ fn create_requires_a_valid_ingress_timeout_budget_before_connecting() {
 
     let config = write_provider_config(&directory, "127.0.0.1:1", 1).unwrap();
     let overflow = fs::read_to_string(&config).unwrap().replace(
-        "bootstrap_timeout_minutes: 20",
-        "bootstrap_timeout_minutes: 4294967296",
+        "bootstrap_timeout_minutes = 20",
+        "bootstrap_timeout_minutes = 4294967296",
     );
     fs::write(&config, overflow).unwrap();
     let overflow = provider_process(

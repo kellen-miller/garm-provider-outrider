@@ -71,7 +71,7 @@ build checks its exact Go version, source origin, commit, license digest,
 provider version, and host-specific binary digest. It does not contact a cloud
 account.
 
-`outrider validate --config FILE --profile NAME` parses the central YAML and
+`outrider validate --config FILE --profile NAME` parses the central TOML and
 normalizes the selected profile against administrator limits. It does not
 validate runtime completeness, files, hashes, credentials, catalog freshness,
 GitHub/GARM connectivity, or guest execution.

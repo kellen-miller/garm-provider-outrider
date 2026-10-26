@@ -65,11 +65,11 @@ fn insecure_file_directory_symlink_and_hardlink_close_admission() {
 #[test]
 fn admission_settings_reject_invalid_paths_and_bounds() {
     assert!(
-        ConfigPatch::from_yaml(
-            "version: 1\nadmission:\n  state_file: relative.json\n  max_window_seconds: 1800\n"
+        ConfigPatch::from_toml(
+            "version = 1\n\n[admission]\nmax_window_seconds = 1800\nstate_file = \"relative.json\"\n"
         )
         .is_err()
     );
-    assert!(ConfigPatch::from_yaml("version: 1\nadmission:\n  state_file: /run/outrider/admission.json\n  max_window_seconds: 0\n").is_err());
-    assert!(ConfigPatch::from_yaml("version: 1\nadmission:\n  state_file: /run/outrider/admission.json\n  max_window_seconds: 1800\n").is_ok());
+    assert!(ConfigPatch::from_toml("version = 1\n\n[admission]\nmax_window_seconds = 0\nstate_file = \"/run/outrider/admission.json\"\n").is_err());
+    assert!(ConfigPatch::from_toml("version = 1\n\n[admission]\nmax_window_seconds = 1800\nstate_file = \"/run/outrider/admission.json\"\n").is_ok());
 }

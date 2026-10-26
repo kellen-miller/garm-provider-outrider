@@ -287,7 +287,7 @@ pub(super) async fn backend_with_storage_and_licensing(
 }
 
 pub(super) fn profile() -> RunnerProfile {
-    let mut central = ConfigPatch::from_yaml(include_str!("../../examples/central.yaml"))
+    let mut central = ConfigPatch::from_toml(include_str!("../../examples/central.toml"))
         .unwrap_or_else(|_| panic!("central config"));
     let limits = central.limits.as_mut().unwrap_or_else(|| panic!("limits"));
     limits.allowed_clouds.insert("azure".to_owned());

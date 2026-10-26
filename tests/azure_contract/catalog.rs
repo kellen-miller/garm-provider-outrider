@@ -254,8 +254,8 @@ async fn image_licensing_and_purchase_plan() {
         .unwrap_or_else(|_| panic!("quote plan server task"))
         .unwrap_or_else(|_| panic!("quote plan server"));
 
-    let missing = ConfigPatch::from_yaml(
-        "version: 1\nazure_catalog_bindings:\n  - id: a\n    provider_binding_id: p\n    account_id: a\n    subscription_id: s\n    pricing_location: eastus\n    credential_reference: provider-binding:p:configuration\n    locations: {}\n    images:\n      linux:\n        image_id: Canonical:Ubuntu:22:1\n        minimum_os_disk_gib: 1\n        minimum_os_disk_source: source\n        capabilities: []\n    storage_classes: {}\n    accelerator_facts: {}\n",
+    let missing = ConfigPatch::from_toml(
+        "version = 1\n\n[[azure_catalog_bindings]]\naccount_id = \"a\"\ncredential_reference = \"provider-binding:p:configuration\"\nid = \"a\"\npricing_location = \"eastus\"\nprovider_binding_id = \"p\"\nsubscription_id = \"s\"\n\n[azure_catalog_bindings.accelerator_facts]\n\n[azure_catalog_bindings.images.linux]\ncapabilities = []\nimage_id = \"Canonical:Ubuntu:22:1\"\nminimum_os_disk_gib = 1\nminimum_os_disk_source = \"source\"\n\n[azure_catalog_bindings.locations]\n\n[azure_catalog_bindings.storage_classes]\n",
     );
     assert!(
         missing.is_err(),

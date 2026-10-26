@@ -234,7 +234,7 @@ pub(super) fn build_test_services(
         supported_architectures: BTreeSet::from(["amd64".to_owned()]),
         purchasing_capabilities: BTreeSet::from([PurchasingCapability::OnDemand]),
     };
-    let mut config = ConfigPatch::from_yaml(include_str!("../../examples/central.yaml"))
+    let mut config = ConfigPatch::from_toml(include_str!("../../examples/central.toml"))
         .map_err(io::Error::other)?;
     config.control = Some(ControlSettings {
         listen_address: address.to_owned(),
@@ -299,12 +299,12 @@ pub(super) fn build_test_services(
         )]),
         storage_classes: BTreeMap::from([("gp3".to_owned(), "gp3".to_owned())]),
     }]);
-    let config_path = directory.path().join("daemon.yaml");
+    let config_path = directory.path().join("daemon.toml");
     let mut config_value = serde_json::to_value(&config).map_err(io::Error::other)?;
     remove_null_values(&mut config_value);
     fs::write(
         &config_path,
-        serde_json::to_string(&config_value).map_err(io::Error::other)?,
+        toml_edit::ser::to_string_pretty(&config_value).map_err(io::Error::other)?,
     )?;
 
     let aws_catalog = config

@@ -104,7 +104,7 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
         Command::Validate { config, profile } => {
-            let patch = ConfigPatch::from_yaml(&fs::read_to_string(config)?)?;
+            let patch = ConfigPatch::from_toml(&fs::read_to_string(config)?)?;
             patch.normalize_profile(None, &profile, None)?;
             println!("valid: profile {profile}");
         }
@@ -114,7 +114,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             profile,
             snapshot,
         } => {
-            let patch = ConfigPatch::from_yaml(&fs::read_to_string(config)?)?;
+            let patch = ConfigPatch::from_toml(&fs::read_to_string(config)?)?;
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()?;
@@ -129,7 +129,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Command::Inventory { config } => {
-            let patch = ConfigPatch::from_yaml(&fs::read_to_string(config)?)?;
+            let patch = ConfigPatch::from_toml(&fs::read_to_string(config)?)?;
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()?;
