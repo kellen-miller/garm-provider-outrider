@@ -14,6 +14,10 @@ placeholders; replace them with values verified in the real accounts.
 [`central.toml`](../examples/central.toml) is only a small normalization
 example and has no provider bindings, cloud catalogs, or ingress.
 
+The exported installation JSON Schema describes the central document.
+Repository `.outrider.toml` files accept only `version` and `profiles`; their
+parser rejects administrator settings before profile normalization.
+
 Run profile normalization with:
 
 ```sh

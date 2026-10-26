@@ -19,6 +19,8 @@ const TARGETS: &[&str] = &[
 ];
 
 const SYSTEM_CASES: &[&str] = &[
+    "native_configuration::native_sources_own_paths_scopes_and_environment_without_retaining_secrets",
+    "native_configuration::authored_schema_and_parser_reject_duplicate_native_authority",
     "authenticated_explain::cli_explain_uses_authenticated_daemon_and_read_only_sdk_analysis",
     "authenticated_explain::cli_explain_matches_cross_cloud_create_order_without_mutations",
     "price_provenance::central_effective_price_changes_cross_cloud_create_winner_and_explains_provenance",

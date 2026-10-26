@@ -1,5 +1,7 @@
 use serde_json::{Value, json};
 
+/// Describe the authored administrator-owned `central.toml` data model.
+/// Repository documents instead accept only `version` and `profiles`.
 pub fn json_schema() -> Value {
     let mut schema = json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -105,7 +107,7 @@ pub fn json_schema() -> Value {
         }
     });
     schema["description"] =
-        json!("Structured data model for central.toml and repository .outrider.toml documents.");
+        json!("Structured data model for administrator-owned central.toml documents.");
     schema["properties"]["garm"] = json!({"$ref":"#/$defs/GarmSource"});
     schema["properties"]["providers"] =
         json!({"type":"array","items":{"$ref":"#/$defs/ProviderSource"}});
