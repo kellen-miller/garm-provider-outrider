@@ -42,7 +42,8 @@ pub fn check(options: &Options) -> Result<()> {
     let directory = tempfile::Builder::new()
         .prefix("install-smoke-")
         .tempdir_in(root().join("target"))?;
-    let base = directory.path();
+    let canonical = directory.path().canonicalize()?;
+    let base = canonical.as_path();
     let prefix = base.join("installed");
     let config = base.join("config/config.toml");
     let state = base.join("state");
