@@ -19,6 +19,9 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     BuildInfo,
+    Install(outrider::installation::InstallOptions),
+    Setup(outrider::setup::SetupOptions),
+    Doctor(outrider::setup::DoctorOptions),
     Validate {
         #[arg(long)]
         config: PathBuf,
@@ -104,6 +107,28 @@ fn main() -> ExitCode {
 
 fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
+        Command::Install(options) => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&outrider::installation::install(&options)?)?
+            );
+        }
+
+        Command::Setup(options) => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&outrider::setup::setup(&options)?)?
+            );
+        }
+
+        Command::Doctor(options) => {
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()?;
+            let report = runtime.block_on(outrider::setup::doctor(&options))?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+        }
+
         Command::BuildInfo => {
             println!(
                 "{}",

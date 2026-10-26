@@ -10,6 +10,8 @@ mod process;
 mod provider;
 #[path = "control_contract/provider_wire.rs"]
 mod provider_wire;
+#[path = "control_contract/public_ingress.rs"]
+mod public_ingress;
 #[path = "control_contract/restart.rs"]
 mod restart;
 #[path = "control_contract/tombstones.rs"]

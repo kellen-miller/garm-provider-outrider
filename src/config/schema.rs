@@ -109,6 +109,17 @@ pub fn json_schema() -> Value {
     schema["description"] =
         json!("Structured data model for administrator-owned config.toml documents.");
     schema["properties"]["garm"] = json!({"$ref":"#/$defs/GarmSource"});
+    schema["properties"]["webhook_listen_address"] = json!({"type":"string","minLength":1});
+    schema["properties"]["authentication"] = json!({
+        "type":"object", "additionalProperties":false,
+        "required":["github_app_id","github_installation_id","github_private_key_file","garm_credentials_file"],
+        "properties":{
+            "github_app_id":{"type":"integer","minimum":1},
+            "github_installation_id":{"type":"integer","minimum":1},
+            "github_private_key_file":{"type":"string","pattern":"^/"},
+            "garm_credentials_file":{"type":"string","pattern":"^/"}
+        }
+    });
     schema["properties"]["providers"] =
         json!({"type":"array","items":{"$ref":"#/$defs/ProviderSource"}});
     schema["$defs"]["GarmSource"] = json!({
@@ -117,7 +128,7 @@ pub fn json_schema() -> Value {
     });
     schema["$defs"]["ProviderSource"] = json!({
         "type":"object","additionalProperties":false,
-        "required":["name","cloud","executable_sha256","configuration_sha256","source_revision","expected_version","supported_os","supported_architectures","purchasing_capabilities"],
+        "required":["name","cloud"],
         "properties":{
             "name":{"type":"string","minLength":1},"cloud":{"enum":["aws","azure","gcp"]},
             "executable_sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},

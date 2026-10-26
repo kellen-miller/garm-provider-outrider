@@ -5,6 +5,15 @@ default_policy = "economy"
 default_purchasing = "on_demand"
 max_price_age_seconds = 3600
 version = 1
+# Containers may expose signed webhooks separately; provider/control stays loopback.
+# webhook_listen_address = "0.0.0.0:8080"
+
+# Daemon-owned renewal; reference protected existing credentials, never inline secrets.
+[authentication]
+github_app_id = 1
+github_installation_id = 1
+github_private_key_file = "/etc/outrider/github-app.pem"
+garm_credentials_file = "/etc/outrider/garm-credentials.json"
 
 [[aws_catalog_bindings]]
 account_id = "aws-synthetic"
@@ -48,7 +57,7 @@ minimum_os_disk_source = "synthetic image metadata"
 standard = "StandardSSD_LRS"
 
 [control]
-auth_token_file = "/etc/outrider/provider-token"
+auth_token_file = "/var/lib/outrider/control.token"
 database_path = "/var/lib/outrider/outrider.sqlite3"
 listen_address = "127.0.0.1:9191"
 provider_timeout_seconds = 900
@@ -127,11 +136,12 @@ standard = "pd-balanced"
 [ingress]
 allocation_timeout_seconds = 600
 bootstrap_timeout_minutes = 30
-controller_id = "00000000-0000-0000-0000-000000000001"
-garm_api_origin = "https://garm.example.invalid"
-garm_token_file = "/etc/outrider/garm-token"
-github_api_origin = "https://api.github.example.invalid"
-github_token_file = "/etc/outrider/github-token"
+controller_id = ""
+# setup derives the local origin from native GARM apiserver settings when empty.
+garm_api_origin = ""
+garm_token_file = "/var/lib/outrider/tokens/garm.token"
+github_api_origin = "https://api.github.com/"
+github_token_file = "/var/lib/outrider/tokens/github.token"
 max_dynamic_pools = 20
 max_runners_per_pool = 10
 pool_flavor = "outrider-synthetic"
@@ -144,7 +154,7 @@ webhook_max_bytes = 1048576
 
 [ingress.repositories."owner/repository"]
 allow_forks = false
-garm_repository_id = "00000000-0000-0000-0000-000000000003"
+garm_repository_id = ""
 webhook_secret_file = "/etc/outrider/webhook-owner-repository"
 
 [limits]
@@ -204,45 +214,15 @@ strategy = "economy"
 
 [[providers]]
 cloud = "aws"
-configuration_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
-executable_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
-expected_version = "3c0e79d"
 name = "aws-main"
-purchasing_capabilities = [
-    "on_demand",
-    "spot",
-]
-source_revision = "3c0e79dddd58ea04b95b163014061dd240d52308"
-supported_architectures = ["amd64"]
-supported_os = ["linux"]
 
 [[providers]]
 cloud = "azure"
-configuration_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
-executable_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
-expected_version = "1065987"
 name = "azure-main"
-purchasing_capabilities = [
-    "on_demand",
-    "spot",
-]
-source_revision = "10659879c5d91979c7f077439bd78e17622452a6"
-supported_architectures = ["amd64"]
-supported_os = ["linux"]
 
 [[providers]]
 cloud = "gcp"
-configuration_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
-executable_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
-expected_version = "98a362f"
 name = "gcp-main"
-purchasing_capabilities = [
-    "on_demand",
-    "spot",
-]
-source_revision = "98a362f5319928099b942a668c5a17a34170066a"
-supported_architectures = ["amd64"]
-supported_os = ["linux"]
 
 [reruns]
 actions_write_permission = false

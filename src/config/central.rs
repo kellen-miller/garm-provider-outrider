@@ -28,6 +28,8 @@ pub struct CentralConfig {
     pub max_price_age_seconds: Option<u64>,
     pub history: Option<HistorySettings>,
     pub control: Option<ControlSettings>,
+    pub authentication: Option<crate::authentication::TokenRenewalConfig>,
+    pub webhook_listen_address: Option<String>,
     pub admission: Option<AdmissionSettings>,
     pub aws_catalog_bindings: Option<Vec<AwsCatalogSource>>,
     pub azure_catalog_bindings: Option<Vec<AzureCatalogSource>>,
@@ -51,12 +53,19 @@ pub struct GarmSource {
 pub struct ProviderSource {
     pub name: String,
     pub cloud: String,
+    #[serde(default)]
     pub executable_sha256: String,
+    #[serde(default)]
     pub configuration_sha256: String,
+    #[serde(default)]
     pub source_revision: String,
+    #[serde(default)]
     pub expected_version: String,
+    #[serde(default)]
     pub supported_os: BTreeSet<String>,
+    #[serde(default)]
     pub supported_architectures: BTreeSet<String>,
+    #[serde(default)]
     pub purchasing_capabilities: BTreeSet<PurchasingCapability>,
 }
 

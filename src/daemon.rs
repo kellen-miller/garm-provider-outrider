@@ -30,7 +30,6 @@ type AuthMac = Hmac<Sha256>;
 struct DaemonState {
     auth_token: Arc<Vec<u8>>,
     allocation: Arc<AllocationService>,
-    ingress: Arc<IngressService>,
 }
 
 #[derive(Serialize)]
@@ -51,8 +50,15 @@ struct SafeError {
 /// server startup fails.
 pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let environment = std::env::vars_os().collect::<BTreeMap<_, _>>();
-    let config = CentralConfig::from_toml(&std::fs::read_to_string(config_path)?)?
-        .load_native_configuration(&environment)?;
+    let mut source = CentralConfig::from_toml(&std::fs::read_to_string(config_path)?)?;
+    let authentication = source.authentication.take();
+    let webhook_address = source
+        .webhook_listen_address
+        .take()
+        .map(|address| address.parse::<SocketAddr>())
+        .transpose()
+        .map_err(|_| "webhook_listen_address must be a socket address")?;
+    let mut config = source.load_native_configuration(&environment)?;
     let settings = config
         .control
         .as_ref()
@@ -62,6 +68,20 @@ pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>>
     if token.trim_ascii().is_empty() {
         return Err("internal auth token file is empty".into());
     }
+
+    let renewal = if let Some(authentication) = authentication {
+        let ingress_settings = config
+            .ingress
+            .as_ref()
+            .ok_or("ingress settings are required")?;
+        let renewal =
+            crate::authentication::TokenRenewal::connect(authentication, ingress_settings).await?;
+        let resolved = crate::setup::adoption::resolve_identities(ingress_settings).await?;
+        config.ingress = Some(resolved);
+        Some(renewal)
+    } else {
+        None
+    };
 
     let journal = Journal::open(Path::new(&settings.database_path))?;
     let journal = Arc::new(journal);
@@ -74,7 +94,29 @@ pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>>
         journal,
     ));
     recovery.startup()?;
+    let listener = tokio::net::TcpListener::bind(address).await?;
+    let public_listener = if let Some(address) = webhook_address {
+        Some(tokio::net::TcpListener::bind(address).await?)
+    } else {
+        None
+    };
+    let public_app = build_webhook_router(ingress.clone());
     let app = build_router(token.trim_ascii().to_vec(), allocation, ingress)?;
+    if let Some(mut renewal) = renewal {
+        tokio::spawn(async move {
+            loop {
+                let delay = match renewal.refresh_due().await {
+                    Ok(delay) => delay,
+                    Err(error) => {
+                        eprintln!("outrider authentication: {error}");
+                        renewal.report().next_refresh_in
+                    }
+                };
+                tokio::time::sleep(delay).await;
+            }
+        });
+    }
+
     tokio::spawn(async move {
         loop {
             if recovery.iteration(32).await.is_err() {
@@ -83,8 +125,14 @@ pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>>
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
     });
-    let listener = tokio::net::TcpListener::bind(address).await?;
-    axum::serve(listener, app).await?;
+    if let Some(public_listener) = public_listener {
+        tokio::try_join!(async { axum::serve(listener, app).await }, async {
+            axum::serve(public_listener, public_app).await
+        })?;
+    } else {
+        axum::serve(listener, app).await?;
+    }
+
     Ok(())
 }
 
@@ -173,15 +221,21 @@ pub fn build_router(
     let state = DaemonState {
         auth_token: Arc::new(auth_token),
         allocation,
-        ingress,
     };
     Ok(Router::new()
-        .route("/health", get(health))
-        .route("/v1/webhooks/github", post(github_webhook))
         .route("/v1/provider", post(provider))
         .route("/v1/explain", post(explain))
         .route("/v1/inventory", post(inventory))
-        .with_state(state))
+        .with_state(state)
+        .merge(build_webhook_router(ingress)))
+}
+
+/// Public ingress contains no provider/control routes or bearer credentials.
+pub fn build_webhook_router(ingress: Arc<IngressService>) -> Router {
+    Router::new()
+        .route("/health", get(health))
+        .route("/v1/webhooks/github", post(github_webhook))
+        .with_state(ingress)
 }
 
 fn validate_settings(settings: &ControlSettings) -> Result<SocketAddr, &'static str> {
@@ -335,7 +389,7 @@ async fn explain(
 }
 
 async fn github_webhook(
-    State(state): State<DaemonState>,
+    State(ingress): State<Arc<IngressService>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> StatusCode {
@@ -354,7 +408,7 @@ async fn github_webhook(
                 .map(|value| (name.as_str().to_owned(), value.to_owned()))
         })
         .collect::<BTreeMap<_, _>>();
-    match state.ingress.intake(
+    match ingress.intake(
         header("x-github-event"),
         header("x-github-delivery"),
         header("x-hub-signature-256"),
