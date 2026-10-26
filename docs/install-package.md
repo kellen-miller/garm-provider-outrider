@@ -28,6 +28,9 @@ sudo tar -xzf outrider-1.2.3-linux-amd64.tar.gz -C /opt/outrider-packages/1.2.3
 
 The checksum and manifest detect changed bytes. They do not authenticate their
 publisher. Trust the release source and its CI identity/provenance separately.
+Root installation requires root-owned ancestors without group/world write
+access. Extract into a protected system directory; running `sudo install` on a
+package beneath a user-owned home directory is rejected.
 `build-info` reports embedded `version`, `source_revision`, `host`, and `dirty`.
 A package requires a clean full source SHA matching its binary and semver.
 `--version` and GARM `GetVersion` report that same embedded version.

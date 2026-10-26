@@ -138,9 +138,10 @@ jobs:
           sha256sum "$archive" > "$archive.sha256"
       - name: Verify documented root installation
         run: |
-          root_install="$(sudo mktemp -d /opt/outrider-install-XXXXXX)"
+          root_install="$(sudo mktemp -d /var/lib/outrider-install-XXXXXX)"
           sudo mkdir "$root_install/package"
           sudo tar -xzf "$ARCHIVES/outrider-$OUTRIDER_VERSION-linux-amd64.tar.gz" -C "$root_install/package"
+          sudo stat -c '%a %u:%g %n' / /var /var/lib "$root_install" "$root_install/package"
           sudo "$root_install/package/bin/outrider" install --package "$root_install/package" --prefix "$root_install/installed" --config "$root_install/config/config.toml" --state "$root_install/state" --systemd-unit "$root_install/outrider.service" --uid "$(id -u)" --gid "$(id -g)"
           sudo "$root_install/package/bin/outrider" install --package "$root_install/package" --prefix "$root_install/installed" --config "$root_install/config/config.toml" --state "$root_install/state" --systemd-unit "$root_install/outrider.service" --uid "$(id -u)" --gid "$(id -g)"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
