@@ -19,6 +19,39 @@ The exported installation JSON Schema describes the central document.
 Repository `.outrider.toml` files accept only `version` and `profiles`; their
 parser rejects administrator settings before profile normalization.
 
+For packaged installations, configure provider `name` and `cloud`, then run
+`outrider setup`. It fills binary/configuration hashes, source versions and
+default Linux amd64 qualification fields from the verified package. Explicit
+platform qualification settings remain available for other runner platforms.
+Changing an established pin requires a new immutable configuration revision;
+setup preserves the previous one for allocation cleanup.
+
+`[authentication]` contains `github_app_id`, `github_installation_id`,
+`github_private_key_file` and `garm_credentials_file`. The last file is protected
+JSON containing the existing GARM administrator's `username` and `password`.
+The daemon owns managed token files and renews them before expiry; there is no
+external renewal timer. Authentication settings never enter allocation snapshots.
+GARM cannot export the original App key or webhook secret through its API.
+
+Repository entries may initially use `owner/repository` keys and empty
+`garm_repository_id`; an empty `ingress.controller_id` also enables discovery.
+The daemon verifies existing GARM/GitHub identities and resolves numeric IDs in
+memory before accepting work. It does not create repositories, replace their
+credentials, change controller URLs or rewrite authored configuration.
+
+`webhook_listen_address` optionally opens a second listener with only `/health`
+and signed `/v1/webhooks/github`. Containers can use `0.0.0.0:8080` while
+`control.listen_address` stays loopback-only. Provider, explanation and inventory
+routes are absent from the public listener.
+
+After editing configuration, restart the daemon before running `doctor --online`.
+Doctor checks the running daemon's loaded configuration digest and rejects stale
+configuration before reporting live selection results.
+
+Catalog and price discovery uses live APIs with the configured freshness rules.
+Outrider ships no catalog snapshots. Missing API facts require explicit operator
+input or a documented safe configuration default; missing prices never become zero.
+
 Run profile normalization with:
 
 ```sh

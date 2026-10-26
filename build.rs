@@ -4,7 +4,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-env-changed=OUTRIDER_VERSION");
     let root =
         PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("manifest directory required")?);
-    println!("cargo:rerun-if-changed={}", root.display());
+    // Watch tracked inputs and Git metadata, not target/ or local agent evidence.
+    // Package assembly independently requires the current checkout to be clean.
     let git = |args: &[&str]| {
         Command::new("git")
             .args(args)

@@ -370,6 +370,7 @@ impl Drop for InstallationTransaction {
             return;
         }
 
+        let mut incomplete = false;
         for entry in self.entries.iter().rev() {
             if !entry.still_owned() {
                 continue;
@@ -377,7 +378,7 @@ impl Drop for InstallationTransaction {
 
             // SAFETY: rollback is restricted to names created by this transaction
             // under held parent descriptors; existing directories are never listed.
-            unsafe {
+            let removed = unsafe {
                 libc::unlinkat(
                     entry.parent.as_raw_fd(),
                     entry.name.as_ptr(),
@@ -386,20 +387,28 @@ impl Drop for InstallationTransaction {
                     } else {
                         0
                     },
-                );
-            }
+                )
+            };
+            incomplete |= removed != 0;
 
-            let _ = entry.parent.sync_all();
+            incomplete |= entry.parent.sync_all().is_err();
         }
 
         for original in self.adopted_directories.iter().rev() {
-            let _ = set_identity(
+            incomplete |= set_identity(
                 &original.directory,
                 original.uid,
                 original.gid,
                 original.mode,
+            )
+            .is_err();
+            incomplete |= original.directory.sync_all().is_err();
+        }
+
+        if incomplete {
+            eprintln!(
+                "outrider installation rollback is incomplete; inspect the requested destinations"
             );
-            let _ = original.directory.sync_all();
         }
     }
 }

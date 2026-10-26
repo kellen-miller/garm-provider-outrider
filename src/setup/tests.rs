@@ -47,6 +47,6 @@ impl ProtectedDirectory {
 
 impl Drop for ProtectedDirectory {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.path);
+        fs::remove_dir_all(&self.path).expect("remove setup fixture");
     }
 }

@@ -9,7 +9,7 @@ use axum::{
 };
 
 use hmac::{Hmac, KeyInit, Mac};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::Sha256;
 
@@ -30,6 +30,7 @@ type AuthMac = Hmac<Sha256>;
 struct DaemonState {
     auth_token: Arc<Vec<u8>>,
     allocation: Arc<AllocationService>,
+    configuration_sha256: String,
 }
 
 #[derive(Serialize)]
@@ -42,6 +43,11 @@ struct SafeError {
     error: &'static str,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct ConfigurationStatus {
+    pub configuration_sha256: String,
+}
+
 /// Start the loopback provider daemon and serve health and provider requests.
 ///
 /// # Errors
@@ -50,7 +56,9 @@ struct SafeError {
 /// server startup fails.
 pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let environment = std::env::vars_os().collect::<BTreeMap<_, _>>();
-    let mut source = CentralConfig::from_toml(&std::fs::read_to_string(config_path)?)?;
+    let authored = std::fs::read_to_string(config_path)?;
+    let configuration_sha256 = hex::encode(<Sha256 as sha2::Digest>::digest(authored.as_bytes()));
+    let mut source = CentralConfig::from_toml(&authored)?;
     let authentication = source.authentication.take();
     let webhook_address = source
         .webhook_listen_address
@@ -101,7 +109,12 @@ pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>>
         None
     };
     let public_app = build_webhook_router(ingress.clone());
-    let app = build_router(token.trim_ascii().to_vec(), allocation, ingress)?;
+    let app = build_router(
+        token.trim_ascii().to_vec(),
+        allocation,
+        ingress,
+        configuration_sha256,
+    )?;
     if let Some(mut renewal) = renewal {
         tokio::spawn(async move {
             loop {
@@ -160,6 +173,17 @@ pub async fn inventory_remote(
     control_request(settings, ingress, "inventory", &(), 32 * 1024 * 1024).await
 }
 
+/// Identify the configuration actually loaded by the authenticated daemon.
+///
+/// # Errors
+/// Returns an error when authenticated control transport or response validation fails.
+pub async fn configuration_status_remote(
+    settings: &ControlSettings,
+    ingress: &IngressSettings,
+) -> Result<ConfigurationStatus, Box<dyn std::error::Error>> {
+    control_request(settings, ingress, "status", &(), 1024).await
+}
+
 async fn control_request<Request: serde::Serialize, Report: serde::de::DeserializeOwned>(
     settings: &ControlSettings,
     ingress: &IngressSettings,
@@ -214,18 +238,26 @@ pub fn build_router(
     auth_token: Vec<u8>,
     allocation: Arc<AllocationService>,
     ingress: Arc<IngressService>,
+    configuration_sha256: String,
 ) -> Result<Router, &'static str> {
-    if auth_token.is_empty() {
-        return Err("internal auth token is required");
+    if auth_token.is_empty()
+        || configuration_sha256.len() != 64
+        || !configuration_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit())
+    {
+        return Err("internal auth token and source configuration digest are required");
     }
     let state = DaemonState {
         auth_token: Arc::new(auth_token),
         allocation,
+        configuration_sha256,
     };
     Ok(Router::new()
         .route("/v1/provider", post(provider))
         .route("/v1/explain", post(explain))
         .route("/v1/inventory", post(inventory))
+        .route("/v1/status", post(configuration_status))
         .with_state(state)
         .merge(build_webhook_router(ingress)))
 }
@@ -263,6 +295,24 @@ fn validate_settings(settings: &ControlSettings) -> Result<SocketAddr, &'static 
 
 async fn health() -> Json<HealthResponse> {
     Json(HealthResponse { status: "ready" })
+}
+
+async fn configuration_status(
+    State(state): State<DaemonState>,
+    headers: HeaderMap,
+) -> Result<Json<ConfigurationStatus>, (StatusCode, Json<SafeError>)> {
+    if !authorized(&headers, &state.auth_token) {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(SafeError {
+                error: "unauthorized",
+            }),
+        ));
+    }
+
+    Ok(Json(ConfigurationStatus {
+        configuration_sha256: state.configuration_sha256,
+    }))
 }
 
 async fn inventory(

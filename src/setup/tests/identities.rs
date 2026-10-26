@@ -3,6 +3,7 @@ use crate::{
     config::{CentralConfig, IngressRepository, IngressSettings},
     setup::{SetupError, adoption::resolve_identities},
 };
+
 use axum::{
     Json, Router,
     extract::State,
@@ -10,6 +11,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::any,
 };
+
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::{
@@ -81,6 +83,7 @@ impl IdentityFixture {
             requests: Arc::new(Mutex::new(Vec::new())),
             statuses: Arc::new(Mutex::new(BTreeMap::new())),
         };
+
         let router = Router::new()
             .fallback(any(read_identity))
             .with_state(api.clone());
@@ -114,6 +117,7 @@ impl IdentityFixture {
                 },
             )]),
         };
+
         Self {
             directory,
             settings,

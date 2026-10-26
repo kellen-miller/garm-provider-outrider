@@ -64,6 +64,10 @@ pub enum SetupError {
     Identity,
     #[error("online doctor requires the running daemon and an eligible live-priced candidate")]
     LiveSelection,
+    #[error(
+        "daemon loaded a different configuration revision; restart it before running online doctor"
+    )]
+    StaleDaemon,
     #[error(transparent)]
     Authentication(#[from] crate::authentication::AuthError),
 }

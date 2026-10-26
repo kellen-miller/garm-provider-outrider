@@ -1,5 +1,10 @@
 # Provider installation
 
+Start with the [add-on package](install-package.md) or
+[container deployment](install-container.md) for an existing GARM controller.
+Those paths supply executables and installation tooling. The build instructions
+below are for source builders and custom distribution channels.
+
 Outrider delegates cloud mutations and guest bootstrap to the pinned GARM AWS,
 Azure, and GCP provider executables in [`providers/manifest.json`](../providers/manifest.json).
 Build and install those executables for the GARM controller host. Outrider's

@@ -13,9 +13,10 @@ these commands. No credentials, catalogs, prices or machine snapshots belong in
 the image context.
 
 ```sh
-docker build --platform linux/amd64 \
-  --file /absolute/checkout/packaging/Dockerfile \
-  --tag outrider:local /absolute/verified-package
+mkdir /absolute/image-context
+cp /absolute/checkout/packaging/Dockerfile /absolute/image-context/Dockerfile
+cp -a /absolute/verified-package /absolute/image-context/package
+docker build --platform linux/amd64 --tag outrider:local /absolute/image-context
 docker run --rm --platform linux/amd64 outrider:local build-info
 ```
 

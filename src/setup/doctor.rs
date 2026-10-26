@@ -51,11 +51,22 @@ pub async fn doctor(options: &DoctorOptions) -> Result<DoctorReport, SetupError>
         eligible_live_candidates: None,
         runner_execution_verified: false,
         notes: vec![
-            "Hidden webhook secret equality and real guest execution require a signed live trial.",
+            "Hidden App-key/webhook-secret agreement and real guest execution require a signed live trial.",
             "Check GitHub App Contents read and Checks write; read-only API checks cannot prove all write permissions.",
         ],
     };
     if options.online {
+        let status = crate::daemon::configuration_status_remote(
+            config.control.as_ref().ok_or(SetupError::Configuration)?,
+            config.ingress.as_ref().ok_or(SetupError::Configuration)?,
+        )
+        .await
+        .map_err(|_| SetupError::LiveSelection)?;
+        let expected = hex::encode(<sha2::Sha256 as sha2::Digest>::digest(file.bytes()));
+        if status.configuration_sha256 != expected {
+            return Err(SetupError::StaleDaemon);
+        }
+
         adoption::resolve_identities(config.ingress.as_ref().ok_or(SetupError::Configuration)?)
             .await?;
         let explanation = crate::daemon::explain_remote(

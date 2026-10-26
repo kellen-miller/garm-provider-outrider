@@ -1,7 +1,4 @@
-#[path = "../src/installation.rs"]
-mod installation;
-
-use installation::{
+use outrider::installation::{
     InstallOptions, PackageFile, PackageManifest, PackageProvider, inspect_package, install,
 };
 use sha2::{Digest, Sha256};
@@ -23,15 +20,17 @@ struct Fixture {
 impl Fixture {
     fn new() -> Self {
         let root = std::env::current_dir()
-            .unwrap()
+            .unwrap_or_else(|error| panic!("current installation test directory: {error}"))
             .join("target/installation-tests")
             .join(format!(
                 "{}-{}",
                 std::process::id(),
                 SEQUENCE.fetch_add(1, Ordering::Relaxed)
             ));
-        fs::create_dir_all(&root).unwrap();
-        fs::set_permissions(&root, fs::Permissions::from_mode(0o700)).unwrap();
+        fs::create_dir_all(&root)
+            .unwrap_or_else(|error| panic!("create installation fixture: {error}"));
+        fs::set_permissions(&root, fs::Permissions::from_mode(0o700))
+            .unwrap_or_else(|error| panic!("protect fixture: {error}"));
         let package = root.join("package");
         let mut manifest = PackageManifest {
             schema_version: 1,
@@ -89,14 +88,14 @@ impl Fixture {
                     .files
                     .iter()
                     .find(|file| file.path == binary_path)
-                    .unwrap()
+                    .unwrap_or_else(|| panic!("fixture provider binary missing"))
                     .sha256
                     .clone(),
                 license_sha256: manifest
                     .files
                     .iter()
                     .find(|file| file.path == license_path)
-                    .unwrap()
+                    .unwrap_or_else(|| panic!("fixture provider license missing"))
                     .sha256
                     .clone(),
                 binary_path,
@@ -116,7 +115,8 @@ impl Fixture {
     fn save(&self) {
         write(
             &self.package.join("package-manifest.json"),
-            &serde_json::to_vec_pretty(&self.manifest).unwrap(),
+            &serde_json::to_vec_pretty(&self.manifest)
+                .unwrap_or_else(|error| panic!("serialize fixture manifest: {error}")),
             0o644,
         );
     }
@@ -142,7 +142,10 @@ impl Fixture {
             &options.prefix,
             &options.config,
             &options.state,
-            options.systemd_unit.as_ref().unwrap(),
+            options
+                .systemd_unit
+                .as_ref()
+                .unwrap_or_else(|| panic!("fixture unit path missing")),
         ] {
             assert!(!path.exists(), "unexpected mutation: {}", path.display());
         }
@@ -151,14 +154,20 @@ impl Fixture {
 
 impl Drop for Fixture {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.root);
+        fs::remove_dir_all(&self.root)
+            .unwrap_or_else(|error| panic!("remove installation fixture: {error}"));
     }
 }
 
 fn write(path: &Path, bytes: &[u8], mode: u32) {
-    fs::create_dir_all(path.parent().unwrap()).unwrap();
-    fs::write(path, bytes).unwrap();
-    fs::set_permissions(path, fs::Permissions::from_mode(mode)).unwrap();
+    fs::create_dir_all(
+        path.parent()
+            .unwrap_or_else(|| panic!("fixture parent missing")),
+    )
+    .unwrap_or_else(|error| panic!("create fixture parent: {error}"));
+    fs::write(path, bytes).unwrap_or_else(|error| panic!("write fixture member: {error}"));
+    fs::set_permissions(path, fs::Permissions::from_mode(mode))
+        .unwrap_or_else(|error| panic!("protect fixture member: {error}"));
 }
 
 fn static_elf() -> Vec<u8> {

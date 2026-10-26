@@ -107,25 +107,62 @@ jobs:
           GARM_IMAGE: ghcr.io/cloudbase/garm@sha256:c74079c24bdf9dacbd55f9ac29f149502b909827388430205b8cca65b04a7dda
         run: |
           docker run --rm --platform linux/amd64 --network none --read-only --entrypoint /bin/sh -v "$PACKAGE:/opt/outrider:ro" -e GARM_COMMAND=GetVersion -e GARM_CONTROLLER_ID=package-smoke -e GARM_PROVIDER_CONFIG_FILE=/opt/outrider/examples/config.toml -e EXPECTED_VERSION="$OUTRIDER_VERSION" "$GARM_IMAGE" -c 'test -x /bin/busybox && test "$(/opt/outrider/bin/outrider)" = "$EXPECTED_VERSION"'
+      - name: Prepare OCI build context
+        run: |
+          mkdir "$RUNNER_TEMP/outrider-image"
+          cp packaging/Dockerfile "$RUNNER_TEMP/outrider-image/Dockerfile"
+          cp -a "$PACKAGE" "$RUNNER_TEMP/outrider-image/package"
+      - name: Build container with shared CI
+        uses: kellen-miller/ci/.github/actions/docker-publish-core@a7afdfc2276eb81541c623f64b99e7c0d30188eb
+        with:
+          image: ghcr.io/${{ github.repository }}
+          tags: type=raw,value=smoke-${{ github.run_id }}
+          push: 'false'
+          context: ${{ runner.temp }}/outrider-image
+          platforms: linux/amd64
+          outputs: type=docker,dest=${{ runner.temp }}/outrider-image.tar
+          provenance: 'false'
+          sbom: 'false'
+      - name: Verify installation, container and authenticated GARM lifecycle bridge
+        env:
+          SMOKE_IMAGE: ghcr.io/${{ github.repository }}:smoke-${{ github.run_id }}
+        run: |
+          docker load --input "$RUNNER_TEMP/outrider-image.tar"
+          cargo xtask check-installed-package --package "$PACKAGE" --image "$SMOKE_IMAGE"
       - name: Archive qualified package
         run: |
           mkdir "$ARCHIVES"
           archive="outrider-$OUTRIDER_VERSION-linux-amd64.tar.gz"
-          tar -C "$PACKAGE" -czf "$ARCHIVES/$archive" .
+          tar --sort=name --owner=0 --group=0 --numeric-owner -C "$PACKAGE" -czf "$ARCHIVES/$archive" .
           cd "$ARCHIVES"
           sha256sum "$archive" > "$archive.sha256"
+      - name: Verify documented root installation
+        run: |
+          root_install="$(sudo mktemp -d /opt/outrider-install-XXXXXX)"
+          sudo mkdir "$root_install/package"
+          sudo tar -xzf "$ARCHIVES/outrider-$OUTRIDER_VERSION-linux-amd64.tar.gz" -C "$root_install/package"
+          sudo "$root_install/package/bin/outrider" install --package "$root_install/package" --prefix "$root_install/installed" --config "$root_install/config/config.toml" --state "$root_install/state" --systemd-unit "$root_install/outrider.service" --uid "$(id -u)" --gid "$(id -g)"
+          sudo "$root_install/package/bin/outrider" install --package "$root_install/package" --prefix "$root_install/installed" --config "$root_install/config/config.toml" --state "$root_install/state" --systemd-unit "$root_install/outrider.service" --uid "$(id -u)" --gid "$(id -g)"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: outrider-linux-amd64
           path: ${{ runner.temp }}/outrider-archives/*
           if-no-files-found: error
           retention-days: 7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: outrider-linux-amd64-image
+          path: ${{ runner.temp }}/outrider-image.tar
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
   publish:
     needs: [preview, package]
     if: github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main' && needs.preview.outputs.version != ''
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      packages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -136,6 +173,10 @@ jobs:
         with:
           name: outrider-linux-amd64
           path: ${{ runner.temp }}/release-assets
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: outrider-linux-amd64-image
+          path: ${{ runner.temp }}/release-image
       - id: release
         uses: kellen-miller/ci/.github/actions/release@3a4a017647738ab820297df136edc177276bb5dc
         with:
@@ -152,3 +193,21 @@ jobs:
         run: |
           test "$RELEASE_VERSION" = "$PACKAGE_VERSION"
           gh release upload "$RELEASE_TAG" "$RUNNER_TEMP"/release-assets/*
+      - name: Log in to GHCR for the qualified image
+        if: steps.release.outputs.release_published == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the tested image without rebuilding
+        if: steps.release.outputs.release_published == 'true'
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          PACKAGE_VERSION: ${{ needs.package.outputs.version }}
+        run: |
+          test "$RELEASE_VERSION" = "$PACKAGE_VERSION"
+          docker load --input "$RUNNER_TEMP/release-image/outrider-image.tar"
+          docker tag "$IMAGE:smoke-${{ github.run_id }}" "$IMAGE:$RELEASE_VERSION"
+          docker push "$IMAGE:$RELEASE_VERSION"

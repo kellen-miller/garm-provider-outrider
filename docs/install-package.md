@@ -21,9 +21,9 @@ Obtain the archive and checksum from the same trusted release. Before extraction
 
 ```sh
 sha256sum --check outrider-1.2.3-linux-amd64.tar.gz.sha256
-mkdir outrider-1.2.3
-tar -xzf outrider-1.2.3-linux-amd64.tar.gz -C outrider-1.2.3
-outrider-1.2.3/bin/outrider build-info
+sudo install -d -m 0755 /opt/outrider-packages/1.2.3
+sudo tar -xzf outrider-1.2.3-linux-amd64.tar.gz -C /opt/outrider-packages/1.2.3
+/opt/outrider-packages/1.2.3/bin/outrider build-info
 ```
 
 The checksum and manifest detect changed bytes. They do not authenticate their
@@ -50,8 +50,9 @@ The exact 15-file manifest set is:
 
 The systemd template uses `/opt/outrider/bin/outrider serve --config
 /etc/outrider/config.toml`, user/group `outrider`, and durable state under
-`/var/lib/outrider`. Installation creates its account and protected authored
-configuration. The service has no dependency on a particular GARM service name
+`/var/lib/outrider`. Installation uses the explicitly supplied existing service
+UID/GID and prepares protected configuration/state. It does not create accounts.
+The service has no dependency on a particular GARM service name
 or a separate token-renewal timer. Public traffic reaches only the signed
 webhook endpoint; keep control and GARM administrator APIs private.
 
@@ -89,13 +90,61 @@ The Package workflow builds native Linux amd64 with the shared Rust action,
 release optimization level 1, no LTO and two compiler jobs. It verifies static
 ELF layout, embedded identity, package hashes/modes, the systemd unit, and an
 offline `GetVersion` invocation inside the pinned GARM 0.2.1 BusyBox image.
-These checks exercise installation/runtime compatibility without provisioning
-cloud resources.
+It also builds the OCI runtime once, installs the package into disposable paths,
+repeats setup, checks configuration preservation, runs static doctor, and tests
+an authenticated provider request from inside GARM. These checks exercise
+installation/runtime compatibility without provisioning cloud resources.
 
-Pull requests and ordinary pushes upload a seven-day CI archive and checksum.
+Pull requests and ordinary pushes upload a seven-day CI archive, checksum and
+tested OCI image archive.
 A CI artifact is not a published release. Only an explicit manual workflow run
 on `main` with `release=true` enables publication: the shared semantic-release
 action first calculates a version, the package embeds it, then the action
-publishes and attaches the matching qualified archive. No release or container
+publishes and attaches the matching qualified archive, then pushes the tested
+image to GHCR under that version without rebuilding it. No release or container
 registry writes occur in pull-request jobs. Building this source change does
 not publish or deploy anything.
+
+## Install beside GARM with systemd
+
+Use an existing service account that can read GARM's protected native provider
+configuration. The installer takes numeric UID/GID; it does not create accounts
+or change cloud credentials. Choose a shared read group for root-owned config,
+without making keys or administrator credentials public.
+
+```sh
+sudo /opt/outrider-packages/1.2.3/bin/outrider install \
+  --package /opt/outrider-packages/1.2.3 \
+  --uid "$(id -u garm)" --gid "$(id -g garm)" \
+  --systemd-unit /etc/systemd/system/outrider.service
+```
+
+Edit `/etc/outrider/config.toml` with real provider names, image/network facts,
+limits and protected authentication references. Set `[garm].config_file` to the
+existing native registry. The native provider executable paths must select the
+qualified packaged binaries; their native credential/config files stay unchanged.
+An empty `ingress.garm_api_origin` lets setup derive the local connection address
+from GARM's native `[apiserver]` settings. Supply an explicit origin when using a
+proxy or a different connection hostname.
+
+```sh
+sudo /opt/outrider/bin/outrider setup --config /etc/outrider/config.toml \
+  --package /opt/outrider --register
+sudo systemctl daemon-reload
+sudo systemctl enable --now outrider.service
+sudo -u garm /opt/outrider/bin/outrider doctor \
+  --config /etc/outrider/config.toml --online
+```
+
+`setup` prepares local files only; the daemon exclusively issues tokens and
+adopts existing controller/repository identities at startup. `--register` adds
+only Outrider's own GARM entry and rejects conflicting existing settings. Restart
+GARM as required to load its changed native registry. Set the signed webhook
+reverse-proxy upstream and GitHub destination after doctor succeeds. No separate
+credential-renewal script, timer or provider wrapper is needed.
+
+Default doctor performs static checks. `--online` verifies visible API identities
+and asks the running daemon for live-priced candidates without creating a runner.
+Hidden App-key/secret agreement and real guest bootstrap still require a signed
+live trial. Upgrades use a new immutable prefix and retain prior prefixes/configs
+for cleanup; installation refuses to overwrite a changed existing package.

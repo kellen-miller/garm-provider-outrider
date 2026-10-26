@@ -228,6 +228,7 @@ fn api_origin(input: &str) -> Result<Url, SetupError> {
     let loopback = url.host_str().is_some_and(|host| {
         host == "localhost"
             || host
+                .trim_matches(['[', ']'])
                 .parse::<std::net::IpAddr>()
                 .is_ok_and(|address| address.is_loopback())
     });
@@ -246,4 +247,11 @@ fn api_origin(input: &str) -> Result<Url, SetupError> {
     }
 
     Ok(url)
+}
+
+#[cfg(test)]
+#[test]
+fn adoption_accepts_ipv6_loopback_without_accepting_remote_plaintext() {
+    assert!(api_origin("http://[::1]:9980/").is_ok());
+    assert!(api_origin("http://[2001:db8::1]:9980/").is_err());
 }

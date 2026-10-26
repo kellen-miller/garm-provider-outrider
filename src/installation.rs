@@ -73,12 +73,18 @@ struct PlannedFile {
 }
 
 /// Validate every package member, including ELF linkage, before exposing pins.
+///
+/// # Errors
+/// Rejects unsafe paths, incomplete manifests, changed artifacts or unsupported binaries.
 pub fn inspect_package(package: &Path) -> Result<PackageManifest, InstallationError> {
     Ok(VerifiedPackage::read(package)?.manifest)
 }
 
 /// Install a fully verified package. Existing prefixes are immutable; config and
 /// secrets are preserved. On failure only entries created by this call roll back.
+///
+/// # Errors
+/// Rejects unsafe destinations, changed existing files, invalid identity or failed writes.
 pub fn install(options: &InstallOptions) -> Result<InstallReport, InstallationError> {
     // SAFETY: these identity queries have no pointer arguments.
     let (current_uid, current_gid) = unsafe { (libc::geteuid(), libc::getegid()) };

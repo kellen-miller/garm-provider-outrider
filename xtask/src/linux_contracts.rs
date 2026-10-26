@@ -16,6 +16,7 @@ const TARGETS: &[&str] = &[
     "recovery_contract",
     "journal_contract",
     "cleanup_cli",
+    "installation_contract",
 ];
 
 const SYSTEM_CASES: &[&str] = &[

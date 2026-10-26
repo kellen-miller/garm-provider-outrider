@@ -49,10 +49,12 @@ impl TestDirectory {
             .duration_since(UNIX_EPOCH)
             .map_err(io::Error::other)?
             .as_nanos();
-        let path = std::env::temp_dir().join(format!(
-            "outrider-control-{}-{nonce}-{count}",
-            std::process::id()
-        ));
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join(format!(
+                "outrider-control-{}-{nonce}-{count}",
+                std::process::id()
+            ));
         fs::create_dir_all(&path)?;
         Ok(Self { path })
     }
@@ -394,8 +396,13 @@ pub(super) fn build_test_services(
         .map_err(io::Error::other)?,
     );
     let ingress = Arc::new(IngressService::new(config, journal).map_err(io::Error::other)?);
-    let app = build_router(INNER_TOKEN.as_bytes().to_vec(), allocation, ingress)
-        .map_err(io::Error::other)?;
+    let app = build_router(
+        INNER_TOKEN.as_bytes().to_vec(),
+        allocation,
+        ingress,
+        hex::encode(Sha256::digest(fs::read(&config_path)?)),
+    )
+    .map_err(io::Error::other)?;
     Ok((config_path, app))
 }
 

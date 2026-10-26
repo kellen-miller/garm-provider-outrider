@@ -252,6 +252,8 @@ async fn provider_request() -> Result<(), ProviderFailure> {
     };
 
     let client = Client::builder()
+        .no_proxy()
+        .retry(reqwest::retry::never())
         .timeout(connection.timeout)
         .redirect(reqwest::redirect::Policy::none())
         .build()

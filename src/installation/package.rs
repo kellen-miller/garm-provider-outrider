@@ -283,101 +283,103 @@ fn verify_contents(file: &mut File, entry: &PackageFile) -> Result<(), Installat
         return Err(invalid("package member SHA256 mismatch"));
     }
 
-    if entry.mode == 0o755 {
-        file.seek(SeekFrom::Start(0))?;
-        let mut header = [0_u8; 64];
-        file.read_exact(&mut header)?;
-        if &header[..7] != b"\x7fELF\x02\x01\x01"
-            || ![0, 3].contains(&header[7])
-            || u16::from_le_bytes([header[18], header[19]]) != 62
-            || u32::from_le_bytes(
-                header[20..24]
-                    .try_into()
-                    .map_err(|_| invalid("invalid ELF version"))?,
-            ) != 1
-            || u16::from_le_bytes([header[52], header[53]]) != 64
-            || ![2, 3].contains(&u16::from_le_bytes([header[16], header[17]]))
-        {
-            return Err(invalid("executable must be an ELF64 Linux amd64 binary"));
-        }
+    if entry.mode != 0o755 {
+        return Ok(());
+    }
 
-        let offset = u64::from_le_bytes(
-            header[32..40]
+    file.seek(SeekFrom::Start(0))?;
+    let mut header = [0_u8; 64];
+    file.read_exact(&mut header)?;
+    if &header[..7] != b"\x7fELF\x02\x01\x01"
+        || ![0, 3].contains(&header[7])
+        || u16::from_le_bytes([header[18], header[19]]) != 62
+        || u32::from_le_bytes(
+            header[20..24]
                 .try_into()
-                .map_err(|_| invalid("invalid ELF offset"))?,
+                .map_err(|_| invalid("invalid ELF version"))?,
+        ) != 1
+        || u16::from_le_bytes([header[52], header[53]]) != 64
+        || ![2, 3].contains(&u16::from_le_bytes([header[16], header[17]]))
+    {
+        return Err(invalid("executable must be an ELF64 Linux amd64 binary"));
+    }
+
+    let offset = u64::from_le_bytes(
+        header[32..40]
+            .try_into()
+            .map_err(|_| invalid("invalid ELF offset"))?,
+    );
+    let width = u16::from_le_bytes([header[54], header[55]]);
+    let count = u16::from_le_bytes([header[56], header[57]]);
+    if width != 56
+        || count == 0
+        || count > 1024
+        || offset < 64
+        || offset
+            .checked_add(u64::from(width) * u64::from(count))
+            .is_none_or(|end| end > file.metadata().map(|metadata| metadata.len()).unwrap_or(0))
+    {
+        return Err(invalid("invalid ELF program header table"));
+    }
+
+    for index in 0..count {
+        file.seek(SeekFrom::Start(
+            offset + u64::from(index) * u64::from(width),
+        ))?;
+        let mut program = [0_u8; 56];
+        file.read_exact(&mut program)?;
+        let kind = u32::from_le_bytes(
+            program[..4]
+                .try_into()
+                .map_err(|_| invalid("invalid ELF segment"))?,
         );
-        let width = u16::from_le_bytes([header[54], header[55]]);
-        let count = u16::from_le_bytes([header[56], header[57]]);
-        if width != 56
-            || count == 0
-            || count > 1024
-            || offset < 64
-            || offset
-                .checked_add(u64::from(width) * u64::from(count))
-                .is_none_or(|end| end > file.metadata().map(|metadata| metadata.len()).unwrap_or(0))
-        {
-            return Err(invalid("invalid ELF program header table"));
+        if kind == 3 {
+            return Err(invalid("executable must be static (no PT_INTERP)"));
         }
 
-        for index in 0..count {
-            file.seek(SeekFrom::Start(
-                offset + u64::from(index) * u64::from(width),
-            ))?;
-            let mut program = [0_u8; 56];
-            file.read_exact(&mut program)?;
-            let kind = u32::from_le_bytes(
-                program[..4]
+        if kind == 2 {
+            let dynamic_offset = u64::from_le_bytes(
+                program[8..16]
                     .try_into()
                     .map_err(|_| invalid("invalid ELF segment"))?,
             );
-            if kind == 3 {
-                return Err(invalid("executable must be static (no PT_INTERP)"));
+            let length = u64::from_le_bytes(
+                program[32..40]
+                    .try_into()
+                    .map_err(|_| invalid("invalid ELF segment"))?,
+            );
+            if length == 0
+                || length % 16 != 0
+                || length > MANIFEST_LIMIT
+                || dynamic_offset.checked_add(length).is_none_or(|end| {
+                    end > file.metadata().map(|metadata| metadata.len()).unwrap_or(0)
+                })
+            {
+                return Err(invalid("invalid ELF dynamic table"));
             }
 
-            if kind == 2 {
-                let dynamic_offset = u64::from_le_bytes(
-                    program[8..16]
+            file.seek(SeekFrom::Start(dynamic_offset))?;
+            let mut terminated = false;
+            for _ in 0..length / 16 {
+                let mut entry = [0_u8; 16];
+                file.read_exact(&mut entry)?;
+                let tag = u64::from_le_bytes(
+                    entry[..8]
                         .try_into()
-                        .map_err(|_| invalid("invalid ELF segment"))?,
+                        .map_err(|_| invalid("invalid ELF dynamic entry"))?,
                 );
-                let length = u64::from_le_bytes(
-                    program[32..40]
-                        .try_into()
-                        .map_err(|_| invalid("invalid ELF segment"))?,
-                );
-                if length == 0
-                    || length % 16 != 0
-                    || length > MANIFEST_LIMIT
-                    || dynamic_offset.checked_add(length).is_none_or(|end| {
-                        end > file.metadata().map(|metadata| metadata.len()).unwrap_or(0)
-                    })
-                {
-                    return Err(invalid("invalid ELF dynamic table"));
+                if tag == 0 {
+                    terminated = true;
+                    break;
                 }
 
-                file.seek(SeekFrom::Start(dynamic_offset))?;
-                let mut terminated = false;
-                for _ in 0..length / 16 {
-                    let mut entry = [0_u8; 16];
-                    file.read_exact(&mut entry)?;
-                    let tag = u64::from_le_bytes(
-                        entry[..8]
-                            .try_into()
-                            .map_err(|_| invalid("invalid ELF dynamic entry"))?,
-                    );
-                    if tag == 0 {
-                        terminated = true;
-                        break;
-                    }
-
-                    if tag == 1 {
-                        return Err(invalid("executable must be static (no DT_NEEDED)"));
-                    }
+                if tag == 1 {
+                    return Err(invalid("executable must be static (no DT_NEEDED)"));
                 }
+            }
 
-                if !terminated {
-                    return Err(invalid("unterminated ELF dynamic table"));
-                }
+            if !terminated {
+                return Err(invalid("unterminated ELF dynamic table"));
             }
         }
     }

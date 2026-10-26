@@ -232,6 +232,7 @@ impl CrossCloudScenario {
             DAEMON_TOKEN.as_bytes().to_vec(),
             allocation,
             ingress_service,
+            "a".repeat(64),
         )?;
         let listener = TokioTcpListener::bind(&address).await?;
         let server =
@@ -308,6 +309,7 @@ impl CrossCloudScenario {
             DAEMON_TOKEN.as_bytes().to_vec(),
             services.allocation,
             services.ingress,
+            "a".repeat(64),
         )?;
         let listener = TokioTcpListener::bind(&self.address).await?;
         self.server =
@@ -483,6 +485,7 @@ impl CrossCloudScenario {
             DAEMON_TOKEN.as_bytes().to_vec(),
             services.allocation,
             services.ingress,
+            "a".repeat(64),
         )?;
         let listener = TokioTcpListener::bind(&self.address).await?;
         self.server =

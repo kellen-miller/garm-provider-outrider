@@ -11,33 +11,36 @@ make a single SQLite database safe for multiple active daemon processes.
 
 ## Install
 
-1. Build Outrider for the controller host with the Rust toolchain in
-   `rust-toolchain.toml`.
-2. Build the three delegated providers from the exact source revisions in
-   [`providers/manifest.json`](providers/manifest.json), or obtain qualified
-   binaries through your controlled distribution channel. See
-   [provider installation](docs/install.md).
-3. Create immutable provider configuration files and record each file's
-   SHA-256. Start from [`examples/config.toml`](examples/config.toml),
-   replace every synthetic value and path, and verify provider-specific
-   catalogs against the actual accounts and images. Keep credentials readable
-   only by the daemon account.
-4. Run `outrider validate --config /path/to/config.toml --profile default`,
-   then start `outrider serve --config /path/to/config.toml` under a service
-   manager that waits for the previous process to exit.
-5. Register Outrider and its cloud delegates in native GARM configuration;
-   see [`examples/garm.toml`](examples/garm.toml). Point Outrider's registration
-   to the daemon's central TOML. Central provider entries reference native
-   names and add qualification metadata. Keep the controller, GARM, database,
-   binaries, configs, and credentials available for allocation cleanup.
-6. Configure both signed `workflow_job` and `workflow_run` webhook events,
-   the GitHub App, repository secret, complete request label, and required
-   Actions/Checks permissions described in [operations](docs/operations.md).
+1. Obtain a verified [Linux amd64 package](docs/install-package.md) or use the
+   [container setup](docs/install-container.md). CI produces archives and
+   checksums; public release publication is a separate workflow operation.
+   Deployment hosts need neither Rust nor Go.
+2. Run the supplied `outrider install` with your existing service UID/GID.
+   Reuse native GARM provider configuration. If existing executables differ
+   from the supported package, select the bundled qualified binaries in GARM.
+   Outrider never silently replaces another provider's registration.
+3. Edit `/etc/outrider/config.toml`: select native provider names, profiles,
+   limits, image/network facts, repository names and protected credential
+   references. Live APIs supply catalog/pricing data; supply facts they cannot
+   expose explicitly. No catalog snapshots are bundled.
+4. Run `outrider setup --config /etc/outrider/config.toml --package /opt/outrider
+   --register`. It computes artifact/configuration hashes and prepares only
+   Outrider's own native GARM registration. It creates no cloud resources.
+5. Start one `outrider serve` process using systemd or the supplied container
+   assets. The daemon issues and renews its API tokens, verifies existing
+   GARM/GitHub repository identities, and keeps durable SQLite state.
+6. Run `outrider doctor --config /etc/outrider/config.toml --online`, then route
+   signed `workflow_job` and `workflow_run` events to `/v1/webhooks/github`.
+   Keep control/GARM administration private. See [operations](docs/operations.md)
+   for App permissions, routing labels and live qualification.
 
 The examples use fake account IDs, images, file paths, hashes, and credentials.
 They do not contain production pricing facts or qualify cloud access.
 `examples/config-minimal.toml` is a small profile-normalization example;
 `examples/config.toml` shows the complete configuration shape.
+`setup` fills qualification fields; `doctor` distinguishes static configuration,
+API/price checks and actual runner execution. Retain immutable provider/config
+files and the journal until every allocation using them has finished cleanup.
 
 ## Request flow
 

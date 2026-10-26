@@ -24,6 +24,8 @@ async fn public_listener_exposes_only_health_and_signed_webhooks()
         .ingress
         .ok_or("missing fixture ingress")?;
     ingress.controller_id = "11111111-1111-4111-8111-111111111111".to_owned();
+    ingress.github_api_origin = "http://127.0.0.1:9/".to_owned();
+    ingress.garm_api_origin = "http://127.0.0.1:9/".to_owned();
     ingress.github_token_file = github_token.display().to_string();
     ingress.garm_token_file = garm_token.display().to_string();
     ingress.repositories = BTreeMap::from([(
@@ -58,7 +60,7 @@ async fn public_listener_exposes_only_health_and_signed_webhooks()
             .status()
             .is_success()
     );
-    for path in ["/v1/provider", "/v1/explain", "/v1/inventory"] {
+    for path in ["/v1/provider", "/v1/explain", "/v1/inventory", "/v1/status"] {
         let response = client
             .post(format!("{origin}{path}"))
             .bearer_auth("even-a-valid-control-token")
@@ -94,5 +96,52 @@ async fn public_listener_exposes_only_health_and_signed_webhooks()
     assert_eq!(accepted.status(), reqwest::StatusCode::ACCEPTED);
     assert_eq!(journal.pending_deliveries(10)?.len(), 1);
     server.abort();
+    Ok(())
+}
+
+#[test]
+fn online_doctor_rejects_a_daemon_running_an_older_config() -> Result<(), Box<dyn std::error::Error>>
+{
+    use super::daemon_scenario::{INNER_TOKEN, TestDaemon};
+    use std::os::unix::fs::PermissionsExt;
+    let directory = TestDirectory::new()?;
+    let mut daemon = TestDaemon::start(&directory)?;
+    fs::set_permissions(&daemon.config, fs::Permissions::from_mode(0o600))?;
+    let original = fs::read_to_string(&daemon.config)?;
+    fs::write(
+        &daemon.config,
+        format!("{original}\n# a new operator revision\n"),
+    )?;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let error = runtime.block_on(async {
+        let client = reqwest::Client::builder().no_proxy().build()?;
+        let endpoint = format!("http://{}/v1/status", daemon.address);
+        assert_eq!(
+            client.post(&endpoint).send().await?.status(),
+            reqwest::StatusCode::UNAUTHORIZED
+        );
+        let status: serde_json::Value = client
+            .post(endpoint)
+            .bearer_auth(INNER_TOKEN)
+            .send()
+            .await?
+            .json()
+            .await?;
+        assert_eq!(
+            status["configuration_sha256"],
+            hex::encode(<Sha256 as sha2::Digest>::digest(original.as_bytes()))
+        );
+        let result = outrider::setup::doctor(&outrider::setup::DoctorOptions {
+            config: daemon.config.clone(),
+            profile: "linux-large".to_owned(),
+            online: true,
+        })
+        .await;
+        Ok::<_, Box<dyn std::error::Error>>(result.err().ok_or("stale daemon was accepted")?)
+    })?;
+    assert!(matches!(error, outrider::setup::SetupError::StaleDaemon));
+    daemon.stop()?;
     Ok(())
 }
