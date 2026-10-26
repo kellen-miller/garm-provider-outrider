@@ -1,0 +1,88 @@
+# Add to the operator's existing Compose project; garm remains its own service.
+# OUTRIDER_IMAGE is a locally built image/tag or an explicitly verified digest.
+# UID/GID must allow GARM's provider process and the daemon to read protected
+# authentication files. Use GARM's existing numeric uid/gid on both services.
+services:
+  outrider-init:
+    image: ${OUTRIDER_IMAGE:?Set the verified Outrider image}
+    platform: linux/amd64
+    user: "0:0"
+    network_mode: none
+    restart: "no"
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt: [no-new-privileges:true]
+    command:
+      - install
+      - --package
+      - /usr/share/outrider/package
+      - --prefix
+      - /opt/outrider
+      - --config
+      - /etc/outrider/config.toml
+      - --state
+      - /var/lib/outrider
+      - --uid
+      - ${OUTRIDER_UID:?Set GARM's numeric uid}
+      - --gid
+      - ${OUTRIDER_GID:?Set GARM's numeric gid}
+    volumes:
+      - outrider-package:/opt/outrider
+      - type: bind
+        source: ${OUTRIDER_CONFIG_DIRECTORY:?Set a protected absolute config directory}
+        target: /etc/outrider
+        bind:
+          create_host_path: false
+      - outrider-state:/var/lib/outrider
+
+  garm:
+    depends_on:
+      outrider-init:
+        condition: service_completed_successfully
+    volumes:
+      - outrider-package:/opt/outrider:ro
+      - type: bind
+        source: ${OUTRIDER_CONFIG_DIRECTORY:?Set a protected absolute config directory}
+        target: /etc/outrider
+        read_only: true
+        bind:
+          create_host_path: false
+      - outrider-state:/var/lib/outrider:ro
+    # Publish the webhook listener here because Outrider uses this namespace.
+    # Never publish control.listen_address (127.0.0.1:9191).
+    ports:
+      - "${OUTRIDER_WEBHOOK_BIND:-127.0.0.1}:${OUTRIDER_WEBHOOK_PORT:-8080}:8080"
+
+  outrider:
+    image: ${OUTRIDER_IMAGE:?Set the verified Outrider image}
+    platform: linux/amd64
+    user: "${OUTRIDER_UID:?Set GARM's numeric uid}:${OUTRIDER_GID:?Set GARM's numeric gid}"
+    network_mode: service:garm
+    depends_on:
+      outrider-init:
+        condition: service_completed_successfully
+      garm:
+        condition: service_started
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    entrypoint: [/opt/outrider/bin/outrider]
+    command: [serve, --config, /etc/outrider/config.toml]
+    # Inherit native config/delegate/credential mounts at their exact GARM paths.
+    # Override Outrider's config/state mounts below.
+    volumes_from:
+      - garm:ro
+    volumes:
+      - type: bind
+        source: ${OUTRIDER_CONFIG_DIRECTORY:?Set a protected absolute config directory}
+        target: /etc/outrider
+        read_only: true
+        bind:
+          create_host_path: false
+      - outrider-state:/var/lib/outrider
+
+volumes:
+  outrider-package:
+  outrider-state:
