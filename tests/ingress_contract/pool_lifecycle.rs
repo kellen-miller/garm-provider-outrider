@@ -261,12 +261,15 @@ async fn pool_caps_expiry_drain() {
 #[tokio::test]
 async fn unavailable_garm_restart() {
     let directory = TestDirectory::new().expect("temp directory");
+    let github = HttpFixture::start_github(failed_run(), failed_assigned_job(), true)
+        .await
+        .expect("GitHub fixture");
     let (service, journal) =
-        open_service(&directory, "http://127.0.0.1:1/", "http://127.0.0.1:1/").expect("service");
-    let body = br#"{"repository":{"id":101,"name":"base-repo","full_name":"base-owner/base-repo","owner":{"login":"base-owner"}},"action":"created"}"#;
-    let (signature, headers) = webhook("repository", "delivery-10", body);
+        open_service(&directory, &github.origin, "http://127.0.0.1:1/").expect("service");
+    let body = completed_failure_body();
+    let (signature, headers) = webhook("workflow_job", "delivery-10", &body);
     let _inserted = service
-        .intake("repository", "delivery-10", &signature, headers, body)
+        .intake("workflow_job", "delivery-10", &signature, headers, &body)
         .expect("intake");
     let _processed = service.process_pending(1).await.expect("offline worker");
     assert_eq!(
@@ -285,6 +288,33 @@ async fn unavailable_garm_restart() {
     assert_eq!(pending.len(), 1);
     assert_eq!(pending[0].body, body);
     assert_eq!(pending[0].state, "retry");
+}
+
+#[tokio::test]
+async fn retained_pool_origin_cannot_change_destination() {
+    let directory = TestDirectory::new().expect("temp directory");
+    let server = HttpFixture::start(FixtureMode::GarmPool)
+        .await
+        .expect("GARM fixture");
+    let settings =
+        ingress_settings(&directory, "http://127.0.0.1:1/", &server.origin).expect("settings");
+    let mut retained = settings.clone();
+    retained.garm_api_origin = "http://127.0.0.1:9/".into();
+    let snapshot = draining_pool_snapshot(&retained);
+    let journal = directory.journal().expect("journal");
+    journal.save_pool_snapshot(&snapshot).expect("snapshot");
+    let garm = GarmClient::from_settings(&settings, Duration::from_secs(3)).expect("GARM client");
+    assert!(matches!(
+        garm.disable_request_pool(&snapshot).await,
+        Err(PoolError::Configuration)
+    ));
+    let ingress =
+        IngressService::new(config_with_ingress(settings), journal).expect("active ingress");
+    assert!(matches!(
+        ingress.drain_expired_pools(1).await,
+        Err(outrider::github::IngressError::Configuration)
+    ));
+    assert!(server.requests().is_empty());
 }
 
 #[tokio::test]

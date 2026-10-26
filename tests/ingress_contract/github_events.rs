@@ -54,6 +54,7 @@ pub(super) struct RecordedRequest {
     pub(super) body: Vec<u8>,
     pub(super) authorization: Option<String>,
     pub(super) signature: Option<String>,
+    pub(super) hook_target: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -80,12 +81,17 @@ pub(super) struct FixtureState {
     pub(super) snapshot_visible_at_create: AtomicBool,
     pub(super) checks: Mutex<Vec<Value>>,
     pub(super) fail_check_after_store: AtomicBool,
+    pub(super) webhook_status: AtomicUsize,
     pub(super) fail_pool_list_after_create: AtomicBool,
     pub(super) terminal_during_pool_create: AtomicBool,
     pub(super) fail_enable_after_store: AtomicBool,
     pub(super) force_empty_pool_inventory: AtomicBool,
     pub(super) pool_detail_status: AtomicUsize,
     pub(super) delete_pool_removes_remote: AtomicBool,
+    pub(super) pool_instances: Mutex<Vec<Value>>,
+    pub(super) instance_detail_override: Mutex<Option<Value>>,
+    pub(super) instance_delete_status: AtomicUsize,
+    pub(super) defer_instance_delete: AtomicBool,
 }
 
 pub(super) struct HttpFixture {
@@ -150,12 +156,17 @@ impl HttpFixture {
             snapshot_visible_at_create: AtomicBool::new(false),
             checks: Mutex::new(Vec::new()),
             fail_check_after_store: AtomicBool::new(false),
+            webhook_status: AtomicUsize::new(200),
             fail_pool_list_after_create: AtomicBool::new(false),
             terminal_during_pool_create: AtomicBool::new(false),
             fail_enable_after_store: AtomicBool::new(false),
             force_empty_pool_inventory: AtomicBool::new(false),
             pool_detail_status: AtomicUsize::new(0),
             delete_pool_removes_remote: AtomicBool::new(false),
+            pool_instances: Mutex::new(Vec::new()),
+            instance_detail_override: Mutex::new(None),
+            instance_delete_status: AtomicUsize::new(200),
+            defer_instance_delete: AtomicBool::new(false),
         });
         let shared = state.clone();
         let task = tokio::spawn(async move {
@@ -208,6 +219,21 @@ pub(super) async fn handle_request(
     request: Request<Incoming>,
     state: Arc<FixtureState>,
 ) -> Result<Response<Full<bytes::Bytes>>, hyper::Error> {
+    // GitHub rejects requests without a valid User-Agent, even with valid auth.
+    if !matches!(state.mode, FixtureMode::GarmPool)
+        && request
+            .headers()
+            .get("user-agent")
+            .and_then(|value| value.to_str().ok())
+            .is_none_or(|value| value.trim().is_empty())
+    {
+        let mut response = Response::new(Full::new(bytes::Bytes::from_static(
+            b"User-Agent header is required",
+        )));
+        *response.status_mut() = StatusCode::FORBIDDEN;
+        return Ok(response);
+    }
+
     let method = request.method().to_string();
     let path = request.uri().path_and_query().map_or_else(
         || request.uri().path().to_owned(),
@@ -223,6 +249,11 @@ pub(super) async fn handle_request(
         .get("x-hub-signature-256")
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
+    let hook_target = request
+        .headers()
+        .get("x-github-hook-installation-target-type")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
     let body = request.into_body().collect().await?.to_bytes().to_vec();
     if let Ok(mut requests) = state.requests.lock() {
         requests.push(RecordedRequest {
@@ -231,6 +262,7 @@ pub(super) async fn handle_request(
             body: body.clone(),
             authorization,
             signature,
+            hook_target,
         });
     }
     let (status, response_body) = match state.mode {
@@ -344,7 +376,9 @@ pub(super) async fn handle_request(
             }
         }
     };
-    let response_body = if path.ends_with("/rerun") {
+    let response_body = if path.ends_with("/rerun")
+        || (method == "DELETE" && path.starts_with("/api/v1/instances/") && status == 200)
+    {
         bytes::Bytes::new()
     } else {
         bytes::Bytes::from(response_body.to_string())
@@ -379,12 +413,17 @@ pub(super) fn handle_garm_request(
             } else if state.force_empty_pool_inventory.load(Ordering::SeqCst) {
                 (200, json!([]))
             } else {
-                let pool = state
+                let mut pool = state
                     .created_pool
                     .lock()
                     .ok()
                     .and_then(|pool| pool.clone())
                     .unwrap_or_else(pool_response);
+                // GARM v0.2.1 lists omit extra_specs; only the detail endpoint returns it.
+                if let Some(fields) = pool.as_object_mut() {
+                    fields.remove("extra_specs");
+                }
+
                 (200, json!([pool]))
             }
         }
@@ -452,7 +491,39 @@ pub(super) fn handle_garm_request(
             };
             (status, pool)
         }
-        ("GET", "/api/v1/pools/pool-201/instances") => (200, json!([])),
+        ("GET", "/api/v1/pools/pool-201/instances") => match state.pool_instances.lock() {
+            Ok(instances) => (200, json!(instances.clone())),
+            Err(_) => (500, json!({"error":"instance fixture poisoned"})),
+        },
+        ("GET", "/api/v1/instances/instance-201") => {
+            let (Ok(current), Ok(instances)) = (
+                state.instance_detail_override.lock(),
+                state.pool_instances.lock(),
+            ) else {
+                return (500, json!({"error":"instance fixture poisoned"}));
+            };
+            current.as_ref().or_else(|| instances.first()).map_or_else(
+                || (404, json!({"error":"not found"})),
+                |instance| (200, instance.clone()),
+            )
+        }
+        ("DELETE", "/api/v1/instances/instance-201") => {
+            let status = state.instance_delete_status.load(Ordering::SeqCst);
+            if status == 200 {
+                let Ok(mut instances) = state.pool_instances.lock() else {
+                    return (500, json!({"error":"instance fixture poisoned"}));
+                };
+                if state.defer_instance_delete.load(Ordering::SeqCst) {
+                    for instance in &mut *instances {
+                        instance["status"] = json!("pending_delete");
+                    }
+                } else {
+                    instances.clear();
+                }
+            }
+
+            (status as u16, json!({}))
+        }
         ("DELETE", "/api/v1/repositories/00000000-0000-0000-0000-000000000101/pools/pool-201") => {
             if state.delete_pool_removes_remote.load(Ordering::SeqCst)
                 && let Ok(mut pool) = state.created_pool.lock()
@@ -461,7 +532,10 @@ pub(super) fn handle_garm_request(
             }
             (200, json!({}))
         }
-        ("POST", "/webhooks/00000000-0000-0000-0000-000000000901") => (200, json!({})),
+        ("POST", "/webhooks/00000000-0000-0000-0000-000000000901") => (
+            state.webhook_status.load(Ordering::SeqCst) as u16,
+            json!({}),
+        ),
         _ => (404, json!({"error":"not found"})),
     }
 }
@@ -501,6 +575,8 @@ pub(super) fn snapshot_id() -> String {
 }
 
 pub(super) fn draining_pool_snapshot(settings: &IngressSettings) -> PoolSnapshot {
+    let mut retained = settings.clone();
+    retained.garm_api_origin = retained.garm_api_origin.trim_end_matches('/').to_owned();
     let document = outrider::github::SnapshotDocument {
         base_repository: RepositoryRef {
             id: REPOSITORY_ID,
@@ -516,7 +592,7 @@ pub(super) fn draining_pool_snapshot(settings: &IngressSettings) -> PoolSnapshot
         run_attempt: 1,
         job_id: 301,
         commit_sha: SHA.into(),
-        central: config_with_ingress(settings.clone()),
+        central: config_with_ingress(retained),
         repository: ConfigPatch::default(),
         resolved_profile: profile(),
         image_catalogs: vec![],

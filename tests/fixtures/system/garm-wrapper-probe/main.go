@@ -15,6 +15,7 @@ import (
 	"github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/runner/common"
 	v010 "github.com/cloudbase/garm/runner/providers/v0.1.0"
+	"github.com/cloudbase/garm/util"
 )
 
 type Options struct {
@@ -87,6 +88,7 @@ func run(options Options, report *Report) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+	bootstrap = util.MaybeAddWrapperToExtraSpecs(ctx, bootstrap)
 	cfg := config.Provider{Name: "OutriderProbe", ProviderType: params.ExternalProvider, External: config.External{InterfaceVersion: "v0.1.0", ConfigFile: options.Config, ProviderExecutable: options.Provider, EnvironmentVariables: []string{"OUTRIDER_"}}}
 	provider, err := v010.NewProvider(ctx, &cfg, options.Controller)
 	if err != nil {

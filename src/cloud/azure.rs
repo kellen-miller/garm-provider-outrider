@@ -42,6 +42,7 @@ mod catalog;
 mod connection;
 mod discovery;
 mod identity;
+mod inventory;
 #[cfg(test)]
 #[path = "azure/tests.rs"]
 mod tests;
@@ -288,7 +289,7 @@ struct AzureShape {
 
 struct AzurePriceSet {
     compute: RetailMeter,
-    disk: Option<RetailMeter>,
+    disk: RetailMeter,
     public_ip: Option<RetailMeter>,
     licensing_included: bool,
     licensing_source: String,
@@ -315,10 +316,13 @@ pub struct AzureBackend {
     retail_snapshots: Mutex<BTreeMap<String, AzureRetailSnapshot>>,
 }
 
+#[derive(Clone)]
 struct AzureRetailSnapshot {
     meters: Arc<Vec<RetailMeter>>,
     observed_at: Instant,
     observed_at_unix_seconds: u64,
+    fetched_at: Instant,
+    machine_types: BTreeSet<String>,
 }
 
 fn is_sha256(value: &str) -> bool {

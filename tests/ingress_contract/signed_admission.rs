@@ -308,7 +308,7 @@ pub(super) fn webhook(
         ("X-GitHub-Delivery".into(), delivery_id.into()),
         (
             "X-GitHub-Hook-Installation-Target-Type".into(),
-            "repository".into(),
+            "integration".into(),
         ),
         ("X-Hub-Signature-256".into(), signature.clone()),
     ]
@@ -357,8 +357,9 @@ async fn exact_repository_pool_before_forward() {
     let server = HttpFixture::start(FixtureMode::GarmPool)
         .await
         .expect("HTTP fixture");
-    let settings =
+    let mut settings =
         ingress_settings(&directory, "http://127.0.0.1:1/", &server.origin).expect("settings");
+    settings.garm_api_origin = server.origin.trim_end_matches('/').to_owned();
     let journal = directory.journal().expect("journal");
     let document = outrider::github::SnapshotDocument {
         base_repository: RepositoryRef {
@@ -396,6 +397,7 @@ async fn exact_repository_pool_before_forward() {
             &journal,
             RepositoryPoolRequest {
                 snapshot: &snapshot,
+                admission: None,
             },
         )
         .await
@@ -407,7 +409,7 @@ async fn exact_repository_pool_before_forward() {
         ("x-github-delivery".into(), "delivery-2".into()),
         (
             "x-github-hook-installation-target-type".into(),
-            "repository".into(),
+            "integration".into(),
         ),
         ("x-hub-signature-256".into(), signature.clone()),
     ];
@@ -452,6 +454,7 @@ async fn exact_repository_pool_before_forward() {
     assert_eq!(forward.body, body);
     assert_eq!(forward.signature.as_deref(), Some(signature.as_str()));
     assert_eq!(forward.authorization, None);
+    assert_eq!(forward.hook_target.as_deref(), Some("repository"));
 }
 
 #[tokio::test]
@@ -516,5 +519,6 @@ async fn full_signed_out_rider_pipeline() {
     assert_eq!(forward.body, body);
     assert_eq!(forward.signature.as_deref(), Some(signature.as_str()));
     assert_eq!(forward.authorization, None);
+    assert_eq!(forward.hook_target.as_deref(), Some("repository"));
     assert!(journal.pending_outbox(10).expect("outbox").is_empty());
 }

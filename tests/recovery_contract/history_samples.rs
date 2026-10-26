@@ -77,7 +77,7 @@ fn schema_fourteen_retention_migration_backfills_in_bounded_batches() {
     let schema_version: u32 = connection
         .query_row("SELECT version FROM schema_version", [], |row| row.get(0))
         .unwrap();
-    assert_eq!(schema_version, 15);
+    assert_eq!(schema_version, 16);
     let retention_backfill_counts: (i64, i64, i64, i64, i64, i64, i64, i64, i64) = connection
         .query_row(
             "SELECT (SELECT COUNT(*) FROM webhook_deliveries WHERE delivery_id LIKE 'legacy-terminal-%' AND terminal_at IS NOT NULL), (SELECT COUNT(*) FROM webhook_deliveries WHERE delivery_id LIKE 'legacy-terminal-%' AND payload_sha256 IS NOT NULL), (SELECT COUNT(*) FROM ingress_outbox WHERE id LIKE 'legacy-outbox-%' AND terminal_at IS NOT NULL), (SELECT COUNT(*) FROM ingress_outbox WHERE id LIKE 'legacy-outbox-%' AND payload_sha256 IS NOT NULL), (SELECT COUNT(*) FROM pool_snapshots WHERE id LIKE 'legacy-snapshot-%' AND terminal_at IS NOT NULL), (SELECT COUNT(*) FROM pool_snapshots WHERE id LIKE 'legacy-snapshot-%' AND config_sha256 IS NOT NULL), (SELECT COUNT(*) FROM webhook_deliveries WHERE delivery_id='legacy-pending-delivery' AND terminal_at IS NULL), (SELECT COUNT(*) FROM ingress_outbox WHERE id='legacy-pending-outbox' AND terminal_at IS NULL), (SELECT COUNT(*) FROM pool_snapshots WHERE id='legacy-pending-snapshot' AND terminal_at IS NULL)",

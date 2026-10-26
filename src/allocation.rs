@@ -3,6 +3,7 @@ mod cleanup;
 mod create;
 mod explain;
 mod history;
+mod inventory;
 mod lifecycle;
 mod native;
 mod observation;
@@ -28,6 +29,7 @@ use std::{
 };
 
 pub use self::catalog::catalog_configuration_fingerprint;
+pub use self::inventory::{CatalogInventory, InventoryReport};
 pub use self::native::canonical_native_account_scope;
 pub use crate::policy::{ExplanationGcpLicense, ExplanationLaunchFacts, FinancialPriceScope};
 use serde_json::Value;
@@ -88,6 +90,8 @@ pub enum AllocationError {
     DeletedName,
     #[error("allocation identity is definitely absent")]
     NotFound,
+    #[error("administrator allocation admission is closed")]
+    AdmissionClosed,
     #[error("allocation concurrency limit reached")]
     Limit,
     #[error("allocation catalog is unavailable")]
@@ -357,6 +361,14 @@ struct NativeIdentityLookup<'a> {
     runner_name: &'a str,
     child_instance_id: Option<&'a str>,
     deadline: Instant,
+}
+
+#[derive(Default)]
+struct NativeIdentityResolution {
+    identity: Option<PlacementIdentity>,
+    listed: usize,
+    same_name: usize,
+    first_rejection: Option<&'static str>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

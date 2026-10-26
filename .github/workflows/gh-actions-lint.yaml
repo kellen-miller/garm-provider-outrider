@@ -5,4 +5,4 @@ permissions:
   contents: read
 jobs:
   lint:
-    uses: kellen-miller/ci/.github/workflows/gh-actions-lint.yaml@b098bcd37eafde344afa84c82a04e63e5ee3a450
+    uses: kellen-miller/ci/.github/workflows/gh-actions-lint.yaml@b08ba515b64f3563e51722faaea3d20d22283ed7

@@ -49,7 +49,7 @@ fn schema_v11_migrates_without_losing_allocations_and_unknown_versions_fail() {
     let version: u32 = connection
         .query_row("SELECT version FROM schema_version", [], |row| row.get(0))
         .expect("read schema version");
-    assert_eq!(version, 15);
+    assert_eq!(version, 16);
     connection
         .execute("UPDATE schema_version SET version=99", [])
         .expect("set unsupported schema version");
@@ -258,7 +258,7 @@ fn schema_v12_migration_preserves_cleanup_tombstones_and_native_data() {
     let version: u32 = connection
         .query_row("SELECT version FROM schema_version", [], |row| row.get(0))
         .expect("read schema version");
-    assert_eq!(version, 15);
+    assert_eq!(version, 16);
     drop(connection);
     std::fs::remove_file(&database).expect("remove test database");
     std::fs::remove_file(database.with_extension("lock")).expect("remove test lock");

@@ -7,8 +7,8 @@ use outrider::{
 use rust_decimal::Decimal;
 
 use super::cloud_server::{
-    MockResponse, backend, backend_with_licensing, image_response, image_response_for, profile,
-    query, retail_response, sku, start_server,
+    MockResponse, backend, backend_with_storage_and_licensing, image_response, image_response_for,
+    profile, query, retail_response, sku, start_server,
 };
 
 #[tokio::test]
@@ -114,8 +114,9 @@ async fn image_licensing_and_purchase_plan() {
     ])
     .await
     .unwrap_or_else(|_| panic!("Windows image mock server"));
-    let windows_backend = backend_with_licensing(
+    let windows_backend = backend_with_storage_and_licensing(
         &windows_server,
+        "Standard_LRS",
         AzureImageLicensing::WindowsLicenseInComputeMeter,
         "operator verified Azure Windows compute meter documentation",
     )
@@ -160,8 +161,9 @@ async fn image_licensing_and_purchase_plan() {
     let unpriced_server = start_server(vec![image_response()])
         .await
         .unwrap_or_else(|_| panic!("unpriced image mock server"));
-    let unpriced_backend = backend_with_licensing(
+    let unpriced_backend = backend_with_storage_and_licensing(
         &unpriced_server,
+        "Standard_LRS",
         AzureImageLicensing::AdditionalUnpricedSoftware,
         "operator verified marketplace software pricing documentation",
     )

@@ -42,25 +42,22 @@ pub fn run() -> Result<()> {
         std::env::consts::OS == "linux",
         "Linux contracts require a Linux host"
     );
-    process::run(
-        Command::new("cargo")
-            .args([
-                "test",
-                "--locked",
-                "--workspace",
-                "--all-features",
-                "--lib",
-                "--bins",
-            ])
-            .current_dir(root()),
-    )?;
+    let mut arguments = vec![
+        "test",
+        "--locked",
+        "--workspace",
+        "--all-features",
+        "--lib",
+        "--bins",
+    ];
     for target in TARGETS {
-        process::run(
-            Command::new("cargo")
-                .args(["test", "--locked", "--all-features", "--test", target])
-                .current_dir(root()),
-        )?;
+        arguments.extend(["--test", target]);
     }
+
+    let mut compilation = arguments.clone();
+    compilation.extend(["--test", "system_contract", "--no-run"]);
+    process::run(Command::new("cargo").args(&compilation).current_dir(root()))?;
+    process::run(Command::new("cargo").args(&arguments).current_dir(root()))?;
 
     for case in SYSTEM_CASES {
         let output = process::run(
@@ -98,6 +95,37 @@ fn validate_exact_result(case: &str, output: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::Context;
+    use std::{collections::BTreeSet, fs};
+
+    #[test]
+    fn every_integration_target_has_explicit_platform_coverage() -> Result<()> {
+        let expected: BTreeSet<String> = TARGETS
+            .iter()
+            .copied()
+            .chain([
+                "system_contract",
+                "admission_contract",
+                "bootstrap_contract",
+            ])
+            .map(str::to_owned)
+            .collect();
+        let mut actual = BTreeSet::new();
+        for entry in fs::read_dir(root().join("tests"))? {
+            let path = entry?.path();
+            if path.extension().is_some_and(|extension| extension == "rs") {
+                actual.insert(
+                    path.file_stem()
+                        .and_then(|name| name.to_str())
+                        .context("integration target must have a UTF-8 name")?
+                        .to_owned(),
+                );
+            }
+        }
+
+        assert_eq!(actual, expected);
+        Ok(())
+    }
 
     #[test]
     fn system_filters_reject_zero_multiple_and_ignored_results() {

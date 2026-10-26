@@ -2,8 +2,9 @@ use super::catalog::binding_pin_key;
 use super::selection::{binding_capability, selection_matches_binding};
 use super::{
     AllocationError, AllocationRecord, AllocationService, BTreeSet, CatalogOffer, Duration,
-    HashMap, HashSet, Instant, NativeIdentityLookup, OwnershipScope, PlacementIdentity,
-    ProviderBinding, ProviderRequest, ProviderRequirements, ProviderResult, Value,
+    HashMap, HashSet, Instant, NativeIdentityLookup, NativeIdentityResolution, OwnershipScope,
+    PlacementIdentity, ProviderBinding, ProviderRequest, ProviderRequirements, ProviderResult,
+    Value,
 };
 use crate::journal::native_identity_key;
 use crate::policy::ProviderLaunchFacts;
@@ -41,7 +42,7 @@ impl AllocationService {
     pub(super) async fn resolve_native_identity(
         &self,
         lookup: NativeIdentityLookup<'_>,
-    ) -> Result<Option<PlacementIdentity>, crate::cloud::CloudError> {
+    ) -> Result<NativeIdentityResolution, crate::cloud::CloudError> {
         let NativeIdentityLookup {
             controller_id,
             pool_id,
@@ -55,46 +56,67 @@ impl AllocationService {
             controller_id: controller_id.to_owned(),
             resource_name: Some(runner_name.to_owned()),
         };
-        let mut found = None;
+        let mut resolution = NativeIdentityResolution::default();
         for catalog in self.catalogs.iter().filter(|catalog| {
             catalog.configuration_fingerprint == configuration_fingerprint
                 && catalog.binding_id == offer.selection.binding_id
         }) {
             for observed in Box::pin(catalog.list(&scope, deadline)).await? {
-                if observed.name != runner_name || observed.identity.controller_id != controller_id
-                {
+                resolution.listed += 1;
+                if observed.name != runner_name {
                     continue;
                 }
+
+                resolution.same_name += 1;
+                if observed.identity.controller_id != controller_id {
+                    resolution.first_rejection.get_or_insert("controller");
+                    continue;
+                }
+
                 let pool_tag = match observed.identity.cloud.as_str() {
                     "aws" => "GARM_POOL_ID",
                     "azure" => "garm-pool-id",
                     "gcp" => "garmpoolid",
                     _ => continue,
                 };
-                if !observed
+                let rejection = if !observed
                     .ownership_tags
                     .iter()
                     .any(|(key, value)| key == pool_tag && value == pool_id)
-                    || !catalog.supports_identity(&observed.identity)
-                    || child_instance_id
-                        .is_some_and(|child_id| !child_locator_matches(&observed, child_id))
                 {
+                    Some("pool-tag")
+                } else if !catalog.supports_identity(&observed.identity) {
+                    Some("identity-scope")
+                } else if child_instance_id
+                    .is_some_and(|child_id| !child_locator_matches(&observed, child_id))
+                {
+                    Some("locator")
+                } else {
+                    None
+                };
+                if let Some(reason) = rejection {
+                    resolution.first_rejection.get_or_insert(reason);
                     continue;
                 }
-                if found.as_ref().is_some_and(|previous: &PlacementIdentity| {
-                    previous.cloud != observed.identity.cloud
-                        || previous.account_id != observed.identity.account_id
-                        || previous.location != observed.identity.location
-                        || previous.resource_id != observed.identity.resource_id
-                }) {
+
+                if resolution
+                    .identity
+                    .as_ref()
+                    .is_some_and(|previous: &PlacementIdentity| {
+                        previous.cloud != observed.identity.cloud
+                            || previous.account_id != observed.identity.account_id
+                            || previous.location != observed.identity.location
+                            || previous.resource_id != observed.identity.resource_id
+                    })
+                {
                     return Err(crate::cloud::CloudError::Unavailable(
                         "native runner identity is ambiguous",
                     ));
                 }
-                found = Some(observed.identity);
+                resolution.identity = Some(observed.identity);
             }
         }
-        Ok(found)
+        Ok(resolution)
     }
 
     pub(super) async fn current_native_identity(
@@ -118,7 +140,8 @@ impl AllocationService {
                 deadline,
             })
             .await
-            .map_err(|_| AllocationError::Catalog)?;
+            .map_err(|_| AllocationError::Catalog)?
+            .identity;
         if let (Some(stored), Some(observed)) = (
             allocation.native_identity_json.as_deref(),
             observed.as_ref(),

@@ -17,7 +17,13 @@ impl GcpBackend {
     ) -> Result<GcpPriceSet, CloudError> {
         let service = "services/6F81-5844-456A";
         let base = format!("/v1/{service}/skus?pageSize=5000");
-        let mut pages = Vec::new();
+        let zone_region = self
+            .settings
+            .zone
+            .rsplit_once('-')
+            .map(|(region, _)| region)
+            .unwrap_or(&self.settings.zone);
+        let mut rates = Vec::new();
         let mut next: Option<String> = None;
         let mut seen_tokens = BTreeSet::new();
         let mut req_ids = Vec::new();
@@ -30,7 +36,17 @@ impl GcpBackend {
             let (page, request_id): (BillingSkuPage, Option<String>) = self
                 .request_json(&self.settings.billing_endpoint, &path, deadline)
                 .await?;
-            pages.extend(page.skus);
+            // Drop unrelated regional rows before reading the next page. Holding
+            // the worldwide catalog multiplies controller memory for each quote.
+            rates.extend(page.skus.into_iter().filter(|sku| {
+                sku.geo_taxonomy
+                    .as_ref()
+                    .is_some_and(|geo| matches!(geo.r#type, BillingGeoType::Global))
+                    || sku
+                        .service_regions
+                        .iter()
+                        .any(|region| region.eq_ignore_ascii_case(zone_region))
+            }));
             if let Some(id) = request_id {
                 req_ids.push(id);
             }
@@ -45,24 +61,6 @@ impl GcpBackend {
                 ));
             }
         }
-        let zone_region = self
-            .settings
-            .zone
-            .rsplit_once('-')
-            .map(|(region, _)| region)
-            .unwrap_or(&self.settings.zone);
-        let rates = pages
-            .into_iter()
-            .filter(|sku| {
-                sku.geo_taxonomy
-                    .as_ref()
-                    .is_some_and(|geo| matches!(geo.r#type, BillingGeoType::Global))
-                    || sku
-                        .service_regions
-                        .iter()
-                        .any(|region| region.eq_ignore_ascii_case(zone_region))
-            })
-            .collect::<Vec<_>>();
         let market_matches = |sku: &BillingSku| match purchasing {
             "spot" => sku.category.usage_type.eq_ignore_ascii_case("Preemptible"),
             "on_demand" => sku.category.usage_type.eq_ignore_ascii_case("OnDemand"),
@@ -93,24 +91,10 @@ impl GcpBackend {
             rate
         } else {
             let cpu = unique_sku(&rates, |sku| {
-                sku.category.resource_group.eq_ignore_ascii_case("CPU")
-                    && sku.category.resource_family.eq_ignore_ascii_case("Compute")
-                    && sku
-                        .description
-                        .split_whitespace()
-                        .next()
-                        .is_some_and(|token| token.eq_ignore_ascii_case(&family))
-                    && market_matches(sku)
+                predefined_compute_sku(sku, &family, "CPU") && market_matches(sku)
             })?;
             let ram = unique_sku(&rates, |sku| {
-                sku.category.resource_group.eq_ignore_ascii_case("RAM")
-                    && sku.category.resource_family.eq_ignore_ascii_case("Compute")
-                    && sku
-                        .description
-                        .split_whitespace()
-                        .next()
-                        .is_some_and(|token| token.eq_ignore_ascii_case(&family))
-                    && market_matches(sku)
+                predefined_compute_sku(sku, &family, "RAM") && market_matches(sku)
             })?;
             let (cpu_unit_rate, cpu_effective) = sku_hourly(cpu)?;
             let cpu_rate = cpu_unit_rate
@@ -417,6 +401,41 @@ pub(super) fn image_license_hourly(
         },
         effective_at,
     })
+}
+
+fn predefined_compute_sku(sku: &BillingSku, family: &str, group: &str) -> bool {
+    let component = match group {
+        "CPU" => "Core",
+        "RAM" => "Ram",
+        _ => return false,
+    };
+    if !sku.category.resource_group.eq_ignore_ascii_case(group)
+        || !sku.category.resource_family.eq_ignore_ascii_case("Compute")
+    {
+        return false;
+    }
+
+    let mut words = sku.description.split_whitespace();
+    let mut family_word = words.next();
+    if family_word.is_some_and(|word| word.eq_ignore_ascii_case("Spot")) {
+        if !words
+            .next()
+            .is_some_and(|word| word.eq_ignore_ascii_case("Preemptible"))
+            || !sku.category.usage_type.eq_ignore_ascii_case("Preemptible")
+        {
+            return false;
+        }
+
+        family_word = words.next();
+    }
+
+    family_word.is_some_and(|word| word.eq_ignore_ascii_case(family))
+        && words
+            .next()
+            .is_some_and(|word| word.eq_ignore_ascii_case("Instance"))
+        && words
+            .next()
+            .is_some_and(|word| word.eq_ignore_ascii_case(component))
 }
 
 pub(super) fn conservative_effective(current: u64, next: u64) -> u64 {

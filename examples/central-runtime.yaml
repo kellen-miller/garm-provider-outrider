@@ -89,8 +89,8 @@ provider_bindings:
     executable_sha256: 0000000000000000000000000000000000000000000000000000000000000000
     configuration_path: /etc/outrider/providers/azure.toml
     configuration_sha256: 0000000000000000000000000000000000000000000000000000000000000000
-    source_revision: 395847a0bec078c5dd88b31f54f0025f63b662c6
-    expected_version: 395847a
+    source_revision: 10659879c5d91979c7f077439bd78e17622452a6
+    expected_version: 1065987
     inherited_environment: []
     supported_os: [linux]
     supported_architectures: [amd64]

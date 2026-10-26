@@ -150,6 +150,56 @@ fn not_found_and_http_errors() {
     failed.finish().unwrap();
 }
 
+struct SafeProviderFailureCase {
+    message: &'static str,
+    expected: &'static str,
+}
+
+#[test]
+fn provider_reports_only_allowlisted_admission_failures() {
+    let directory = TestDirectory::new().unwrap();
+    for case in [
+        SafeProviderFailureCase {
+            message: "allocation concurrency limit reached",
+            expected: "allocation concurrency limit reached (HTTP 503)",
+        },
+        SafeProviderFailureCase {
+            message: "administrator allocation admission is closed",
+            expected: "administrator allocation admission is closed (HTTP 503)",
+        },
+        SafeProviderFailureCase {
+            message: "unexpected-private-response-canary",
+            expected: "daemon returned HTTP 503",
+        },
+    ] {
+        let fixture = HttpFixture::start(
+            503,
+            provider_response(None, Some(case.message), false).unwrap(),
+            false,
+        )
+        .unwrap();
+        let config = write_provider_config(&directory, &fixture.address, 5).unwrap();
+        let output = provider_process(
+            &config,
+            "GetInstance",
+            None,
+            Some("runner-test"),
+            Some("pool-test"),
+            None,
+            None,
+        )
+        .unwrap();
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+        assert_eq!(
+            String::from_utf8_lossy(&output.stderr).trim(),
+            format!("outrider provider: {}", case.expected)
+        );
+        fixture.request().unwrap();
+        fixture.finish().unwrap();
+    }
+}
+
 #[test]
 fn provider_rejects_malformed_or_conflicting_snapshot_sources() {
     let directory = TestDirectory::new().unwrap();

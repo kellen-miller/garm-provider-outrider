@@ -328,32 +328,32 @@
     },
     {
       "id": "qualified-azure-spec",
-      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/internal/spec/spec.go",
-      "revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/10659879c5d91979c7f077439bd78e17622452a6/internal/spec/spec.go",
+      "revision": "10659879c5d91979c7f077439bd78e17622452a6",
       "git_blob_sha": "1c0a40d1ca19797b6ccb60875f8d55a7d8715ed0",
       "sha256": "88082fd83c5b24dd3675706a010836eddabab113641fcc899a32dda2920ce8e8",
       "bytes": 22073,
-      "fetched_at": "2026-10-21",
+      "fetched_at": "2026-10-23",
       "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
     },
     {
       "id": "qualified-azure-client",
-      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/internal/client/azure.go",
-      "revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
-      "git_blob_sha": "6836cc0d2288aa350af8ce9beaaa0abf908193fe",
-      "sha256": "f264a1fdfc8a5d366e86048b12cfee073c643552a1a6a84049354f9941ad8d3d",
-      "bytes": 15270,
-      "fetched_at": "2026-10-21",
+      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/10659879c5d91979c7f077439bd78e17622452a6/internal/client/azure.go",
+      "revision": "10659879c5d91979c7f077439bd78e17622452a6",
+      "git_blob_sha": "0f48c646d6bac53c27d43e44df10a344c3f20e3e",
+      "sha256": "f7a27de1153132d211afa927ff8223a0835f438e8ed0c3f98ec90eb27e9a3159",
+      "bytes": 15498,
+      "fetched_at": "2026-10-23",
       "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
     },
     {
       "id": "qualified-azure-config",
-      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/config/config.go",
-      "revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/10659879c5d91979c7f077439bd78e17622452a6/config/config.go",
+      "revision": "10659879c5d91979c7f077439bd78e17622452a6",
       "git_blob_sha": "df4b2cf251f1ae1395b7ea8819c3e69daecb6f54",
       "sha256": "d99f29e5243a427d45076981deb87cc9b819c6cc7a3d59871fd8896ed25e3790",
       "bytes": 6817,
-      "fetched_at": "2026-10-21",
+      "fetched_at": "2026-10-23",
       "transform": "exact pinned source Git-blob verified; source-only request mapping, not observed cloud response"
     },
     {
@@ -438,12 +438,12 @@
     },
     {
       "id": "azure-customdata-model",
-      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/vendor/github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5/models.go",
-      "revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/10659879c5d91979c7f077439bd78e17622452a6/vendor/github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5/models.go",
+      "revision": "10659879c5d91979c7f077439bd78e17622452a6",
       "git_blob_sha": "1fad0acd2a7edc9da843a10003312531bc968bd9",
       "sha256": "d834e0d939f5d8d6fed44160e2d1f0eb3d5aeb7a1aa5a344d05286e7260db8eb",
       "bytes": 337071,
-      "fetched_at": "2026-10-21",
+      "fetched_at": "2026-10-23",
       "transform": "vendored official ARM OSProfile model: maximum decoded customData65535 bytes"
     },
     {
@@ -483,12 +483,12 @@
     },
     {
       "id": "qualified-azure-util",
-      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/internal/util/util.go",
-      "revision": "395847a0bec078c5dd88b31f54f0025f63b662c6",
+      "url": "https://github.com/kellen-miller/garm-provider-azure/blob/10659879c5d91979c7f077439bd78e17622452a6/internal/util/util.go",
+      "revision": "10659879c5d91979c7f077439bd78e17622452a6",
       "git_blob_sha": "f611bd758b5aade9870c0485aaa9270716920e9d",
       "sha256": "f169ba2d4e9d9fbe69cb52d5c994d63359f3f2a20bfa45906689985d0e3954f1",
       "bytes": 5150,
-      "fetched_at": "2026-10-21T19:46:53.763407+00:00",
+      "fetched_at": "2026-10-23",
       "transform": "exact checked-out immutable Git blob"
     },
     {

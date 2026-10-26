@@ -5,6 +5,8 @@ pub(super) struct SystemAwsServer {
     pub(super) compute_quote_requests: Arc<AtomicU64>,
     pub(super) native_inspection_mode: Arc<AtomicU64>,
     pub(super) slow_next_request: Arc<AtomicBool>,
+    pub(super) native_visible: Arc<AtomicBool>,
+    pub(super) request_trace: Arc<Mutex<Vec<String>>>,
     pub(super) task: tokio::task::JoinHandle<std::io::Result<()>>,
 }
 
@@ -46,10 +48,8 @@ pub(super) async fn system_aws_server(
         delayed_image_requests,
         image_delay_on_request,
         image_request_delay_ms,
-        request_trace,
     ));
     drop((
-        native_visible,
         collision_native_observations,
         native_inspections,
         native_inspection_delay_ms,
@@ -64,6 +64,8 @@ pub(super) async fn system_aws_server(
         compute_quote_requests,
         native_inspection_mode,
         slow_next_request,
+        native_visible,
+        request_trace,
         task,
     }
 }
