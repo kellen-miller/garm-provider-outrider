@@ -6,9 +6,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("manifest directory required")?);
     // Watch tracked inputs and Git metadata, not target/ or local agent evidence.
     // Package assembly independently requires the current checkout to be clean.
+    // A status refresh must not modify the index this build script watches.
     let git = |args: &[&str]| {
         Command::new("git")
             .args(args)
+            .env("GIT_OPTIONAL_LOCKS", "0")
             .current_dir(&root)
             .output()
             .ok()
@@ -19,7 +21,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(directory) = git(&["rev-parse", argument]) {
             let directory = root.join(directory.trim());
             for file in ["HEAD", "index", "packed-refs", "refs"] {
-                println!("cargo:rerun-if-changed={}", directory.join(file).display());
+                let path = directory.join(file);
+                if path.exists() {
+                    println!("cargo:rerun-if-changed={}", path.display());
+                }
             }
         }
     }
