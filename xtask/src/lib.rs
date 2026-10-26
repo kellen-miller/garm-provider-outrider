@@ -3,6 +3,7 @@ pub mod acceptance;
 pub mod bundle;
 pub mod contract_tools;
 pub mod linux_contracts;
+pub mod package;
 pub mod process;
 pub mod provider_fixture;
 

@@ -284,7 +284,7 @@ fn daemon_request_failure(error: reqwest::Error, fallback: &'static str) -> Prov
 
 fn write_metadata_response(command: &str, version: &str) -> Result<bool, ProviderFailure> {
     let output = match command {
-        "GetVersion" => env!("CARGO_PKG_VERSION").as_bytes().to_vec(),
+        "GetVersion" => env!("OUTRIDER_BUILD_VERSION").as_bytes().to_vec(),
         "GetSupportedInterfaceVersions" if version == "v0.1.1" => {
             br#"["v0.1.0","v0.1.1"]"#.to_vec()
         }

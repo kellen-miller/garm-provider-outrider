@@ -1,0 +1,154 @@
+name: Package
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Publish a semantic release after package qualification (main only)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: package-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+jobs:
+  preview:
+    if: github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: release
+        uses: kellen-miller/ci/.github/actions/release@3a4a017647738ab820297df136edc177276bb5dc
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          dry-run: 'true'
+          first-release-version: '0.1.0'
+  package:
+    needs: preview
+    if: always() && (needs.preview.result == 'success' || needs.preview.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_PROFILE_RELEASE_OPT_LEVEL: '1'
+      CARGO_PROFILE_RELEASE_LTO: 'false'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.27.3'
+          cache: false
+      - name: Prepare musl build tools and target
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes musl-tools cmake clang binutils file
+          rustup toolchain install 1.99.1 --profile minimal
+          rustup target add --toolchain 1.99.1 x86_64-unknown-linux-musl
+      - id: version
+        name: Select embedded version
+        env:
+          RELEASE_VERSION: ${{ needs.preview.outputs.version }}
+        run: |
+          version="${RELEASE_VERSION:-$(cargo metadata --locked --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "outrider") | .version')}"
+          printf 'OUTRIDER_VERSION=%s\nPACKAGE=%s\nBUNDLE=%s\nARCHIVES=%s\n' "$version" "$RUNNER_TEMP/outrider-package" "$RUNNER_TEMP/outrider-providers" "$RUNNER_TEMP/outrider-archives" >> "$GITHUB_ENV"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/outrider-provider-builds
+          key: outrider-providers-linux-amd64-go1.27.3-${{ hashFiles('providers/manifest.json') }}
+      - name: Build static deployable binaries
+        uses: kellen-miller/ci/.github/actions/rust-check@3a4a017647738ab820297df136edc177276bb5dc
+        env:
+          CARGO_BUILD_TARGET: x86_64-unknown-linux-musl
+          CC_x86_64_unknown_linux_musl: musl-gcc
+        with:
+          toolchain: '1.99.1'
+          checks: build
+          all-features: 'false'
+          build-profile: release
+          build-targets: bins
+          cache-key: linux-amd64-musl-release-opt1-no-lto-v1
+      - name: Test package boundaries and build native providers
+        run: |
+          cargo test --locked -p outrider-xtask package
+          cargo xtask build-provider-bundle --go-version 1.27.3 --output "$BUNDLE" --source-cache "$HOME/.cache/outrider-provider-builds/sources" --go-cache-root "$HOME/.cache/outrider-provider-builds/go"
+      - name: Assemble and verify package
+        run: |
+          cargo xtask package --binary target/x86_64-unknown-linux-musl/release/outrider --provider-bundle "$BUNDLE" --output "$PACKAGE" --version "$OUTRIDER_VERSION"
+          "$PACKAGE/bin/outrider" build-info
+          test "$("$PACKAGE/bin/outrider" --version)" = "outrider $OUTRIDER_VERSION"
+          file "$PACKAGE/bin/outrider"
+          if readelf --program-headers "$PACKAGE/bin/outrider" | grep -q INTERP; then exit 1; fi
+          sudo install -D -m 0755 "$PACKAGE/bin/outrider" /opt/outrider/bin/outrider
+          systemd-analyze verify "$PACKAGE/packaging/outrider.service"
+          jq -r '.files[] | [.path, .sha256, .mode] | @tsv' "$PACKAGE/package-manifest.json" | while IFS=$'\t' read -r path digest mode; do
+            test "$(sha256sum "$PACKAGE/$path" | cut -d' ' -f1)" = "$digest"
+            test "$((8#$(stat -c '%a' "$PACKAGE/$path")))" = "$mode"
+          done
+      - name: Invoke package inside GARM 0.2.1 BusyBox image
+        env:
+          GARM_IMAGE: ghcr.io/cloudbase/garm@sha256:c74079c24bdf9dacbd55f9ac29f149502b909827388430205b8cca65b04a7dda
+        run: |
+          docker run --rm --platform linux/amd64 --network none --read-only --entrypoint /bin/sh -v "$PACKAGE:/opt/outrider:ro" -e GARM_COMMAND=GetVersion -e GARM_CONTROLLER_ID=package-smoke -e GARM_PROVIDER_CONFIG_FILE=/opt/outrider/examples/config.toml -e EXPECTED_VERSION="$OUTRIDER_VERSION" "$GARM_IMAGE" -c 'test -x /bin/busybox && test "$(/opt/outrider/bin/outrider)" = "$EXPECTED_VERSION"'
+      - name: Archive qualified package
+        run: |
+          mkdir "$ARCHIVES"
+          archive="outrider-$OUTRIDER_VERSION-linux-amd64.tar.gz"
+          tar -C "$PACKAGE" -czf "$ARCHIVES/$archive" .
+          cd "$ARCHIVES"
+          sha256sum "$archive" > "$archive.sha256"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: outrider-linux-amd64
+          path: ${{ runner.temp }}/outrider-archives/*
+          if-no-files-found: error
+          retention-days: 7
+  publish:
+    needs: [preview, package]
+    if: github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main' && needs.preview.outputs.version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: outrider-linux-amd64
+          path: ${{ runner.temp }}/release-assets
+      - id: release
+        uses: kellen-miller/ci/.github/actions/release@3a4a017647738ab820297df136edc177276bb5dc
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          first-release-version: '0.1.0'
+      - name: Attach qualified archive to matching release
+        if: steps.release.outputs.release_published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          PACKAGE_VERSION: ${{ needs.package.outputs.version }}
+          RELEASE_TAG: ${{ steps.release.outputs.git_tag }}
+        run: |
+          test "$RELEASE_VERSION" = "$PACKAGE_VERSION"
+          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP"/release-assets/*

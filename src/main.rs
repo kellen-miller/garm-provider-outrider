@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand};
 use outrider::{config::CentralConfig, label::RoutingRequest};
 
 #[derive(Parser)]
-#[command(name = "outrider", version, about = "Multi-cloud GARM runner provider")]
+#[command(name = "outrider", version = env!("OUTRIDER_BUILD_VERSION"), about = "Multi-cloud GARM runner provider")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -18,6 +18,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    BuildInfo,
     Validate {
         #[arg(long)]
         config: PathBuf,
@@ -103,6 +104,18 @@ fn main() -> ExitCode {
 
 fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
+        Command::BuildInfo => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "version": env!("OUTRIDER_BUILD_VERSION"),
+                    "source_revision": env!("OUTRIDER_SOURCE_REVISION"),
+                    "host": env!("OUTRIDER_BUILD_HOST"),
+                    "dirty": env!("OUTRIDER_BUILD_DIRTY") == "true",
+                })
+            );
+        }
+
         Command::Validate { config, profile } => {
             let patch = CentralConfig::from_toml(&fs::read_to_string(config)?)?;
             let patch = patch.load_native_configuration(&std::env::vars_os().collect())?;

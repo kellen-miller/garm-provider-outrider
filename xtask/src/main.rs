@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use outrider_xtask::{acceptance, bundle, contract_tools, linux_contracts};
+use outrider_xtask::{acceptance, bundle, contract_tools, linux_contracts, package};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -18,6 +18,7 @@ enum Operation {
     },
     CheckLinuxContracts,
     BuildProviderBundle(bundle::Options),
+    Package(package::Options),
     InstallContractTools {
         output: PathBuf,
     },
@@ -31,6 +32,7 @@ fn main() -> anyhow::Result<()> {
         Operation::CheckAcceptance { milestone, all: _ } => acceptance::run(milestone.as_deref()),
         Operation::CheckLinuxContracts => linux_contracts::run(),
         Operation::BuildProviderBundle(options) => bundle::build(&options),
+        Operation::Package(options) => package::run(&options),
         Operation::InstallContractTools { output } => contract_tools::install(&output),
         Operation::BuildGarmWrapperProbe { output } => contract_tools::build_wrapper(&output),
     }
