@@ -93,10 +93,6 @@ impl ConfigurationFile {
     }
 
     pub(super) fn publish(&self, bytes: &[u8]) -> Result<bool, SetupError> {
-        if bytes == self.original {
-            return Ok(false);
-        }
-
         let mut current = open_at(&self.directory, &self.name, false)?;
         let metadata = current
             .metadata()
@@ -108,9 +104,17 @@ impl ConfigurationFile {
             .map_err(|_| SetupError::ProtectedConfiguration)?;
         if metadata.dev() != self.metadata.dev()
             || metadata.ino() != self.metadata.ino()
+            || metadata.nlink() != 1
+            || metadata.uid() != self.metadata.uid()
+            || metadata.gid() != self.metadata.gid()
+            || metadata.mode() != self.metadata.mode()
             || contents != self.original
         {
             return Err(SetupError::ConcurrentEdit);
+        }
+
+        if bytes == self.original {
+            return Ok(false);
         }
 
         let temporary = CString::new(format!(

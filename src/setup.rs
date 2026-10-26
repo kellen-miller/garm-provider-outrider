@@ -313,7 +313,16 @@ fn merge_registration(
         .filter(|provider| provider["name"].as_str() == Some(name))
         .collect::<Vec<_>>();
     if !matches.is_empty() {
-        if matches.len() != 1 || matches[0].to_string() != expected.to_string() {
+        if matches.len() != 1
+            || matches[0]["provider_type"].as_str() != expected["provider_type"].as_str()
+            || matches[0]["disable_jit_config"].as_bool()
+                != expected["disable_jit_config"].as_bool()
+            || ["interface_version", "provider_executable", "config_file"]
+                .iter()
+                .any(|field| {
+                    matches[0]["external"][field].as_str() != expected["external"][field].as_str()
+                })
+        {
             return Err(SetupError::Registration);
         }
 
