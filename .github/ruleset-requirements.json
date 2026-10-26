@@ -1,0 +1,8 @@
+{
+  "checks": [
+    "check",
+    "Linux host contracts",
+    "GitHub Actions / Workflow validation",
+    "Code duplication (CPD)"
+  ]
+}
