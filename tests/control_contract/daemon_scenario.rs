@@ -20,8 +20,8 @@ use outrider::{
     allocation::{AllocationService, ConnectedCatalog, catalog_configuration_fingerprint},
     cloud::aws::AwsBackend,
     config::{
-        AwsCatalogBinding, AwsImageBinding, AwsNetworkBinding, ConfigPatch, ControlSettings,
-        IngressRepository, IngressSettings,
+        AwsCatalogBinding, AwsImageBinding, AwsNetworkBinding, ControlSettings, IngressRepository,
+        IngressSettings,
     },
     daemon::build_router,
     github::IngressService,
@@ -234,8 +234,10 @@ pub(super) fn build_test_services(
         supported_architectures: BTreeSet::from(["amd64".to_owned()]),
         purchasing_capabilities: BTreeSet::from([PurchasingCapability::OnDemand]),
     };
-    let mut config = ConfigPatch::from_toml(include_str!("../../examples/central.toml"))
-        .map_err(io::Error::other)?;
+    let mut config =
+        outrider::config::CentralConfig::from_toml(include_str!("../../examples/central.toml"))
+            .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
+            .map_err(io::Error::other)?;
     config.control = Some(ControlSettings {
         listen_address: address.to_owned(),
         database_path: database.display().to_string(),
@@ -304,8 +306,11 @@ pub(super) fn build_test_services(
     remove_null_values(&mut config_value);
     fs::write(
         &config_path,
-        toml_edit::ser::to_string_pretty(&config_value).map_err(io::Error::other)?,
+        super::serialize_native_central(&config_value)
+            .map_err(|error| io::Error::other(error.to_string()))?,
     )?;
+    let config = super::load_fixture_central(&config_path)
+        .map_err(|error| io::Error::other(error.to_string()))?;
 
     let aws_catalog = config
         .aws_catalog_bindings

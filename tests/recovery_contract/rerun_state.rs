@@ -48,7 +48,8 @@ async fn recovery_iteration_runs_bounded_retention_and_independent_work() {
 #[test]
 fn rerun_admin_settings_share_normalization_boundary() {
     let central =
-        outrider::config::ConfigPatch::from_toml(include_str!("../../examples/central.toml"))
+        outrider::config::CentralConfig::from_toml(include_str!("../../examples/central.toml"))
+            .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
             .unwrap_or_else(|_| panic!("load valid central configuration"));
     let repository = outrider::config::ConfigPatch {
         reruns: Some(outrider::config::RerunSettings {

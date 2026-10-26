@@ -1,9 +1,6 @@
 use std::{collections::BTreeSet, time::Duration};
 
-use outrider::{
-    cloud::CloudCatalog,
-    config::{AzureImageLicensing, ConfigPatch},
-};
+use outrider::{cloud::CloudCatalog, config::AzureImageLicensing};
 use rust_decimal::Decimal;
 
 use super::cloud_server::{
@@ -254,8 +251,8 @@ async fn image_licensing_and_purchase_plan() {
         .unwrap_or_else(|_| panic!("quote plan server task"))
         .unwrap_or_else(|_| panic!("quote plan server"));
 
-    let missing = ConfigPatch::from_toml(
-        "version = 1\n\n[[azure_catalog_bindings]]\naccount_id = \"a\"\ncredential_reference = \"provider-binding:p:configuration\"\nid = \"a\"\npricing_location = \"eastus\"\nprovider_binding_id = \"p\"\nsubscription_id = \"s\"\n\n[azure_catalog_bindings.accelerator_facts]\n\n[azure_catalog_bindings.images.linux]\ncapabilities = []\nimage_id = \"Canonical:Ubuntu:22:1\"\nminimum_os_disk_gib = 1\nminimum_os_disk_source = \"source\"\n\n[azure_catalog_bindings.locations]\n\n[azure_catalog_bindings.storage_classes]\n",
+    let missing = outrider::config::CentralConfig::from_toml(
+        "version = 1\n\n[[azure_catalog_bindings]]\nid = \"a\"\nprovider_binding_id = \"p\"\n\n[azure_catalog_bindings.accelerator_facts]\n\n[azure_catalog_bindings.images.linux]\ncapabilities = []\nimage_id = \"Canonical:Ubuntu:22:1\"\nminimum_os_disk_gib = 1\nminimum_os_disk_source = \"source\"\n\n[azure_catalog_bindings.locations]\n\n[azure_catalog_bindings.storage_classes]\n",
     );
     assert!(
         missing.is_err(),

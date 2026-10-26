@@ -320,7 +320,7 @@ fn provider_connection(
 ) -> Result<ProviderConnection, ProviderFailure> {
     let configuration = std::fs::read_to_string(config_path)
         .map_err(|_| ProviderFailure::Message("cannot read provider configuration".into()))?;
-    let configuration = crate::config::ConfigPatch::from_toml(&configuration)
+    let configuration = crate::config::CentralConfig::from_toml(&configuration)
         .map_err(|_| ProviderFailure::Message("invalid provider configuration".into()))?;
     let settings = configuration
         .control

@@ -4,19 +4,29 @@ use toml_edit::{DocumentMut, TableLike};
 
 use super::{ConfigError, ConfigPatch};
 
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RepositoryConfig {
+    version: Option<u32>,
+    profiles: Option<std::collections::BTreeMap<String, super::RunnerProfilePatch>>,
+}
+
 impl ConfigPatch {
-    /// Parse and validate an Outrider TOML configuration.
+    /// Parse and validate a repository profile overlay without native file reads.
     ///
     /// # Errors
-    /// Returns an error for malformed TOML, unknown policy fields, or an
-    /// unsupported version.
+    /// Returns an error for malformed TOML, administrator fields or an unsupported version.
     pub fn from_toml(toml: &str) -> Result<Self, ConfigError> {
         let document = toml
             .parse::<DocumentMut>()
             .map_err(|error| ConfigError::Toml(error.to_string()))?;
-        reject_unknown_policy_fields(&document)?;
-        let patch: Self = toml_edit::de::from_document(document)
+        let repository: RepositoryConfig = toml_edit::de::from_document(document)
             .map_err(|error| ConfigError::Toml(error.to_string()))?;
+        let patch = Self {
+            version: repository.version,
+            profiles: repository.profiles,
+            ..Self::default()
+        };
         patch.validate_version()?;
         Ok(patch)
     }
@@ -117,7 +127,7 @@ impl ConfigPatch {
     }
 }
 
-fn reject_unknown_policy_fields(document: &DocumentMut) -> Result<(), ConfigError> {
+pub(super) fn reject_unknown_policy_fields(document: &DocumentMut) -> Result<(), ConfigError> {
     let Some(policies) = document
         .get("policies")
         .and_then(toml_edit::Item::as_table_like)

@@ -1,3 +1,5 @@
+use crate::providers::configuration::GcpChildConfiguration;
+
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
@@ -76,19 +78,6 @@ pub struct GcpSettings {
     pub provider_configuration_path: PathBuf,
     pub compute_endpoint: String,
     pub billing_endpoint: String,
-}
-
-#[derive(Deserialize)]
-struct GcpChildConfiguration {
-    project_id: String,
-    zone: String,
-    credentials_file: String,
-    network_id: String,
-    subnetwork_id: String,
-    #[serde(default)]
-    external_ip_access: bool,
-    #[serde(default)]
-    enable_regional_placement: bool,
 }
 
 #[derive(Deserialize)]

@@ -4,7 +4,7 @@ use super::*;
 async fn cli_explain_uses_authenticated_daemon_and_read_only_sdk_analysis()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut scenario = SystemScenario::start().await?;
-    let mut central = ConfigPatch::from_toml(&fs::read_to_string(&scenario.config_path)?)?;
+    let mut central = load_fixture_central(&scenario.config_path)?;
     central.history = Some(outrider::config::HistorySettings {
         window_seconds: 3600,
         sampling_interval_seconds: 60,
@@ -59,7 +59,7 @@ async fn cli_explain_uses_authenticated_daemon_and_read_only_sdk_analysis()
     strip_null_configuration_fields(&mut central_value);
     fs::write(
         &scenario.config_path,
-        toml_edit::ser::to_string_pretty(&central_value)?,
+        serialize_native_central(&central_value)?,
     )?;
     let endpoint = scenario.aws.endpoint.clone();
     scenario.restart(&endpoint).await?;

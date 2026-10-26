@@ -1,4 +1,4 @@
-use super::config::central_patch;
+use super::config::{central_patch, load_central_toml};
 use std::collections::BTreeMap;
 use std::io;
 
@@ -64,71 +64,67 @@ windows_license_included = false
         "version = 1\n{}",
         record("price-compute", "compute", 1792800000, 1800480000)
     );
-    let central = ConfigPatch::from_toml(&valid_toml).unwrap();
+    let central = load_central_toml(&valid_toml).unwrap();
     assert!(central.effective_prices.is_some());
     assert_effective_price_schema_matches(&report_json, &valid_toml);
     assert_effective_price_decimal_contract(&valid_toml, &report_json);
     let blank_source = valid_toml.replace("source = \"vendor agreement\"", "source = '   '");
-    assert!(ConfigPatch::from_toml(&blank_source).is_err());
+    assert!(load_central_toml(&blank_source).is_err());
     assert_effective_price_schema_rejects(&blank_source);
     let controlled_reference = valid_toml.replace(
         "reference = \"agreement-section-4\"",
         "reference = \"bad\\u0001value\"",
     );
-    assert!(ConfigPatch::from_toml(&controlled_reference).is_err());
+    assert!(load_central_toml(&controlled_reference).is_err());
     assert_effective_price_schema_rejects(&controlled_reference);
-    let repository = ConfigPatch::from_toml(&valid_toml).unwrap();
-    assert!(matches!(
-        central.normalize_profile(Some(&repository), "build", None),
-        Err(outrider::config::ConfigError::ForbiddenOverride(_))
-    ));
+    assert!(ConfigPatch::from_toml(&valid_toml).is_err());
 
     let overlap = format!(
         "version = 1\n{}{}",
         record("price-compute-a", "compute", 1792800000, 1800480000),
         record("price-compute-b", "compute", 1800000000, 1805000000),
     );
-    assert!(ConfigPatch::from_toml(&overlap).is_err());
+    assert!(load_central_toml(&overlap).is_err());
     let adjacent = format!(
         "version = 1\n{}{}",
         record("price-compute-a", "compute", 1792800000, 1800480000),
         record("price-compute-b", "compute", 1800480000, 1805000000),
     );
-    assert!(ConfigPatch::from_toml(&adjacent).is_ok());
+    assert!(load_central_toml(&adjacent).is_ok());
     let different_components_overlap = format!(
         "version = 1\n{}{}",
         record("price-compute", "compute", 1792800000, 1800480000),
         record("price-disk", "disk", 1792800000, 1800480000),
     );
-    assert!(ConfigPatch::from_toml(&different_components_overlap).is_ok());
+    assert!(load_central_toml(&different_components_overlap).is_ok());
     let duplicate_id = format!(
         "version = 1\n{}{}",
         record("duplicate-id", "compute", 1792800000, 1800480000),
         record("duplicate-id", "disk", 1792800000, 1800480000),
     );
-    assert!(ConfigPatch::from_toml(&duplicate_id).is_err());
+    assert!(load_central_toml(&duplicate_id).is_err());
     let padded_id = format!(
         "version = 1\n{}",
         record(" padded-id", "compute", 1792800000, 1800480000),
     );
-    assert!(ConfigPatch::from_toml(&padded_id).is_err());
+    assert!(load_central_toml(&padded_id).is_err());
     let punctuation_id = format!(
         "version = 1\n{}",
         record("-leading-id", "compute", 1792800000, 1800480000),
     );
-    assert!(ConfigPatch::from_toml(&punctuation_id).is_err());
+    assert!(load_central_toml(&punctuation_id).is_err());
     assert_effective_price_schema_rejects(&punctuation_id);
     let oversized_id = format!(
         "version = 1\n{}",
         record(&"x".repeat(129), "compute", 1792800000, 1800480000),
     );
-    assert!(ConfigPatch::from_toml(&oversized_id).is_err());
+    assert!(load_central_toml(&oversized_id).is_err());
     let unquoted_rate = valid_toml.replace("\"0.42\"", "0.42");
-    assert!(ConfigPatch::from_toml(&unquoted_rate).is_err());
+    assert!(load_central_toml(&unquoted_rate).is_err());
     let mismatched_launch_facts = valid_toml.replace("cloud = \"aws\"", "cloud = \"azure\"");
-    assert!(ConfigPatch::from_toml(&mismatched_launch_facts).is_err());
+    assert!(load_central_toml(&mismatched_launch_facts).is_err());
     assert!(
-        ConfigPatch::from_toml(
+        load_central_toml(
             &valid_toml.replace("component = \"compute\"", "component = \"network\"")
         )
         .is_err()
@@ -142,32 +138,32 @@ fn assert_effective_price_decimal_contract(valid_toml: &str, report_json: &serde
         "6000000000000000000000000000.1",
     ] {
         let exact_rate = valid_toml.replace("\"0.42\"", &format!("\"{rate}\""));
-        assert!(ConfigPatch::from_toml(&exact_rate).is_ok());
+        assert!(load_central_toml(&exact_rate).is_ok());
         assert_effective_price_schema_matches(report_json, &exact_rate);
     }
 
     let exact_scale_rate = valid_toml.replace("\"0.42\"", "\"0.0000000000000000000000000001\"");
-    assert!(ConfigPatch::from_toml(&exact_scale_rate).is_ok());
+    assert!(load_central_toml(&exact_scale_rate).is_ok());
     assert_effective_price_schema_matches(report_json, &exact_scale_rate);
     let maximum_decimal_rate = valid_toml.replace("\"0.42\"", "\"79228162514264337593543950334\"");
-    assert!(ConfigPatch::from_toml(&maximum_decimal_rate).is_ok());
+    assert!(load_central_toml(&maximum_decimal_rate).is_ok());
     assert_effective_price_schema_matches(report_json, &maximum_decimal_rate);
     let maximum_fractional_rate =
         valid_toml.replace("\"0.42\"", "\"7.9228162514264337593543950335\"");
-    assert!(ConfigPatch::from_toml(&maximum_fractional_rate).is_ok());
+    assert!(load_central_toml(&maximum_fractional_rate).is_ok());
     assert_effective_price_schema_matches(report_json, &maximum_fractional_rate);
     let fractional_maximum_plus_one =
         valid_toml.replace("\"0.42\"", "\"7.9228162514264337593543950336\"");
-    assert!(ConfigPatch::from_toml(&fractional_maximum_plus_one).is_err());
+    assert!(load_central_toml(&fractional_maximum_plus_one).is_err());
     assert_effective_price_schema_rejects(&fractional_maximum_plus_one);
     let overprecision_rate = valid_toml.replace("\"0.42\"", "\"0.00000000000000000000000000001\"");
-    assert!(ConfigPatch::from_toml(&overprecision_rate).is_err());
+    assert!(load_central_toml(&overprecision_rate).is_err());
     assert_effective_price_schema_rejects(&overprecision_rate);
     let overflow_rate = valid_toml.replace("\"0.42\"", "\"79228162514264337593543950336\"");
-    assert!(ConfigPatch::from_toml(&overflow_rate).is_err());
+    assert!(load_central_toml(&overflow_rate).is_err());
     assert_effective_price_schema_rejects(&overflow_rate);
     let fractional_overflow = valid_toml.replace("\"0.42\"", "\"9.9999999999999999999999999999\"");
-    assert!(ConfigPatch::from_toml(&fractional_overflow).is_err());
+    assert!(load_central_toml(&fractional_overflow).is_err());
     assert_effective_price_schema_rejects(&fractional_overflow);
 }
 
@@ -306,15 +302,15 @@ fn azure_catalog_binding_is_central_only() {
     let schema = outrider::config::json_schema();
     assert_eq!(
         schema["properties"]["azure_catalog_bindings"]["items"]["$ref"],
-        "#/$defs/AzureCatalogBinding"
+        "#/$defs/AzureCatalogSource"
     );
     assert!(
-        schema["$defs"]["AzureCatalogBinding"]["required"]
+        schema["$defs"]["AzureCatalogSource"]["required"]
             .as_array()
             .is_some_and(|required| required.iter().any(|field| field == "accelerator_facts"))
     );
     assert_eq!(
-        schema["$defs"]["AzureCatalogBinding"]["properties"]["accelerator_facts"]["additionalProperties"]
+        schema["$defs"]["AzureCatalogSource"]["properties"]["accelerator_facts"]["additionalProperties"]
             ["$ref"],
         "#/$defs/AzureAcceleratorFacts"
     );
@@ -349,10 +345,10 @@ fn gcp_catalog_binding_is_central_only() {
     let schema = outrider::config::json_schema();
     assert_eq!(
         schema["properties"]["gcp_catalog_bindings"]["items"]["$ref"],
-        "#/$defs/GcpCatalogBinding"
+        "#/$defs/GcpCatalogSource"
     );
     assert_eq!(
-        schema["$defs"]["GcpCatalogBinding"]["properties"]["capacity_advice_enabled"]["default"],
+        schema["$defs"]["GcpCatalogSource"]["properties"]["capacity_advice_enabled"]["default"],
         false
     );
 }

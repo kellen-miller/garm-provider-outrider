@@ -223,6 +223,30 @@ async fn live_allocation_requires_historical_files_and_snapshot()
 
     let old_files =
         replace_current_provider_files(&scenario.config_path, &scenario.fixture.directory)?;
+    for old_file in &old_files {
+        if old_file
+            .extension()
+            .is_some_and(|extension| extension == "toml")
+        {
+            fs::write(old_file, "region = 'changed-retained-scope'\n")?;
+        }
+    }
+
+    let startup = start_daemon(
+        &scenario.config_path,
+        &scenario.address,
+        &scenario.aws.endpoint,
+        &scenario.lifecycle_log,
+    )
+    .await;
+    let error = startup.expect_err("startup must reject modified retained configuration");
+    if !error
+        .to_string()
+        .contains("allocation catalog is unavailable")
+    {
+        return Err(format!("unexpected retained fingerprint error: {error}").into());
+    }
+
     for old_file in old_files {
         fs::remove_file(old_file)?;
     }
@@ -283,7 +307,7 @@ async fn drained_pool_reconnects_only_live_catalog_scope() -> Result<(), Box<dyn
     connection.execute("UPDATE allocations SET state='ambiguous'", [])?;
     drop(connection);
 
-    let old_config = ConfigPatch::from_toml(&fs::read_to_string(&scenario.config_path)?)?;
+    let old_config = load_fixture_central(&scenario.config_path)?;
     let allocation = scenario
         .fixture
         .journal()

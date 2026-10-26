@@ -22,7 +22,6 @@ pub fn json_schema() -> Value {
             "control": {"$ref":"#/$defs/ControlSettings"},
             "admission": {"$ref":"#/$defs/AdmissionSettings"},
             "ingress": {"$ref":"#/$defs/IngressSettings"},
-            "provider_bindings":{"type":"array","items":{"$ref":"#/$defs/ProviderBinding"}}
         },
         "$defs": {
             "RunnerProfilePatch": {
@@ -90,20 +89,6 @@ pub fn json_schema() -> Value {
                 "required":["garm_repository_id","webhook_secret_file"],
                 "properties":{"garm_repository_id":{"type":"string","format":"uuid"},"webhook_secret_file":{"type":"string","minLength":1},"allow_forks":{"type":"boolean","default":false},"template_id":{"type":["integer","null"],"minimum":1}}
             },
-            "ProviderBinding": {
-                "type":"object", "additionalProperties":false,
-                "required":["id","cloud","account","location","executable_path","executable_sha256","configuration_path","configuration_sha256","source_revision","expected_version","inherited_environment","supported_os","supported_architectures","purchasing_capabilities"],
-                "properties":{
-                    "id":{"type":"string","minLength":1}, "cloud":{"type":"string","minLength":1},
-                    "account":{"type":"string","minLength":1}, "location":{"type":"string","minLength":1},
-                    "executable_path":{"type":"string","minLength":1}, "executable_sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},
-                    "configuration_path":{"type":"string","minLength":1}, "configuration_sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},
-                    "source_revision":{"type":"string","minLength":1}, "expected_version":{"type":"string","minLength":1},
-                    "inherited_environment":{"$ref":"#/$defs/StringList"}, "supported_os":{"$ref":"#/$defs/StringSet"},
-                    "supported_architectures":{"$ref":"#/$defs/StringSet"},
-                    "purchasing_capabilities":{"type":"array","uniqueItems":true,"items":{"enum":["on_demand","spot"]}}
-                }
-            },
             "PolicyDefinition": {"type":"object","additionalProperties":false,"required":["strategy","missing_data"],"properties":{"strategy":{"$ref":"#/$defs/Policy"},"missing_data":{"$ref":"#/$defs/MissingDataBehavior"}}},
             "Policy": {"oneOf":[
                 {"type":"object","additionalProperties":false,"required":["strategy","max_price_age_seconds"],"properties":{"strategy":{"const":"economy"},"max_price_age_seconds":{"type":"integer","minimum":0}}},
@@ -121,6 +106,26 @@ pub fn json_schema() -> Value {
     });
     schema["description"] =
         json!("Structured data model for central.toml and repository .outrider.toml documents.");
+    schema["properties"]["garm"] = json!({"$ref":"#/$defs/GarmSource"});
+    schema["properties"]["providers"] =
+        json!({"type":"array","items":{"$ref":"#/$defs/ProviderSource"}});
+    schema["$defs"]["GarmSource"] = json!({
+        "type":"object","additionalProperties":false,"required":["config_file"],
+        "properties":{"config_file":{"type":"string","minLength":1}}
+    });
+    schema["$defs"]["ProviderSource"] = json!({
+        "type":"object","additionalProperties":false,
+        "required":["name","cloud","executable_sha256","configuration_sha256","source_revision","expected_version","supported_os","supported_architectures","purchasing_capabilities"],
+        "properties":{
+            "name":{"type":"string","minLength":1},"cloud":{"enum":["aws","azure","gcp"]},
+            "executable_sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},
+            "configuration_sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},
+            "source_revision":{"type":"string","pattern":"^[a-fA-F0-9]{40}$"},
+            "expected_version":{"type":"string","minLength":1,"maxLength":128},
+            "supported_os":{"$ref":"#/$defs/StringSet"},"supported_architectures":{"$ref":"#/$defs/StringSet"},
+            "purchasing_capabilities":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["on_demand","spot"]}}
+        }
+    });
     schema["$defs"]["AdmissionSettings"] = json!({
         "type":"object", "additionalProperties":false,
         "required":["state_file","max_window_seconds"],
@@ -139,23 +144,23 @@ pub fn json_schema() -> Value {
     });
     schema["properties"]["aws_catalog_bindings"] = json!({
         "type":"array",
-        "items":{"$ref":"#/$defs/AwsCatalogBinding"}
+        "items":{"$ref":"#/$defs/AwsCatalogSource"}
     });
     schema["properties"]["azure_catalog_bindings"] = json!({
         "type":"array",
-        "items":{"$ref":"#/$defs/AzureCatalogBinding"}
+        "items":{"$ref":"#/$defs/AzureCatalogSource"}
     });
     schema["properties"]["gcp_catalog_bindings"] = json!({
-        "type":"array", "items":{"$ref":"#/$defs/GcpCatalogBinding"}
+        "type":"array", "items":{"$ref":"#/$defs/GcpCatalogSource"}
     });
-    schema["$defs"]["AwsCatalogBinding"] = aws_catalog_binding_schema();
-    schema["$defs"]["AwsNetworkBinding"] = aws_network_binding_schema();
+    schema["$defs"]["AwsCatalogSource"] = aws_catalog_binding_schema();
+    schema["$defs"]["AwsNetworkSource"] = aws_network_binding_schema();
     schema["$defs"]["AwsImageBinding"] = aws_image_binding_schema();
-    schema["$defs"]["AzureCatalogBinding"] = azure_catalog_binding_schema();
-    schema["$defs"]["AzureNetworkBinding"] = azure_network_binding_schema();
+    schema["$defs"]["AzureCatalogSource"] = azure_catalog_binding_schema();
+    schema["$defs"]["AzureNetworkSource"] = azure_network_binding_schema();
     schema["$defs"]["AzureImageBinding"] = azure_image_binding_schema();
     schema["$defs"]["AzureAcceleratorFacts"] = azure_accelerator_facts_schema();
-    schema["$defs"]["GcpCatalogBinding"] = gcp_catalog_binding_schema();
+    schema["$defs"]["GcpCatalogSource"] = gcp_catalog_binding_schema();
     schema["$defs"]["GcpImageBinding"] = json!({
         "type":"object","additionalProperties":false,
         "required":["image_id","os","os_source","architecture","capabilities","capabilities_source","license_facts"],
@@ -315,44 +320,37 @@ fn financial_launch_facts_schema() -> Value {
 
 fn gcp_catalog_binding_schema() -> Value {
     json!({
-        "type":"object", "additionalProperties":false,
-        "required":["id","provider_binding_id","project_id","zone","pricing_location","credential_reference","images","storage_classes","storage_billing_skus","accelerator_facts","machine_facts","disk_performance"],
-        "properties":{
-            "id":{"type":"string","minLength":1},
-            "provider_binding_id":{"type":"string","minLength":1},
-            "project_id":{"type":"string","minLength":1},
-            "zone":{"type":"string","minLength":1},
-            "pricing_location":{"type":"string","minLength":1},
-            "credential_reference":{"type":"string","minLength":1},
-            "images":{"type":"object","additionalProperties":{"$ref":"#/$defs/GcpImageBinding"}},
-            "storage_classes":{"type":"object","additionalProperties":{"type":"string"}},
-            "storage_billing_skus":{"type":"object","additionalProperties":{"type":"string"}},
-            "external_ip_billing_sku":{"type":["string","null"]},
-            "accelerator_facts":{"type":"object","additionalProperties":{"$ref":"#/$defs/GcpAcceleratorFacts"}},
-            "machine_facts":{"type":"object","additionalProperties":{"$ref":"#/$defs/GcpMachineFacts"}},
-            "disk_performance":{"type":"object","additionalProperties":{"$ref":"#/$defs/GcpDiskPerformance"}},
-            "capacity_advice_enabled":{"type":"boolean","default":false}
-        }
+        "additionalProperties": false,
+        "properties": {
+            "accelerator_facts": {"additionalProperties":{"$ref":"#/$defs/GcpAcceleratorFacts"},"type":"object"},
+            "capacity_advice_enabled": {"default":false,"type":"boolean"},
+            "disk_performance": {"additionalProperties":{"$ref":"#/$defs/GcpDiskPerformance"},"type":"object"},
+            "external_ip_billing_sku": {"type":["string","null"]},
+            "id": {"minLength":1,"type":"string"},
+            "images": {"additionalProperties":{"$ref":"#/$defs/GcpImageBinding"},"type":"object"},
+            "machine_facts": {"additionalProperties":{"$ref":"#/$defs/GcpMachineFacts"},"type":"object"},
+            "provider_binding_id": {"minLength":1,"type":"string"},
+            "storage_billing_skus": {"additionalProperties":{"type":"string"},"type":"object"},
+            "storage_classes": {"additionalProperties":{"type":"string"},"type":"object"},
+        },
+        "required": ["id","provider_binding_id","images","storage_classes","storage_billing_skus","accelerator_facts","machine_facts","disk_performance"],
+        "type": "object",
     })
 }
 
 fn azure_catalog_binding_schema() -> Value {
     json!({
-        "type":"object",
-        "additionalProperties":false,
-        "required":["id","provider_binding_id","account_id","subscription_id","pricing_location","credential_reference","locations","images","storage_classes","accelerator_facts"],
-        "properties":{
-            "id":{"type":"string","minLength":1},
-            "provider_binding_id":{"type":"string","minLength":1},
-            "account_id":{"type":"string","minLength":1},
-            "subscription_id":{"type":"string","minLength":1},
-            "pricing_location":{"type":"string","minLength":1},
-            "credential_reference":{"type":"string","pattern":"^provider-binding:[^:]+:configuration$"},
-            "locations":{"type":"object","additionalProperties":{"$ref":"#/$defs/AzureNetworkBinding"}},
-            "images":{"type":"object","additionalProperties":{"$ref":"#/$defs/AzureImageBinding"}},
-            "storage_classes":{"type":"object","additionalProperties":{"type":"string"}},
-            "accelerator_facts":{"type":"object","additionalProperties":{"$ref":"#/$defs/AzureAcceleratorFacts"}}
-        }
+        "additionalProperties": false,
+        "properties": {
+            "accelerator_facts": {"additionalProperties":{"$ref":"#/$defs/AzureAcceleratorFacts"},"type":"object"},
+            "id": {"minLength":1,"type":"string"},
+            "images": {"additionalProperties":{"$ref":"#/$defs/AzureImageBinding"},"type":"object"},
+            "locations": {"additionalProperties":{"$ref":"#/$defs/AzureNetworkSource"},"type":"object"},
+            "provider_binding_id": {"minLength":1,"type":"string"},
+            "storage_classes": {"additionalProperties":{"type":"string"},"type":"object"},
+        },
+        "required": ["id","provider_binding_id","locations","images","storage_classes","accelerator_facts"],
+        "type": "object",
     })
 }
 
@@ -372,14 +370,12 @@ fn azure_accelerator_facts_schema() -> Value {
 
 fn azure_network_binding_schema() -> Value {
     json!({
-        "type":"object",
-        "additionalProperties":false,
-        "required":["location"],
-        "properties":{
-            "location":{"type":"string","minLength":1},
-            "vnet_subnet_id":{"type":["string","null"]},
-            "public_ip_sku":{"type":["string","null"],"enum":["Standard",null]}
-        }
+        "additionalProperties": false,
+        "properties": {
+            "public_ip_sku": {"enum":["Standard",null],"type":["string","null"]},
+        },
+        "required": [],
+        "type": "object",
     })
 }
 
@@ -401,33 +397,30 @@ fn azure_image_binding_schema() -> Value {
 
 fn aws_catalog_binding_schema() -> Value {
     json!({
-        "type":"object",
-        "additionalProperties":false,
-        "required":["id","provider_binding_id","account_id","region","pricing_location","credential_reference","locations","images","storage_classes"],
-        "properties":{
-            "id":{"type":"string","minLength":1},
-            "provider_binding_id":{"type":"string","minLength":1},
-            "account_id":{"type":"string","minLength":1},
-            "region":{"type":"string","minLength":1},
-            "pricing_location":{"type":"string","minLength":1},
-            "credential_reference":{"type":"string","pattern":"^provider-binding:[^:]+:configuration$"},
-            "locations":{"type":"object","additionalProperties":{"$ref":"#/$defs/AwsNetworkBinding"}},
-            "images":{"type":"object","additionalProperties":{"$ref":"#/$defs/AwsImageBinding"}},
-            "storage_classes":{"type":"object","additionalProperties":{"type":"string"}}
-        }
+        "additionalProperties": false,
+        "properties": {
+            "account_id": {"minLength":1,"type":"string"},
+            "id": {"minLength":1,"type":"string"},
+            "images": {"additionalProperties":{"$ref":"#/$defs/AwsImageBinding"},"type":"object"},
+            "locations": {"additionalProperties":{"$ref":"#/$defs/AwsNetworkSource"},"type":"object"},
+            "pricing_location": {"minLength":1,"type":"string"},
+            "provider_binding_id": {"minLength":1,"type":"string"},
+            "storage_classes": {"additionalProperties":{"type":"string"},"type":"object"},
+        },
+        "required": ["id","provider_binding_id","account_id","pricing_location","locations","images","storage_classes"],
+        "type": "object",
     })
 }
 
 fn aws_network_binding_schema() -> Value {
     json!({
-        "type":"object",
-        "additionalProperties":false,
-        "required":["availability_zone","subnet_id","security_group_ids"],
-        "properties":{
-            "availability_zone":{"type":"string"},
-            "subnet_id":{"type":"string"},
-            "security_group_ids":{"$ref":"#/$defs/StringList"}
-        }
+        "additionalProperties": false,
+        "properties": {
+            "availability_zone": {"type":"string"},
+            "security_group_ids": {"$ref":"#/$defs/StringList"},
+        },
+        "required": ["availability_zone","security_group_ids"],
+        "type": "object",
     })
 }
 

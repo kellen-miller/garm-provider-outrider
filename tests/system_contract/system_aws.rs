@@ -221,10 +221,7 @@ impl SystemScenario {
         let config_path = directory.join("system.toml");
         let mut config_value = serde_json::to_value(&config)?;
         strip_null_configuration_fields(&mut config_value);
-        fs::write(
-            &config_path,
-            toml_edit::ser::to_string_pretty(&config_value)?,
-        )?;
+        fs::write(&config_path, serialize_native_central(&config_value)?)?;
         let daemon = start_daemon(&config_path, &address, &aws.endpoint, &lifecycle_log).await?;
         Ok(Self {
             fixture,

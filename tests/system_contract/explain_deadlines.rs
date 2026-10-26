@@ -14,7 +14,9 @@ async fn explain_remote_bounds_chunked_body_and_uses_analysis_deadline()
     let token_path = fixture.join("daemon.token");
     fs::write(&token_path, "explanation-transport-token")?;
     let central_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/central.toml");
-    let mut config = ConfigPatch::from_toml(&fs::read_to_string(central_path)?)?;
+    let mut config =
+        outrider::config::CentralConfig::from_toml(&fs::read_to_string(central_path)?)?
+            .load_native_configuration(&BTreeMap::new())?;
     let control = config.control.as_mut().ok_or("control settings missing")?;
     control.auth_token_file = token_path.display().to_string();
     config.ingress = Some(outrider::config::IngressSettings {
@@ -49,7 +51,8 @@ async fn explain_remote_bounds_chunked_body_and_uses_analysis_deadline()
         ExplanationServerResponse::OversizedChunked,
     ));
     let oversized = outrider::daemon::explain_remote(
-        &config,
+        config.control.as_ref().ok_or("control settings missing")?,
+        config.ingress.as_ref().ok_or("ingress settings missing")?,
         outrider::allocation::ExplainRequest {
             profile: Some("linux-large".to_owned()),
             snapshot_id: None,
@@ -78,7 +81,8 @@ async fn explain_remote_bounds_chunked_body_and_uses_analysis_deadline()
     ));
     let started = tokio::time::Instant::now();
     let delayed = outrider::daemon::explain_remote(
-        &config,
+        config.control.as_ref().ok_or("control settings missing")?,
+        config.ingress.as_ref().ok_or("ingress settings missing")?,
         outrider::allocation::ExplainRequest {
             profile: Some("linux-large".to_owned()),
             snapshot_id: None,

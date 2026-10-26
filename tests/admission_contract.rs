@@ -1,7 +1,7 @@
 #[path = "fixtures/admission_state.rs"]
 mod admission_state;
 use admission_state::AdmissionState;
-use outrider::{ConfigPatch, admission::allocation_is_open};
+use outrider::admission::allocation_is_open;
 use std::fs;
 
 #[test]
@@ -65,11 +65,16 @@ fn insecure_file_directory_symlink_and_hardlink_close_admission() {
 #[test]
 fn admission_settings_reject_invalid_paths_and_bounds() {
     assert!(
-        ConfigPatch::from_toml(
+        load_settings(
             "version = 1\n\n[admission]\nmax_window_seconds = 1800\nstate_file = \"relative.json\"\n"
         )
         .is_err()
     );
-    assert!(ConfigPatch::from_toml("version = 1\n\n[admission]\nmax_window_seconds = 0\nstate_file = \"/run/outrider/admission.json\"\n").is_err());
-    assert!(ConfigPatch::from_toml("version = 1\n\n[admission]\nmax_window_seconds = 1800\nstate_file = \"/run/outrider/admission.json\"\n").is_ok());
+    assert!(load_settings("version = 1\n\n[admission]\nmax_window_seconds = 0\nstate_file = \"/run/outrider/admission.json\"\n").is_err());
+    assert!(load_settings("version = 1\n\n[admission]\nmax_window_seconds = 1800\nstate_file = \"/run/outrider/admission.json\"\n").is_ok());
+}
+
+fn load_settings(toml: &str) -> Result<outrider::ConfigPatch, outrider::config::ConfigError> {
+    outrider::config::CentralConfig::from_toml(toml)?
+        .load_native_configuration(&std::collections::BTreeMap::new())
 }

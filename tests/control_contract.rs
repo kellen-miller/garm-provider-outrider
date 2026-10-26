@@ -1,3 +1,7 @@
+#[path = "fixtures/native_central.rs"]
+mod native_central;
+use native_central::{load_fixture_central, serialize_native_central};
+
 #[path = "control_contract/daemon_scenario.rs"]
 mod daemon_scenario;
 #[path = "control_contract/process.rs"]

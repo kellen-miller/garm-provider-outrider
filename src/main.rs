@@ -7,7 +7,7 @@ use std::{
 };
 
 use clap::{Parser, Subcommand};
-use outrider::{config::ConfigPatch, label::RoutingRequest};
+use outrider::{config::CentralConfig, label::RoutingRequest};
 
 #[derive(Parser)]
 #[command(name = "outrider", version, about = "Multi-cloud GARM runner provider")]
@@ -104,7 +104,8 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
         Command::Validate { config, profile } => {
-            let patch = ConfigPatch::from_toml(&fs::read_to_string(config)?)?;
+            let patch = CentralConfig::from_toml(&fs::read_to_string(config)?)?;
+            let patch = patch.load_native_configuration(&std::env::vars_os().collect())?;
             patch.normalize_profile(None, &profile, None)?;
             println!("valid: profile {profile}");
         }
@@ -114,12 +115,19 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             profile,
             snapshot,
         } => {
-            let patch = ConfigPatch::from_toml(&fs::read_to_string(config)?)?;
+            let patch = CentralConfig::from_toml(&fs::read_to_string(config)?)?;
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()?;
             let report = runtime.block_on(outrider::daemon::explain_remote(
-                &patch,
+                patch
+                    .control
+                    .as_ref()
+                    .ok_or("control settings are required")?,
+                patch
+                    .ingress
+                    .as_ref()
+                    .ok_or("ingress settings are required")?,
                 outrider::allocation::ExplainRequest {
                     profile,
                     snapshot_id: snapshot,
@@ -129,11 +137,20 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Command::Inventory { config } => {
-            let patch = ConfigPatch::from_toml(&fs::read_to_string(config)?)?;
+            let patch = CentralConfig::from_toml(&fs::read_to_string(config)?)?;
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()?;
-            let report = runtime.block_on(outrider::daemon::inventory_remote(&patch))?;
+            let report = runtime.block_on(outrider::daemon::inventory_remote(
+                patch
+                    .control
+                    .as_ref()
+                    .ok_or("control settings are required")?,
+                patch
+                    .ingress
+                    .as_ref()
+                    .ok_or("ingress settings are required")?,
+            ))?;
             println!("{}", serde_json::to_string_pretty(&report)?);
         }
 

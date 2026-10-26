@@ -19,6 +19,12 @@ pub use profiles::{
 pub use schema::{extra_specs_json_schema, json_schema};
 
 mod bindings;
+mod catalog_source;
+mod central;
+pub use catalog_source::{
+    AwsCatalogSource, AwsNetworkSource, AzureCatalogSource, AzureNetworkSource, GcpCatalogSource,
+};
+pub use central::{CentralConfig, GarmSource, ProviderSource};
 mod document;
 mod profiles;
 mod schema;
@@ -27,6 +33,8 @@ mod schema;
 pub enum ConfigError {
     #[error("invalid TOML: {0}")]
     Toml(String),
+    #[error("native configuration: {0}")]
+    Native(String),
     #[error("unknown field {0}")]
     UnknownField(String),
     #[error("profile {0} is missing")]

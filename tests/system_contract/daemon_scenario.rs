@@ -27,8 +27,13 @@ pub(super) fn serialize_reload_and_validate_central_config(
 ) -> Result<ConfigPatch, Box<dyn std::error::Error>> {
     let mut config_json = serde_json::to_value(config)?;
     strip_null_configuration_fields(&mut config_json);
-    let config_toml = toml_edit::ser::to_string_pretty(&config_json)?;
-    let reloaded = ConfigPatch::from_toml(&config_toml)?;
+    let config_toml = serialize_native_central(&config_json)?;
+    let source = outrider::config::CentralConfig::from_toml(&config_toml)?;
+    let mut environment = std::env::vars_os().collect::<BTreeMap<_, _>>();
+    for name in system_child_environment() {
+        environment.insert(name.into(), "fixture-process-value".into());
+    }
+    let reloaded = source.load_native_configuration(&environment)?;
     let toml_value: serde_json::Value = toml_edit::de::from_str(&config_toml)?;
     let serialized_config_json = serde_json::to_value(toml_value)?;
     let validator = jsonschema::validator_for(&outrider::config::json_schema())?;
@@ -130,7 +135,7 @@ pub(super) fn replace_current_provider_files(
     config_path: &std::path::Path,
     directory: &std::path::Path,
 ) -> Result<BTreeSet<PathBuf>, Box<dyn std::error::Error>> {
-    let mut config = ConfigPatch::from_toml(&fs::read_to_string(config_path)?)?;
+    let mut config = load_fixture_central(config_path)?;
     let bindings = config
         .provider_bindings
         .as_mut()
@@ -151,10 +156,7 @@ pub(super) fn replace_current_provider_files(
     }
     let mut config_value = serde_json::to_value(config)?;
     strip_null_configuration_fields(&mut config_value);
-    fs::write(
-        config_path,
-        toml_edit::ser::to_string_pretty(&config_value)?,
-    )?;
+    fs::write(config_path, serialize_native_central(&config_value)?)?;
     Ok(old_files)
 }
 
@@ -200,7 +202,7 @@ pub(super) async fn assert_explanation_retention_policy_and_limit_diagnostics(
     scenario: &mut SystemScenario,
     snapshot_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut retention_config = ConfigPatch::from_toml(&fs::read_to_string(&scenario.config_path)?)?;
+    let mut retention_config = load_fixture_central(&scenario.config_path)?;
     let retention_policy = retention_config
         .policies
         .as_mut()
@@ -219,7 +221,7 @@ pub(super) async fn assert_explanation_retention_policy_and_limit_diagnostics(
     strip_null_configuration_fields(&mut retention_config_value);
     fs::write(
         &scenario.config_path,
-        toml_edit::ser::to_string_pretty(&retention_config_value)?,
+        serialize_native_central(&retention_config_value)?,
     )?;
     let retention_now_millis =
         i64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis())?;
@@ -285,7 +287,7 @@ pub(super) async fn assert_explanation_retention_policy_and_limit_diagnostics(
         return Err("empty history omitted its actual query window".into());
     }
 
-    let mut current_config = ConfigPatch::from_toml(&fs::read_to_string(&scenario.config_path)?)?;
+    let mut current_config = load_fixture_central(&scenario.config_path)?;
     current_config
         .policies
         .as_mut()
@@ -296,7 +298,7 @@ pub(super) async fn assert_explanation_retention_policy_and_limit_diagnostics(
     strip_null_configuration_fields(&mut current_config_value);
     fs::write(
         &scenario.config_path,
-        toml_edit::ser::to_string_pretty(&current_config_value)?,
+        serialize_native_central(&current_config_value)?,
     )?;
     let endpoint = scenario.aws.endpoint.clone();
     scenario.restart(&endpoint).await?;
@@ -326,7 +328,7 @@ pub(super) async fn assert_explanation_retention_policy_and_limit_diagnostics(
         .into());
     }
 
-    let mut current_config = ConfigPatch::from_toml(&fs::read_to_string(&scenario.config_path)?)?;
+    let mut current_config = load_fixture_central(&scenario.config_path)?;
     current_config
         .limits
         .as_mut()
@@ -336,7 +338,7 @@ pub(super) async fn assert_explanation_retention_policy_and_limit_diagnostics(
     strip_null_configuration_fields(&mut current_config_value);
     fs::write(
         &scenario.config_path,
-        toml_edit::ser::to_string_pretty(&current_config_value)?,
+        serialize_native_central(&current_config_value)?,
     )?;
     let endpoint = scenario.aws.endpoint.clone();
     scenario.restart(&endpoint).await?;

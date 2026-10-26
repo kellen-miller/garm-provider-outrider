@@ -25,10 +25,10 @@ make a single SQLite database safe for multiple active daemon processes.
 4. Run `outrider validate --config /path/to/central.toml --profile default`,
    then start `outrider serve --config /path/to/central.toml` under a service
    manager that waits for the previous process to exit.
-5. Register Outrider as GARM's external provider using interface `v0.1.0`
-   and a separate GARM-facing control config. The control config supplies the
-   daemon URL and token; cloud provider config files belong to the delegated
-   provider executables. Keep the controller, GARM, Outrider database,
+5. Register Outrider and its cloud delegates in native GARM configuration;
+   see [`examples/garm.toml`](examples/garm.toml). Point Outrider's registration
+   to the daemon's central TOML. Central provider entries reference native
+   names and add qualification metadata. Keep the controller, GARM, database,
    binaries, configs, and credentials available for allocation cleanup.
 6. Configure both signed `workflow_job` and `workflow_run` webhook events,
    the GitHub App, repository secret, complete request label, and required

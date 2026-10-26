@@ -14,6 +14,7 @@ use tokio::{
     time::{Instant, timeout_at},
 };
 
+pub(crate) mod configuration;
 mod native_garm;
 mod process;
 pub use native_garm::{NativeGarmError, NativeProviderRegistration, load_native_garm_providers};
@@ -410,7 +411,7 @@ async fn hash_regular_file(path: &Path, executable: bool) -> Result<String, Prov
     Ok(hex::encode(digest.finalize()))
 }
 
-fn valid_binding_metadata(binding: &ProviderBinding) -> bool {
+pub(crate) fn valid_binding_metadata(binding: &ProviderBinding) -> bool {
     !binding.id.is_empty()
         && !binding.cloud.is_empty()
         && !binding.account.is_empty()

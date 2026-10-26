@@ -247,9 +247,10 @@ pub(super) fn config_with_ingress(settings: IngressSettings) -> ConfigPatch {
 }
 
 pub(super) fn full_ingress_config(settings: IngressSettings) -> ConfigPatch {
-    let mut config = ConfigPatch::from_toml(
+    let mut config = outrider::config::CentralConfig::from_toml(
         "cost_horizon_seconds = 3600\ndefault_policy = \"economy\"\ndefault_purchasing = \"on_demand\"\nmax_price_age_seconds = 300\nversion = 1\n\n[defaults]\naccounts = [\"build-account\"]\narchitecture = \"amd64\"\ncapabilities = []\nimage = \"ubuntu-22\"\nlocal_scratch_gib = 0\nlocations = [\"us-east-1\"]\nmemory_gib_max = 4\nmemory_gib_min = 4\nos = \"linux\"\nvcpu_max = 2\nvcpu_min = 2\n\n[defaults.boot_disk]\nclass = \"standard\"\nsize_gib = 30\n\n[defaults.machine_types]\naws = [\"m7i.large\"]\n\n[limits]\nallowed_accounts = [\"build-account\"]\nallowed_architectures = [\"amd64\"]\nallowed_capabilities = []\nallowed_clouds = [\"aws\"]\nallowed_gpu_models = []\nallowed_gpu_vendors = []\nallowed_images = [\"ubuntu-22\"]\nallowed_locations = [\"us-east-1\"]\nallowed_os = [\"linux\"]\nallowed_purchasing = [\"on_demand\"]\nmax_allocations_account = 20\nmax_allocations_controller = 100\nmax_allocations_pool = 10\nmax_boot_disk_gib = 256\nmax_boot_disk_iops = 0\nmax_boot_disk_throughput_mib_s = 0\nmax_gpu_count = 0\nmax_gpu_memory_gib = 0\nmax_local_scratch_gib = 0\nmax_memory_gib = 32\nmax_vcpu = 8\n\n[limits.allowed_machine_families]\n\n[limits.allowed_machine_types]\naws = [\"m7i.large\"]\n\n[policies.economy.missing_data]\naction = \"reject\"\n\n[policies.economy.strategy]\nmax_price_age_seconds = 300\nstrategy = \"economy\"\n\n[profiles.build]\n",
     )
+    .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
     .unwrap_or_else(|_| panic!("valid administrator configuration"));
     config.ingress = Some(settings);
     config.aws_catalog_bindings = Some(vec![AwsCatalogBinding {

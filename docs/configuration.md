@@ -7,7 +7,7 @@ resolved profile and provider/catalog/configuration fingerprints for lifecycle
 calls and cleanup.
 
 Start from [`examples/central-runtime.toml`](../examples/central-runtime.toml).
-It shows control settings, hard limits, policy, defaults, provider bindings,
+It shows control settings, hard limits, policy, defaults, provider references,
 all three cloud catalogs, and GitHub/GARM ingress in one synthetic file. Its
 paths, hashes, IDs, account facts, images, network values, and pricing facts are
 placeholders; replace them with values verified in the real accounts.
@@ -20,13 +20,12 @@ Run profile normalization with:
 outrider validate --config /etc/outrider/central.toml --profile default
 ```
 
-This command parses the TOML, rejects unknown fields, and normalizes the named
-profile against central defaults and limits. It does not check whether the
-config is complete enough to serve, whether files/hashes/binaries exist or
-match, whether cloud credentials or catalog facts are valid, whether GARM or
-GitHub is reachable, or whether a guest can bootstrap. `serve` performs runtime
-initialization and requires the full daemon configuration and reachable
-services.
+This command parses TOML, rejects unknown fields, reads selected native GARM
+and provider files, checks provider configuration hashes and supported auth,
+then normalizes the profile against central limits. It makes no cloud calls.
+It does not prove credentials can authenticate, catalogs match live APIs,
+services are reachable, or guests can bootstrap. `serve` connects the catalogs
+and validates the full daemon configuration before accepting work.
 
 Central and repository documents accept TOML only. Use `version = 1`; omit an
 optional setting instead of assigning `null`. Required workflow and cloud-init
@@ -96,20 +95,40 @@ durable, definitive failed-create outcomes. Zero observed failures is valid
 only when all dispatched outcomes in the window are qualified successes;
 success-only samples cannot hide unknown outcomes.
 
-## Provider bindings and catalogs
+## Native providers and catalogs
 
-A `provider_bindings[]` entry owns the child executable and its provider config
-path/digest, source revision, expected `GetVersion`, account/location, runner
-OS/architecture support, and purchasing capabilities. `interface_version`
-belongs to GARM's external-provider registration, not this central binding.
-The GARM-facing Outrider config points to the daemon's loopback address and
-auth-token file. Cloud credentials remain in each delegated provider's config
-or an explicitly allowed credential file, with permissions limited to the
-daemon account.
+Set `[garm].config_file` to the absolute native GARM configuration path.
+Each `[[providers]]` entry selects its exact native `provider.name` and records
+Outrider's hashes, source revision, expected version, OS/architecture support,
+and purchasing capabilities. GARM owns executable/configuration paths,
+interface versions and environment prefix selectors. See
+[`examples/garm.toml`](../examples/garm.toml). Central configuration rejects
+copies of those native registration fields.
 
-Each `*_catalog_bindings[]` entry maps a provider binding to account and
-location facts, images, storage classes, network placement, and provider
-specific pricing/licensing/performance facts. The Linux bootstrap gate
+Native AWS TOML supplies region and subnet; central policy keeps the expected
+AWS account ID, pricing geography, availability zone and security groups.
+Native Azure TOML supplies subscription, location and network mode/subnet;
+its subscription becomes the account identity. Native GCP TOML supplies
+project and zone; Outrider derives its pricing region from that zone.
+Each `*_catalog_bindings[]` entry references the selected native name through
+`provider_binding_id`, then supplies image, storage, licensing, performance
+and launch policy facts that native TOML does not contain.
+
+Supported authentication remains AWS static credentials, Azure service
+principal, and an explicit absolute GCP service-account key file. Native
+credentials stay in protected provider files. Outrider does not copy them
+into central configuration, snapshots or parser errors.
+
+Native environment selectors are prefixes, including GARM's empty-prefix
+behavior. Outrider expands them once against the daemon's startup environment;
+GARM's own environment does not supply missing daemon variables. Snapshots
+retain selected variable names only. Restore any required names before
+restarting cleanup; missing retained names fail closed. Values stay in memory.
+
+Outrider limits apply to Outrider-managed pools. GARM administrators can create
+direct native-provider pools outside Outrider's policy and ownership.
+
+The Linux bootstrap gate
 requires the selected image to attest `cloud-init` or `cloud_init` for each
 cloud. The AWS adapter separately requires `ec2_launch_agent` for Windows.
 Azure and GCP Windows do not use that Linux gate: the Azure child installs a

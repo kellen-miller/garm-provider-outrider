@@ -258,6 +258,13 @@ fn create_requires_a_valid_ingress_timeout_budget_before_connecting() {
 fn daemon_connection_errors_are_classified_without_request_details() {
     let directory = TestDirectory::new().unwrap();
     let config = write_provider_config(&directory, "127.0.0.1:1", 1).unwrap();
+    let document = fs::read_to_string(&config).unwrap();
+    fs::write(
+        &config,
+        format!("{document}\n[garm]\nconfig_file = '/missing/native-garm.toml'\n"),
+    )
+    .unwrap();
+
     let output = provider_process(
         &config,
         "GetInstance",

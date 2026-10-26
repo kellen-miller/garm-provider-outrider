@@ -1,5 +1,5 @@
-# Synthetic complete configuration shape. Replace every identifier, path,
-# digest, image fact, network value, credential reference, and secret file.
+# Synthetic authored policy. Replace identifiers, hashes and facts.
+# Native provider paths and cloud scopes come from GARM/provider TOML.
 cost_horizon_seconds = 86400
 default_policy = "economy"
 default_purchasing = "on_demand"
@@ -8,11 +8,9 @@ version = 1
 
 [[aws_catalog_bindings]]
 account_id = "aws-synthetic"
-credential_reference = "provider-binding:aws-main:configuration"
 id = "aws-catalog"
 pricing_location = "US East (N. Virginia)"
 provider_binding_id = "aws-main"
-region = "us-east-1"
 
 [aws_catalog_bindings.images.linux-ci]
 architecture = "amd64"
@@ -26,18 +24,13 @@ windows_license_included = false
 [aws_catalog_bindings.locations.us-east-1]
 availability_zone = "us-east-1a"
 security_group_ids = ["sg-synthetic"]
-subnet_id = "subnet-synthetic"
 
 [aws_catalog_bindings.storage_classes]
 standard = "gp3"
 
 [[azure_catalog_bindings]]
-account_id = "azure-synthetic"
-credential_reference = "provider-binding:azure-main:configuration"
 id = "azure-catalog"
-pricing_location = "eastus"
 provider_binding_id = "azure-main"
-subscription_id = "00000000-0000-0000-0000-000000000002"
 
 [azure_catalog_bindings.accelerator_facts]
 
@@ -50,8 +43,6 @@ minimum_os_disk_gib = 30
 minimum_os_disk_source = "synthetic image metadata"
 
 [azure_catalog_bindings.locations.eastus]
-location = "eastus"
-vnet_subnet_id = "/subscriptions/synthetic"
 
 [azure_catalog_bindings.storage_classes]
 standard = "StandardSSD_LRS"
@@ -93,15 +84,14 @@ aws = ["m7i.large"]
 azure = ["Standard_D2s_v5"]
 gcp = ["e2-standard-2"]
 
+[garm]
+config_file = "/etc/outrider/garm.toml"
+
 [[gcp_catalog_bindings]]
 capacity_advice_enabled = false
-credential_reference = "provider-binding:gcp-main:configuration"
 external_ip_billing_sku = "synthetic-ip-sku"
 id = "gcp-catalog"
-pricing_location = "us-central1"
-project_id = "gcp-synthetic"
 provider_binding_id = "gcp-main"
-zone = "us-central1-a"
 
 [gcp_catalog_bindings.accelerator_facts]
 
@@ -212,17 +202,12 @@ strategy = "economy"
 
 [profiles.default]
 
-[[provider_bindings]]
-account = "aws-synthetic"
+[[providers]]
 cloud = "aws"
-configuration_path = "/etc/outrider/providers/aws.toml"
 configuration_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
-executable_path = "/opt/outrider/providers/garm-provider-aws"
 executable_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
 expected_version = "3c0e79d"
-id = "aws-main"
-inherited_environment = []
-location = "us-east-1"
+name = "aws-main"
 purchasing_capabilities = [
     "on_demand",
     "spot",
@@ -231,17 +216,12 @@ source_revision = "3c0e79dddd58ea04b95b163014061dd240d52308"
 supported_architectures = ["amd64"]
 supported_os = ["linux"]
 
-[[provider_bindings]]
-account = "azure-synthetic"
+[[providers]]
 cloud = "azure"
-configuration_path = "/etc/outrider/providers/azure.toml"
 configuration_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
-executable_path = "/opt/outrider/providers/garm-provider-azure"
 executable_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
 expected_version = "1065987"
-id = "azure-main"
-inherited_environment = []
-location = "eastus"
+name = "azure-main"
 purchasing_capabilities = [
     "on_demand",
     "spot",
@@ -250,17 +230,12 @@ source_revision = "10659879c5d91979c7f077439bd78e17622452a6"
 supported_architectures = ["amd64"]
 supported_os = ["linux"]
 
-[[provider_bindings]]
-account = "gcp-synthetic"
+[[providers]]
 cloud = "gcp"
-configuration_path = "/etc/outrider/providers/gcp.toml"
 configuration_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
-executable_path = "/opt/outrider/providers/garm-provider-gcp"
 executable_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
 expected_version = "98a362f"
-id = "gcp-main"
-inherited_environment = []
-location = "us-central1-a"
+name = "gcp-main"
 purchasing_capabilities = [
     "on_demand",
     "spot",

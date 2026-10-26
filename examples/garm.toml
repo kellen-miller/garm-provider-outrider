@@ -1,0 +1,37 @@
+# Native GARM registrations. Merge into the real GARM configuration.
+# Install the binaries and protected native TOML files before using these entries.
+[[provider]]
+name = "outrider"
+provider_type = "external"
+[provider.external]
+interface_version = "v0.1.0"
+provider_executable = "/opt/outrider/bin/outrider"
+config_file = "/etc/outrider/central.toml"
+environment_variables = []
+
+[[provider]]
+name = "aws-main"
+provider_type = "external"
+[provider.external]
+interface_version = "v0.1.0"
+provider_executable = "/opt/outrider/providers/garm-provider-aws"
+config_file = "/etc/outrider/providers/aws.toml"
+environment_variables = []
+
+[[provider]]
+name = "azure-main"
+provider_type = "external"
+[provider.external]
+interface_version = "v0.1.0"
+provider_executable = "/opt/outrider/providers/garm-provider-azure"
+config_file = "/etc/outrider/providers/azure.toml"
+environment_variables = []
+
+[[provider]]
+name = "gcp-main"
+provider_type = "external"
+[provider.external]
+interface_version = "v0.1.0"
+provider_executable = "/opt/outrider/providers/garm-provider-gcp"
+config_file = "/etc/outrider/providers/gcp.toml"
+environment_variables = []

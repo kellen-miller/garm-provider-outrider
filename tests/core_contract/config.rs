@@ -10,7 +10,7 @@ use outrider::{
 use rust_decimal::Decimal;
 
 pub(super) fn central_patch() -> Result<ConfigPatch, outrider::config::ConfigError> {
-    ConfigPatch::from_toml(
+    load_central_toml(
         "cost_horizon_seconds = 86400\ndefault_policy = \"economy\"\ndefault_purchasing = \"on_demand\"\nmax_price_age_seconds = 3600\nversion = 1\n\n[defaults]\naccounts = [\"shared\"]\narchitecture = \"amd64\"\ncapabilities = [\"docker\"]\nimage = \"ubuntu-24\"\nlocal_scratch_gib = 0\nlocations = [\"us-east-1\"]\nmemory_gib_max = 16\nmemory_gib_min = 8\nos = \"linux\"\nvcpu_max = 8\nvcpu_min = 4\n\n[defaults.boot_disk]\nclass = \"gp3\"\nsize_gib = 40\n\n[defaults.machine_types]\naws = [\"m7i.large\"]\n\n[limits]\nallowed_accounts = [\n    \"shared\",\n    \"build-account\",\n    \"repo-account\",\n]\nallowed_architectures = [\n    \"amd64\",\n    \"arm64\",\n]\nallowed_capabilities = [\"docker\"]\nallowed_clouds = [\n    \"aws\",\n    \"gcp\",\n]\nallowed_gpu_models = []\nallowed_gpu_vendors = []\nallowed_images = [\"ubuntu-24\"]\nallowed_locations = [\"us-east-1\"]\nallowed_os = [\"linux\"]\nallowed_purchasing = [\n    \"on_demand\",\n    \"spot\",\n]\nmax_allocations_account = 100\nmax_allocations_controller = 1000\nmax_allocations_pool = 25\nmax_boot_disk_gib = 1024\nmax_boot_disk_iops = 100000\nmax_boot_disk_throughput_mib_s = 1000\nmax_gpu_count = 8\nmax_gpu_memory_gib = 256\nmax_local_scratch_gib = 512\nmax_memory_gib = 256\nmax_total_cost = 1000\nmax_vcpu = 32\n\n[limits.allowed_machine_families]\n\n[limits.allowed_machine_types]\naws = [\n    \"m7i.large\",\n    \"m7i.xlarge\",\n    \"c7i.xlarge\",\n]\ngcp = [\"n2-standard-4\"]\n\n[policies.economy.missing_data]\naction = \"reject\"\n\n[policies.economy.strategy]\nmax_price_age_seconds = 600\nstrategy = \"economy\"\n\n[profiles.build]\naccounts = [\"build-account\"]\nmemory_gib_max = 16\nmemory_gib_min = 16\nvcpu_max = 8\nvcpu_min = 8\n\n[profiles.build.machine_types]\naws = [\"m7i.xlarge\"]\ngcp = [\"n2-standard-4\"]\n",
     )
 }
@@ -233,11 +233,10 @@ fn quote_age_rejects_future_required_observations_and_ignores_included_markers()
 
 #[test]
 fn precedence_replace_lists() {
-    let runtime =
-        ConfigPatch::from_toml(include_str!("../../examples/central-runtime.toml")).unwrap();
-    assert!(runtime.normalize_profile(None, "default", None).is_ok());
+    outrider::config::CentralConfig::from_toml(include_str!("../../examples/central-runtime.toml"))
+        .unwrap();
 
-    let example_central = ConfigPatch::from_toml(
+    let example_central = load_central_toml(
         &std::fs::read_to_string(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/examples/central.toml"
@@ -316,7 +315,7 @@ fn precedence_replace_lists() {
         "version = 1\n\n[policies.weighted.missing_data]\naction = \"reject\"\n\n[policies.weighted.strategy]\ncost_scale = 1\ncost_weight = 1\nduration_seconds = 3600\nfailure_weight = 0\ninterruption_scale = 1\ninterruption_weight = 0\nlatency_scale = 1\nlatency_weight = 0\nmax_observation_age_seconds = 600\nmax_price_age_seconds = 600\nmin_samples = 10\nstrategy = \"weighted\"\n",
     ] {
         assert!(matches!(
-            ConfigPatch::from_toml(malformed_policy),
+            outrider::config::CentralConfig::from_toml(malformed_policy),
             Err(outrider::config::ConfigError::UnknownField(_))
         ));
     }
@@ -405,11 +404,7 @@ fn repository_admin_settings_rejected() {
         central.normalize_profile(Some(&repository), "build", None),
         Err(outrider::config::ConfigError::ForbiddenOverride(_))
     ));
-    let empty_repository = ConfigPatch::from_toml("effective_prices = []\nversion = 1\n").unwrap();
-    assert!(matches!(
-        central.normalize_profile(Some(&empty_repository), "build", None),
-        Err(outrider::config::ConfigError::ForbiddenOverride(_))
-    ));
+    assert!(ConfigPatch::from_toml("version = 1\neffective_prices = []\n").is_err());
     let mut repository = repository_base.clone();
     repository.limits = central.limits.clone();
     assert!(matches!(
@@ -448,8 +443,8 @@ fn repository_admin_settings_rejected() {
     let schema = outrider::config::json_schema();
     assert_eq!(schema["additionalProperties"], false);
     assert_eq!(
-        schema["properties"]["provider_bindings"]["items"]["$ref"],
-        "#/$defs/ProviderBinding"
+        schema["properties"]["providers"]["items"]["$ref"],
+        "#/$defs/ProviderSource"
     );
     let forbidden_job = JobOverrides {
         profile: Default::default(),
@@ -462,4 +457,9 @@ fn repository_admin_settings_rejected() {
         central.normalize_profile(None, "build", Some(&forbidden_job)),
         Err(outrider::config::ConfigError::ForbiddenOverride(_))
     ));
+}
+
+pub(super) fn load_central_toml(toml: &str) -> Result<ConfigPatch, outrider::config::ConfigError> {
+    outrider::config::CentralConfig::from_toml(toml)?
+        .load_native_configuration(&std::collections::BTreeMap::new())
 }

@@ -76,7 +76,7 @@ impl CrossCloudScenario {
             &fixture,
             "azure-child",
             "azure",
-            "build-account",
+            "11111111-1111-4111-8111-111111111111",
             "eastus",
             &azure_config_path,
             "runner-azure-system",
@@ -122,7 +122,7 @@ impl CrossCloudScenario {
             .locations
             .insert("east-ci".to_owned(), aws_network);
         let azure_catalog: AzureCatalogBinding = serde_json::from_value(json!({
-            "id":"azure-east","provider_binding_id":"azure-child","account_id":"build-account",
+            "id":"azure-east","provider_binding_id":"azure-child","account_id":"11111111-1111-4111-8111-111111111111",
             "subscription_id":"11111111-1111-4111-8111-111111111111","pricing_location":"eastus",
             "credential_reference":"provider-binding:azure-child:configuration",
             "locations":{"east-ci":{"location":"eastus","vnet_subnet_id":null,"public_ip_sku":null}},
@@ -198,10 +198,7 @@ impl CrossCloudScenario {
         let config_path = fixture.directory.join("cross-cloud.toml");
         let mut config_value = serde_json::to_value(&config)?;
         strip_null_configuration_fields(&mut config_value);
-        fs::write(
-            &config_path,
-            toml_edit::ser::to_string_pretty(&config_value)?,
-        )?;
+        fs::write(&config_path, serialize_native_central(&config_value)?)?;
 
         let journal = Arc::new(fixture.journal());
         let services = cross_cloud_services(
@@ -275,10 +272,7 @@ impl CrossCloudScenario {
         }
         let mut config_value = serde_json::to_value(&config)?;
         strip_null_configuration_fields(&mut config_value);
-        fs::write(
-            &self.config_path,
-            toml_edit::ser::to_string_pretty(&config_value)?,
-        )?;
+        fs::write(&self.config_path, serialize_native_central(&config_value)?)?;
 
         let journal = self
             .journal
@@ -391,11 +385,11 @@ impl CrossCloudScenario {
         let expected_accounts = if label.ends_with(":linux-gcp") {
             vec!["system-project".to_owned()]
         } else if label.ends_with(":linux-azure") {
-            vec!["build-account".to_owned()]
+            vec!["11111111-1111-4111-8111-111111111111".to_owned()]
         } else {
             vec![
                 "synthetic-account".to_owned(),
-                "build-account".to_owned(),
+                "11111111-1111-4111-8111-111111111111".to_owned(),
                 "system-project".to_owned(),
             ]
         };

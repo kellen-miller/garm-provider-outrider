@@ -17,7 +17,7 @@ use crate::{
     allocation::{
         AllocationError, AllocationService, ExplainRequest, ExplanationReport, InventoryReport,
     },
-    config::{ConfigPatch, ControlSettings},
+    config::{CentralConfig, ControlSettings, IngressSettings},
     garm::{ProviderRequest, ProviderResponse},
     github::{IngressError, IngressService},
     journal::Journal,
@@ -50,7 +50,9 @@ struct SafeError {
 /// Returns an error when configuration, journal setup, socket binding, or
 /// server startup fails.
 pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let config = ConfigPatch::from_toml(&std::fs::read_to_string(config_path)?)?;
+    let environment = std::env::vars_os().collect::<BTreeMap<_, _>>();
+    let config = CentralConfig::from_toml(&std::fs::read_to_string(config_path)?)?
+        .load_native_configuration(&environment)?;
     let settings = config
         .control
         .as_ref()
@@ -63,7 +65,8 @@ pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>>
 
     let journal = Journal::open(Path::new(&settings.database_path))?;
     let journal = Arc::new(journal);
-    let allocation = Arc::new(AllocationService::connect(config.clone(), journal.clone()).await?);
+    let allocation =
+        Arc::new(AllocationService::connect(config.clone(), journal.clone(), environment).await?);
     let ingress = Arc::new(IngressService::new(config, journal.clone())?);
     let recovery = Arc::new(RecoveryService::new(
         allocation.clone(),
@@ -91,10 +94,11 @@ pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>>
 /// Returns an error when control settings, token, timeout, transport, response
 /// status, response size, or report JSON is invalid.
 pub async fn explain_remote(
-    config: &ConfigPatch,
+    settings: &ControlSettings,
+    ingress: &IngressSettings,
     request: ExplainRequest,
 ) -> Result<ExplanationReport, Box<dyn std::error::Error>> {
-    control_request(config, "explain", &request, 1_000_000).await
+    control_request(settings, ingress, "explain", &request, 1_000_000).await
 }
 
 /// Collect native VM/disk/address metadata through the authenticated loopback daemon.
@@ -102,30 +106,24 @@ pub async fn explain_remote(
 /// # Errors
 /// Returns an error if authentication, any native collection, or bounded transport fails.
 pub async fn inventory_remote(
-    config: &ConfigPatch,
+    settings: &ControlSettings,
+    ingress: &IngressSettings,
 ) -> Result<InventoryReport, Box<dyn std::error::Error>> {
-    control_request(config, "inventory", &(), 32 * 1024 * 1024).await
+    control_request(settings, ingress, "inventory", &(), 32 * 1024 * 1024).await
 }
 
 async fn control_request<Request: serde::Serialize, Report: serde::de::DeserializeOwned>(
-    config: &ConfigPatch,
+    settings: &ControlSettings,
+    ingress: &IngressSettings,
     operation: &str,
     request: &Request,
     max_bytes: usize,
 ) -> Result<Report, Box<dyn std::error::Error>> {
-    let settings = config
-        .control
-        .as_ref()
-        .ok_or("control settings are required")?;
     let address = validate_settings(settings)?;
     let token = std::fs::read(&settings.auth_token_file)?;
     if token.trim_ascii().is_empty() {
         return Err("internal auth token file is empty".into());
     }
-    let ingress = config
-        .ingress
-        .as_ref()
-        .ok_or("ingress settings are required")?;
     let bootstrap_seconds = u64::from(ingress.bootstrap_timeout_minutes)
         .checked_mul(60)
         .ok_or("analysis timeout is invalid")?;
