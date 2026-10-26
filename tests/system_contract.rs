@@ -32,7 +32,7 @@ use google_cloud_auth::credentials::{
     AccessToken as GcpAccessToken, AccessTokenCredentials, AccessTokenCredentialsProvider,
     CacheableResource, CredentialsProvider, EntityTag,
 };
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use hyper::http::{Extensions, HeaderMap, HeaderValue};
 use outrider::{
     allocation::{AllocationService, ConnectedCatalog, catalog_configuration_fingerprint},
@@ -81,6 +81,8 @@ use daemon_scenario::*;
 #[path = "system_contract/authenticated_explain.rs"]
 mod authenticated_explain;
 use authenticated_explain::*;
+#[path = "system_contract/authenticated_inventory.rs"]
+mod authenticated_inventory;
 #[path = "system_contract/cross_cloud_cleanup.rs"]
 mod cross_cloud_cleanup;
 #[path = "system_contract/daemon_restart.rs"]

@@ -20,6 +20,7 @@ pub fn json_schema() -> Value {
             "max_price_age_seconds": {"type":"integer", "minimum":0},
             "history": {"$ref":"#/$defs/HistorySettings"},
             "control": {"$ref":"#/$defs/ControlSettings"},
+            "admission": {"$ref":"#/$defs/AdmissionSettings"},
             "ingress": {"$ref":"#/$defs/IngressSettings"},
             "provider_bindings":{"type":"array","items":{"$ref":"#/$defs/ProviderBinding"}}
         },
@@ -118,6 +119,11 @@ pub fn json_schema() -> Value {
 
         }
     });
+    schema["$defs"]["AdmissionSettings"] = json!({
+        "type":"object", "additionalProperties":false,
+        "required":["state_file","max_window_seconds"],
+        "properties":{"state_file":{"type":"string","pattern":"^/"},"max_window_seconds":{"type":"integer","minimum":1}}
+    });
     schema["properties"]["effective_prices"] = json!({
         "type":"array","items":{"$ref":"#/$defs/EffectivePrice"}
     });
@@ -165,7 +171,7 @@ pub fn json_schema() -> Value {
     schema["$defs"]["GcpMachineFacts"] = json!({
         "type":"object","additionalProperties":false,
         "required":["source"],
-        "properties":{"shared_cpu_billing_sku":{"type":["string","null"]},"bundled_local_ssd_gib":{"type":["integer","null"]},"bundled_local_ssd_partitions":{"type":["integer","null"]},"local_ssd_billing_sku":{"type":["string","null"]},"local_ssd_billing_quantity":{"type":["number","string","null"]},"max_pd_iops":{"type":["integer","null"]},"max_pd_throughput_mib_s":{"type":["number","string","null"]},"source":{"type":"string"}}
+        "properties":{"architecture":{"type":["string","null"],"enum":["amd64","arm64",null]},"shared_cpu_billing_sku":{"type":["string","null"]},"bundled_local_ssd_gib":{"type":["integer","null"]},"bundled_local_ssd_partitions":{"type":["integer","null"]},"local_ssd_billing_sku":{"type":["string","null"]},"local_ssd_billing_quantity":{"type":["number","string","null"]},"max_pd_iops":{"type":["integer","null"]},"max_pd_throughput_mib_s":{"type":["number","string","null"]},"source":{"type":"string"}}
     });
     schema["$defs"]["GcpDiskPerformance"] = json!({
         "type":"object","additionalProperties":false,"required":["base_iops","iops_per_gib","maximum_iops","base_throughput_mib_s","throughput_per_gib_mib_s","maximum_throughput_mib_s","source"],

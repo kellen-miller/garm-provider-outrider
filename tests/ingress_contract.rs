@@ -9,7 +9,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use http_body_util::{BodyExt, Full};
 use hyper::{
     Request, Response, StatusCode, body::Incoming, server::conn::http1, service::service_fn,
@@ -39,10 +39,14 @@ use github_events::*;
 #[path = "ingress_contract/signed_admission.rs"]
 mod signed_admission;
 use signed_admission::*;
+#[path = "ingress_contract/failed_creation_drain.rs"]
+mod failed_creation_drain;
 #[path = "ingress_contract/job_provenance.rs"]
 mod job_provenance;
 #[path = "ingress_contract/job_terminal_barriers.rs"]
 mod job_terminal_barriers;
+#[path = "ingress_contract/outbox_retry.rs"]
+mod outbox_retry;
 #[path = "ingress_contract/pool_create_fencing.rs"]
 mod pool_create_fencing;
 #[path = "ingress_contract/pool_lifecycle.rs"]

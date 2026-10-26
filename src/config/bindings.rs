@@ -65,6 +65,8 @@ pub struct GcpAcceleratorFacts {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct GcpMachineFacts {
+    /// Explicit administrator attestation when the native machine API omits architecture.
+    pub architecture: Option<String>,
     pub shared_cpu_billing_sku: Option<String>,
     pub bundled_local_ssd_gib: Option<u32>,
     pub bundled_local_ssd_partitions: Option<u32>,

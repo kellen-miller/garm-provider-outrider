@@ -8,13 +8,15 @@ use axum::{
     routing::{get, post},
 };
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use serde::Serialize;
 use serde_json::Value;
 use sha2::Sha256;
 
 use crate::{
-    allocation::{AllocationError, AllocationService, ExplainRequest, ExplanationReport},
+    allocation::{
+        AllocationError, AllocationService, ExplainRequest, ExplanationReport, InventoryReport,
+    },
     config::{ConfigPatch, ControlSettings},
     garm::{ProviderRequest, ProviderResponse},
     github::{IngressError, IngressService},
@@ -92,6 +94,25 @@ pub async fn explain_remote(
     config: &ConfigPatch,
     request: ExplainRequest,
 ) -> Result<ExplanationReport, Box<dyn std::error::Error>> {
+    control_request(config, "explain", &request, 1_000_000).await
+}
+
+/// Collect native VM/disk/address metadata through the authenticated loopback daemon.
+///
+/// # Errors
+/// Returns an error if authentication, any native collection, or bounded transport fails.
+pub async fn inventory_remote(
+    config: &ConfigPatch,
+) -> Result<InventoryReport, Box<dyn std::error::Error>> {
+    control_request(config, "inventory", &(), 32 * 1024 * 1024).await
+}
+
+async fn control_request<Request: serde::Serialize, Report: serde::de::DeserializeOwned>(
+    config: &ConfigPatch,
+    operation: &str,
+    request: &Request,
+    max_bytes: usize,
+) -> Result<Report, Box<dyn std::error::Error>> {
     let settings = config
         .control
         .as_ref()
@@ -117,21 +138,22 @@ pub async fn explain_remote(
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(budget))
         .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
         .build()?;
     let response = client
-        .post(format!("http://{address}/v1/explain"))
+        .post(format!("http://{address}/v1/{operation}"))
         .bearer_auth(String::from_utf8_lossy(token.trim_ascii()).to_string())
         .json(&request)
         .send()
         .await?;
     if !response.status().is_success() {
-        return Err("daemon rejected the explanation request".into());
+        return Err("daemon rejected the control request".into());
     }
     let mut response = response;
     let mut body = Vec::new();
     while let Some(chunk) = response.chunk().await? {
-        if body.len().saturating_add(chunk.len()) > 1_000_000 {
-            return Err("daemon explanation response exceeds the size limit".into());
+        if body.len().saturating_add(chunk.len()) > max_bytes {
+            return Err("daemon control response exceeds the size limit".into());
         }
         body.extend_from_slice(&chunk);
     }
@@ -160,6 +182,7 @@ pub fn build_router(
         .route("/v1/webhooks/github", post(github_webhook))
         .route("/v1/provider", post(provider))
         .route("/v1/explain", post(explain))
+        .route("/v1/inventory", post(inventory))
         .with_state(state))
 }
 
@@ -188,6 +211,29 @@ fn validate_settings(settings: &ControlSettings) -> Result<SocketAddr, &'static 
 
 async fn health() -> Json<HealthResponse> {
     Json(HealthResponse { status: "ready" })
+}
+
+async fn inventory(
+    State(state): State<DaemonState>,
+    headers: HeaderMap,
+) -> Result<Json<InventoryReport>, (StatusCode, Json<SafeError>)> {
+    if !authorized(&headers, &state.auth_token) {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(SafeError {
+                error: "unauthorized",
+            }),
+        ));
+    }
+
+    state.allocation.inventory().await.map(Json).map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(SafeError {
+                error: "native inventory is incomplete or unavailable",
+            }),
+        )
+    })
 }
 
 async fn provider(
@@ -330,6 +376,7 @@ fn allocation_error_label(error: AllocationError) -> &'static str {
         AllocationError::Conflict => "allocation identity conflicts with an existing request",
         AllocationError::DeletedName => "runner name was deleted before allocation reservation",
         AllocationError::NotFound => "allocation is definitely absent",
+        AllocationError::AdmissionClosed => "administrator allocation admission is closed",
         AllocationError::Limit => "allocation concurrency limit reached",
         AllocationError::Catalog => "allocation catalog is unavailable",
         AllocationError::NoCandidate => "no eligible provider candidate",

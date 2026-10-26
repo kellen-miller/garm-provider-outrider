@@ -38,14 +38,14 @@ not a cloud provider's final bill.
 
 These are the current adapter boundaries, not a promise that every shape or
 image works. Compare them with the pinned [AWS](https://github.com/kellen-miller/garm-provider-aws/tree/3c0e79dddd58ea04b95b163014061dd240d52308),
-[Azure](https://github.com/kellen-miller/garm-provider-azure/tree/395847a0bec078c5dd88b31f54f0025f63b662c6),
+[Azure](https://github.com/kellen-miller/garm-provider-azure/tree/10659879c5d91979c7f077439bd78e17622452a6),
 and [GCP](https://github.com/kellen-miller/garm-provider-gcp/tree/98a362f5319928099b942a668c5a17a34170066a)
 provider revisions recorded in the manifest.
 
 | Cloud | Purchasing and credentials | Placement and network | Storage, GPU, and image constraints |
 | --- | --- | --- | --- |
 | AWS | `on_demand` and `spot`; Outrider catalog reads require static credentials in the pinned provider config. Role credentials are not verified by this adapter. | One configured region; each location alias maps to an AZ, subnet, and at least one security group. | Boot disks are gp3 only. GPU facts come from EC2 shape inventory. Images need explicit OS/architecture and Windows licensing facts; Linux bootstrap requires `cloud_init`, and Windows needs a functioning EC2Launch agent (`ec2_launch_agent`). |
-| Azure | `on_demand` and `spot`; authentication currently requires a service principal. Workload/managed identity and custom identity options are rejected. | Catalog entries must match the child provider's configured location and network mode. Selected public IP SKUs are unsupported. | Managed boot disks support Standard_LRS, StandardSSD_LRS, or Premium_LRS; ephemeral OS disks are unsupported. Image references need an immutable publisher:offer:SKU:version, and Marketplace plans are rejected. Licensing and GPU facts require operator-supplied provenance. |
+| Azure | `on_demand` and `spot`; authentication currently requires a service principal. Workload/managed identity and custom identity options are rejected. | Catalog entries must match the child provider's configured location and network mode. Public IP allocation supports exact SKU `Standard` only, using the pinned child's Regional static IPv4 contract and a separately priced Retail meter. | Managed boot disks support Standard_LRS, StandardSSD_LRS, or Premium_LRS; ephemeral OS disks are unsupported. Image references need an immutable publisher:offer:SKU:version, and Marketplace plans are rejected. Licensing and GPU facts require operator-supplied provenance. |
 | GCP | `on_demand` and `spot`; authentication requires an explicitly configured service-account key file. | Profile location selects the pricing region; the catalog and child remain pinned to one zone in that region. Regional placement is rejected. The child config must name a network and subnetwork. | Boot disk class needs a matching storage class, billing SKU, and performance facts; GPU offers need exact accelerator and billing facts. Image license facts must be explicit. Enabling external IPv4 requires a bound billing SKU. |
 
 For example, a GCP profile can select pricing region `us-central1` while its

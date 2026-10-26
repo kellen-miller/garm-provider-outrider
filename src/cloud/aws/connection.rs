@@ -264,7 +264,7 @@ async fn read_child_configuration(
                 vec![],
             )
         })?;
-    let actual_sha256 = format!("{:x}", Sha256::digest(&bytes));
+    let actual_sha256 = hex::encode(Sha256::digest(&bytes));
     if !actual_sha256.eq_ignore_ascii_case(expected_sha256) {
         return Err(failure(
             "configuration",

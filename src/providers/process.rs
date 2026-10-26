@@ -105,6 +105,7 @@ pub(super) async fn run_process(
     request: &ProviderRequest,
     environment_snapshot: &BTreeMap<OsString, OsString>,
     limits: ProcessLimits,
+    admission: Option<&crate::config::AdmissionSettings>,
     deadline: Instant,
 ) -> Result<ChildOutput, ProviderError> {
     if Instant::now() >= deadline {
@@ -153,6 +154,10 @@ pub(super) async fn run_process(
 
     #[cfg(unix)]
     command.process_group(0);
+
+    if request.command == "CreateInstance" && !crate::admission::allocation_is_open(admission) {
+        return Err(LocalFailure::AdmissionClosed.into());
+    }
 
     let child = command.spawn().map_err(|_| LocalFailure::Spawn)?;
     let result = supervise_spawned_process(child, input, limits, deadline).await;

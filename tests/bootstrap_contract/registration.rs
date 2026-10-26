@@ -10,6 +10,20 @@ use super::garm_renderer::{
 };
 
 #[test]
+fn standalone_bootstrap_rejects_incoming_templates() {
+    let mut instance = linux_instance().unwrap();
+    instance.extra_specs = Some(serde_json::json!({"runner_install_template": "ignored"}));
+    assert!(
+        bootstrap::generate_provider_hook(
+            &instance,
+            target(BootstrapPlatform::LinuxAmd64),
+            BootstrapProvider::Aws,
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn windows_repository_registration() {
     let mut instance = linux_instance().unwrap();
     set_platform(&mut instance, "windows", "amd64", "win", "x64");

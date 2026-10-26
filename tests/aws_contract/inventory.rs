@@ -23,8 +23,7 @@ async fn binding_account_region_mismatch() {
     let mut settings = aws_settings(&server.endpoint);
     let changed_child_config = AWS_CHILD_CONFIG.replace("us-east-1", "us-west-2");
     fs::write(&settings.provider_configuration_path, &changed_child_config).unwrap();
-    settings.configuration_sha256 =
-        format!("{:x}", Sha256::digest(changed_child_config.as_bytes()));
+    settings.configuration_sha256 = hex::encode(Sha256::digest(changed_child_config.as_bytes()));
     let error = aws_backend_with_settings(&server.endpoint, settings)
         .await
         .err()
@@ -52,7 +51,7 @@ async fn binding_account_region_mismatch() {
     let mut settings = aws_settings(&server.endpoint);
     let role_config = "region = \"us-east-1\"\nsubnet_id = \"subnet-123\"\n[credentials]\ncredential_type = \"role\"\n";
     fs::write(&settings.provider_configuration_path, role_config).unwrap();
-    settings.configuration_sha256 = format!("{:x}", Sha256::digest(role_config.as_bytes()));
+    settings.configuration_sha256 = hex::encode(Sha256::digest(role_config.as_bytes()));
     let error = AwsBackend::connect(
         settings,
         tokio::time::Instant::now() + Duration::from_secs(5),
@@ -64,6 +63,39 @@ async fn binding_account_region_mismatch() {
         error,
         outrider::cloud::CloudError::Failure(failure) if failure.kind == "unsupported"
     ));
+    server.task.abort();
+}
+
+#[tokio::test]
+async fn unrestricted_inventory_keeps_page_size() {
+    let server = start_aws_contract_server(vec![
+        identity_xml(),
+        xml_response(image_xml()),
+        xml_response(subnet_xml()),
+        xml_response("<DescribeInstanceTypesResponse/>"),
+        xml_response("<DescribeInstanceTypeOfferingsResponse/>"),
+    ])
+    .await
+    .unwrap();
+    let backend = aws_backend(&server.endpoint).await.unwrap();
+    let mut profile = resolved_profile().unwrap().profile;
+    profile.machine_types.clear();
+    let discovery = backend
+        .catalog(
+            CatalogQuery {
+                clouds: vec!["aws".to_owned()],
+                accounts: vec!["synthetic-account".to_owned()],
+                locations: vec!["us-east-1".to_owned()],
+                profile,
+            },
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .unwrap();
+    assert!(discovery.offers.is_empty());
+    let requests = server.requests.lock().unwrap();
+    assert!(requests[3].body.contains("MaxResults=100"));
+    assert!(!requests[3].body.contains("InstanceType.1="));
     server.task.abort();
 }
 
@@ -193,6 +225,8 @@ fn assert_paginated_catalog_requests(requests: &[CapturedAwsRequest]) {
     assert!(requests[4].body.contains("NextToken=types-next"));
     assert!(requests[6].body.contains("NextToken=offers-next"));
     assert!(requests[3].body.contains("InstanceType.1=m7i.xlarge"));
+    assert!(!requests[3].body.contains("MaxResults="));
+    assert!(!requests[4].body.contains("MaxResults="));
     assert!(
         requests[9]
             .target

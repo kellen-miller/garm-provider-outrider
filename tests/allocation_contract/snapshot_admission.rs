@@ -21,6 +21,8 @@ async fn allocation_uses_retained_snapshot_image_and_current_limits() {
         .unwrap_or_else(|| panic!("bootstrap"));
     bootstrap.jit_config_enabled = true;
     bootstrap.labels.clear();
+    bootstrap.extra_specs.get_or_insert_with(|| json!({}))["runner_install_template"] =
+        json!(STANDARD.encode("incoming-wrapper-must-not-execute"));
     let created = Box::pin(harness.service.handle(harness.request.clone()))
         .await
         .unwrap_or_else(|_| panic!("allocation using retained snapshot catalog"));
@@ -40,6 +42,14 @@ async fn allocation_uses_retained_snapshot_image_and_current_limits() {
         serde_json::from_slice(&raw).unwrap_or_else(|_| panic!("decode child request JSON"));
     assert_eq!(request["image"], "oldAMI");
     assert_eq!(request["labels"], json!([]));
+    let template = STANDARD
+        .decode(
+            request["extra_specs"]["runner_install_template"]
+                .as_str()
+                .expect("generated child template"),
+        )
+        .expect("decode generated template");
+    assert!(!String::from_utf8_lossy(&template).contains("incoming-wrapper-must-not-execute"));
     assert_eq!(harness.allocation().state, "created");
 
     let denied_harness = AllocationHarness::new(AllocationHarnessOptions {
@@ -68,6 +78,31 @@ async fn allocation_uses_retained_snapshot_image_and_current_limits() {
         !denied_harness.record_path.exists(),
         "a rejected offer must not spawn the child"
     );
+}
+
+#[tokio::test]
+async fn wrapper_replacement_keeps_other_bootstrap_restrictions() {
+    for (field, value) in [
+        ("pre_install_scripts", json!({"linux": "echo forbidden"})),
+        ("extra_context", json!({"forbidden": "value"})),
+        ("unapproved_extra", json!("forbidden")),
+    ] {
+        let mut harness = AllocationHarness::new(AllocationHarnessOptions::default()).await;
+        let bootstrap = harness.request.bootstrap.as_mut().expect("bootstrap");
+        let extras = bootstrap.extra_specs.get_or_insert_with(|| json!({}));
+        extras["runner_install_template"] = json!(STANDARD.encode("incoming-wrapper"));
+        extras[field] = value;
+        let result = harness.service.handle(harness.request.clone()).await;
+        assert!(
+            matches!(result, Err(AllocationError::NoCandidate)),
+            "{field}: {result:?}"
+        );
+        assert!(
+            !harness.record_path.exists(),
+            "{field} must not reach the child"
+        );
+        assert!(harness.lifecycle_commands().is_empty());
+    }
 }
 
 #[tokio::test]

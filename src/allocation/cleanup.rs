@@ -287,7 +287,13 @@ impl AllocationService {
     ) -> Result<ProviderResult, ProviderError> {
         if self.provider_bindings.get(&binding.id) == Some(binding) {
             self.provider_registry
-                .invoke(&binding.id, request, Some(requirements), deadline)
+                .invoke(
+                    &binding.id,
+                    request,
+                    Some(requirements),
+                    self.config.admission.as_ref(),
+                    deadline,
+                )
                 .await
         } else {
             let registry = ProviderRegistry::new(
@@ -296,7 +302,13 @@ impl AllocationService {
                 ProcessLimits::default(),
             )?;
             registry
-                .invoke(&binding.id, request, Some(requirements), deadline)
+                .invoke(
+                    &binding.id,
+                    request,
+                    Some(requirements),
+                    self.config.admission.as_ref(),
+                    deadline,
+                )
                 .await
         }
     }

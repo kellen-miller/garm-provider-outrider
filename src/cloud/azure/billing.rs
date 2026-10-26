@@ -9,13 +9,31 @@ impl AzureBackend {
     pub(super) async fn fetch_retail_meters(
         &self,
         location: &str,
+        machine_types: &[String],
         deadline: Instant,
     ) -> Result<Vec<RetailMeter>, CloudError> {
+        if machine_types.is_empty() {
+            return Err(failure(
+                "configuration",
+                "Azure pricing requires a discovered VM scope",
+            ));
+        }
+
+        let names = machine_types
+            .iter()
+            .map(|name| format!("armSkuName eq '{}'", name.replace('\'', "''")))
+            .collect::<Vec<_>>()
+            .join(" or ");
+        let compute_filter = format!("(serviceName eq 'Virtual Machines' and ({names}))");
+        let filter = format!(
+            "({compute_filter} or (serviceName eq 'Storage' and (productName eq 'Standard HDD Managed Disks' or productName eq 'Standard SSD Managed Disks' or productName eq 'Premium SSD Managed Disks')) or (serviceName eq 'Virtual Network' and productName eq 'IP Addresses')) and armRegionName eq '{}' and priceType eq 'Consumption'",
+            location.replace('\'', "''")
+        );
         let url = format!(
-            "{}/api/retail/prices?api-version={}&currencyCode='USD'&$filter=(serviceName%20eq%20'Virtual%20Machines'%20or%20serviceName%20eq%20'Storage')%20and%20armRegionName%20eq%20'{}'",
+            "{}/api/retail/prices?api-version={}&currencyCode='USD'&$filter={}",
             self.settings.retail_endpoint.trim_end_matches('/'),
             RETAIL_API,
-            location
+            urlencoding::encode(&filter)
         );
         let mut next = Some(url);
         let mut meters = Vec::new();
@@ -37,47 +55,49 @@ impl AzureBackend {
     pub(super) async fn retail_snapshot(
         &self,
         location: &str,
+        machine_types: &[String],
         maximum_price_age: Duration,
         deadline: Instant,
     ) -> Result<AzureRetailSnapshot, CloudError> {
-        let snapshots = timeout_at(deadline, self.retail_snapshots.lock())
+        let mut snapshots = timeout_at(deadline, self.retail_snapshots.lock())
             .await
             .map_err(|_| failure("timeout", "Azure price snapshot lock timed out"))?;
         if maximum_price_age > Duration::ZERO
             && let Some(snapshot) = snapshots.get(location)
-            && snapshot.observed_at.elapsed() < Duration::from_secs(60).min(maximum_price_age)
+            && snapshot.observed_at.elapsed() < maximum_price_age
+            && snapshot.fetched_at.elapsed() < Duration::from_secs(60)
+            && machine_types
+                .iter()
+                .all(|name| snapshot.machine_types.contains(name))
         {
-            return Ok(AzureRetailSnapshot {
-                meters: snapshot.meters.clone(),
-                observed_at: snapshot.observed_at,
-                observed_at_unix_seconds: snapshot.observed_at_unix_seconds,
-            });
+            return Ok(snapshot.clone());
         }
-        drop(snapshots);
 
+        // Serialize refreshes so concurrent analyses share one complete snapshot.
         let observed_at = Instant::now();
         let observed_at_unix_seconds = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .ok()
             .map_or(0, |value| value.as_secs());
-        let meters = self.fetch_retail_meters(location, deadline).await?;
+        let meters = self
+            .fetch_retail_meters(location, machine_types, deadline)
+            .await?;
+        if maximum_price_age > Duration::ZERO && observed_at.elapsed() >= maximum_price_age {
+            return Err(failure(
+                "stale",
+                "Azure price fetch exceeded the permitted source age",
+            ));
+        }
+
         let snapshot = AzureRetailSnapshot {
             meters: Arc::new(meters),
             observed_at,
             observed_at_unix_seconds,
+            fetched_at: Instant::now(),
+            machine_types: machine_types.iter().cloned().collect(),
         };
         if maximum_price_age > Duration::ZERO {
-            let mut snapshots = timeout_at(deadline, self.retail_snapshots.lock())
-                .await
-                .map_err(|_| failure("timeout", "Azure price snapshot lock timed out"))?;
-            snapshots.insert(
-                location.to_owned(),
-                AzureRetailSnapshot {
-                    meters: snapshot.meters.clone(),
-                    observed_at,
-                    observed_at_unix_seconds,
-                },
-            );
+            snapshots.insert(location.to_owned(), snapshot.clone());
         }
         Ok(snapshot)
     }
@@ -93,6 +113,7 @@ pub(super) fn match_prices(
             let market_name =
                 format!("{} {}", meter.product_name, meter.sku_name).to_ascii_lowercase();
             meter.service_name == "Virtual Machines"
+                && meter.product_name.starts_with("Virtual Machines ")
                 && meter.arm_sku_name.eq_ignore_ascii_case(request.sku)
                 && meter.arm_region_name.eq_ignore_ascii_case(request.location)
                 && meter.currency_code == "USD"
@@ -135,7 +156,13 @@ pub(super) fn match_prices(
     let disk = unique_meter(meters, |meter| {
         meter.service_name == "Storage"
             && meter.product_name == disk_product
-            && meter.sku_name.eq_ignore_ascii_case(disk_tier)
+            && meter
+                .sku_name
+                .eq_ignore_ascii_case(&format!("{disk_tier} LRS"))
+            && meter
+                .meter_name
+                .eq_ignore_ascii_case(&format!("{disk_tier} LRS Disk"))
+            && meter.is_primary_meter_region
             && meter.arm_region_name.eq_ignore_ascii_case(request.location)
             && meter.unit_of_measure == "1/Month"
             && meter.currency_code == "USD"
@@ -170,7 +197,7 @@ pub(super) fn match_prices(
     }
     Some(AzurePriceSet {
         compute,
-        disk: Some(disk),
+        disk,
         public_ip,
         licensing_included: request.os == "windows",
         licensing_source: request.licensing_source.to_owned(),
@@ -316,11 +343,10 @@ pub(super) fn effective_now(value: &str) -> bool {
 
 pub(super) fn quote_prices(prices: &AzurePriceSet, public: bool, observed: u64) -> PriceQuote {
     let compute = prices.compute.unit_price;
-    let disk = prices
-        .disk
-        .as_ref()
-        .map(|meter| meter.unit_price / Decimal::from(730))
-        .unwrap_or_default();
+    // Standard disks also charge for I/O transactions. Their complete cost
+    // remains unknown until a workload transaction estimate is available.
+    let disk = (prices.disk.product_name == "Premium SSD Managed Disks")
+        .then(|| prices.disk.unit_price / Decimal::from(730));
     let public_rate = if public {
         prices.public_ip.as_ref().map(|meter| meter.unit_price)
     } else {
@@ -340,22 +366,20 @@ pub(super) fn quote_prices(prices: &AzurePriceSet, public: bool, observed: u64) 
             effective_price_override: None,
         },
         disk: PriceComponent {
-            hourly_rate: Some(disk),
+            hourly_rate: disk,
             minimum_commitment_seconds: 3600,
-            source: prices.disk.as_ref().map_or_else(
-                || "Azure Retail Prices API".to_owned(),
-                |meter| format!("Azure Retail Prices API meter {}", meter.meter_id),
-            ),
+            source: if disk.is_some() {
+                format!("Azure Retail Prices API meter {}", prices.disk.meter_id)
+            } else {
+                format!(
+                    "Azure Retail Prices API meter {}; I/O transaction usage is unpriced",
+                    prices.disk.meter_id
+                )
+            },
             observed_at_unix_seconds: Some(observed),
-            effective_at_unix_seconds: prices
-                .disk
-                .as_ref()
-                .and_then(|meter| date_epoch(&meter.effective_start_date)),
+            effective_at_unix_seconds: date_epoch(&prices.disk.effective_start_date),
             included_in_compute: false,
-            exclusions: vec![
-                "Azure disk transaction charges are excluded because per-runner usage is unavailable"
-                    .to_owned(),
-            ],
+            exclusions: vec![],
             effective_price_override: None,
         },
         licensing: PriceComponent {
@@ -363,9 +387,7 @@ pub(super) fn quote_prices(prices: &AzurePriceSet, public: bool, observed: u64) 
             minimum_commitment_seconds: 60,
             source: format!(
                 "{}; attested by {}; Azure compute meter {}",
-                prices.licensing_description,
-                prices.licensing_source,
-                prices.compute.meter_id
+                prices.licensing_description, prices.licensing_source, prices.compute.meter_id
             ),
             observed_at_unix_seconds: Some(observed),
             effective_at_unix_seconds: date_epoch(&prices.compute.effective_start_date),

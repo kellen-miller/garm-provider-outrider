@@ -36,7 +36,6 @@ impl CloudCatalog for GcpBackend {
                 .catalog_machine_facts(&machine, &query.profile, deadline, &mut exclusion_counts)
                 .await?
             else {
-                exclusion_counts.record("boot disk class lacks exact performance facts");
                 continue;
             };
             let image = machine_facts_for_catalog.image;
@@ -70,7 +69,7 @@ impl CloudCatalog for GcpBackend {
                 exclusion_counts.record("boot disk size is outside the provider limits");
                 continue;
             }
-            if query.profile.local_scratch_gib > 0 && machine.bundled_local_ssds.is_empty() {
+            if query.profile.local_scratch_gib > 0 && machine.bundled_local_ssds.is_none() {
                 exclusion_counts.record("machine type does not provide bundled local SSDs");
                 continue;
             }
@@ -321,11 +320,7 @@ impl CloudCatalog for GcpBackend {
                 .map(|ssd| ssd.partition_count)
                 .sum::<u32>()
                 != facts.bundled_local_ssd_partitions
-            || machine
-                .architecture
-                .as_deref()
-                .and_then(|value| canonical_architecture(value).ok())
-                .as_deref()
+            || self.machine_architecture(&machine)?.as_deref()
                 != Some(offer.candidate.architecture.as_str())
         {
             return Err(failure(

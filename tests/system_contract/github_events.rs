@@ -139,6 +139,15 @@ impl Drop for DependencyFixture {
     }
 }
 
+fn garm_pool_summary(pool: &Value) -> Value {
+    let mut summary = pool.clone();
+    if let Some(fields) = summary.as_object_mut() {
+        fields.remove("extra_specs");
+    }
+
+    summary
+}
+
 pub(super) async fn dependency_request(
     State(state): State<ApiState>,
     request: Request<Body>,
@@ -221,10 +230,27 @@ pub(super) async fn dependency_request(
                 .pools_by_id
                 .lock()
                 .ok()
-                .map(|pools| pools.values().cloned().collect::<Vec<_>>())
+                .map(|pools| pools.values().map(garm_pool_summary).collect::<Vec<_>>())
                 .unwrap_or_default();
             response(StatusCode::OK, json!(pools))
         }
+        ("GET", path)
+            if path.starts_with(
+                "/api/v1/repositories/00000000-0000-0000-0000-000000000101/pools/",
+            ) =>
+        {
+            let pool_id = path.rsplit('/').next().unwrap_or_default();
+            let pool = state
+                .pools_by_id
+                .lock()
+                .ok()
+                .and_then(|pools| pools.get(pool_id).cloned());
+            pool.map_or_else(
+                || response(StatusCode::NOT_FOUND, json!({"error":"pool not found"})),
+                |pool| response(StatusCode::OK, pool),
+            )
+        }
+
         ("POST", "/api/v1/repositories/00000000-0000-0000-0000-000000000101/pools") => {
             let create: Value = serde_json::from_slice(&body_bytes).unwrap_or_default();
             let tags = create["tags"]

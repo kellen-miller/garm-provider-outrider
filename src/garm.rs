@@ -13,7 +13,7 @@ use serde_json::Value;
 #[derive(Clone, Deserialize, Serialize)]
 pub struct BootstrapInstance {
     pub name: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "decode_list")]
     pub tools: Vec<RunnerApplicationDownload>,
     #[serde(default)]
     pub repo_url: String,
@@ -23,7 +23,7 @@ pub struct BootstrapInstance {
     pub metadata_url: String,
     #[serde(rename = "instance-token", default)]
     pub instance_token: String,
-    #[serde(rename = "ssh-keys", default)]
+    #[serde(rename = "ssh-keys", default, deserialize_with = "decode_list")]
     pub ssh_keys: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub extra_specs: Option<Value>,
@@ -44,7 +44,7 @@ pub struct BootstrapInstance {
     pub flavor: String,
     #[serde(default)]
     pub image: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "decode_list")]
     pub labels: Vec<String>,
     #[serde(default)]
     pub pool_id: String,
@@ -74,7 +74,7 @@ pub struct RunnerApplicationDownload {
 pub struct UserDataOptions {
     #[serde(default)]
     pub disable_updates_on_boot: bool,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "decode_list")]
     pub extra_packages: Vec<String>,
     #[serde(default)]
     pub enable_boot_debug: bool,
@@ -447,6 +447,17 @@ fn write_provider_response(
     }
 
     if !status.is_success() {
+        if let Some(
+            message @ ("allocation concurrency limit reached"
+            | "administrator allocation admission is closed"),
+        ) = output.error.as_deref()
+        {
+            return Err(ProviderFailure::Message(format!(
+                "{message} (HTTP {})",
+                status.as_u16()
+            )));
+        }
+
         return Err(ProviderFailure::Message(format!(
             "daemon returned HTTP {}",
             status.as_u16()
@@ -477,6 +488,15 @@ fn write_provider_response(
     Ok(())
 }
 
+// Go nil slices arrive as JSON null; normalize collections at this protocol boundary.
+fn decode_list<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Ok(Option::<Vec<T>>::deserialize(deserializer)?.unwrap_or_default())
+}
+
 fn decode_bytes<'de, D>(deserializer: D) -> Result<Option<Vec<u8>>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -494,4 +514,41 @@ where
         .as_ref()
         .map(|bytes| STANDARD.encode(bytes))
         .serialize(serializer)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BootstrapInstance;
+    use serde_json::{Value, json};
+
+    #[test]
+    fn go_nullable_collections_normalize_without_accepting_wrong_types() {
+        let bootstrap = json!({
+            "name": "runner", "tools": [], "ssh-keys": [], "labels": [],
+            "user_data_options": {"extra_packages": []}
+        });
+        for (path, populated) in [
+            ("/tools", json!([{"os":"linux"}])),
+            ("/ssh-keys", json!(["ssh-ed25519 fixture"])),
+            ("/labels", json!(["routing-label"])),
+            ("/user_data_options/extra_packages", json!(["git"])),
+        ] {
+            for value in [Value::Null, json!([]), populated] {
+                let mut input = bootstrap.clone();
+                *input.pointer_mut(path).expect("collection field") = value.clone();
+                let decoded: BootstrapInstance = serde_json::from_value(input).expect("Go slice");
+                let normalized = serde_json::to_value(decoded).expect("normalized bootstrap");
+                assert_eq!(
+                    normalized.pointer(path),
+                    Some(&if value.is_null() { json!([]) } else { value })
+                );
+            }
+
+            for invalid in [json!(false), json!({}), json!("value"), json!([false])] {
+                let mut input = bootstrap.clone();
+                *input.pointer_mut(path).expect("collection field") = invalid;
+                assert!(serde_json::from_value::<BootstrapInstance>(input).is_err());
+            }
+        }
+    }
 }

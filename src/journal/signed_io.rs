@@ -208,9 +208,21 @@ impl Journal {
     /// # Errors
     /// Returns `JournalError` when SQLite operations fail or stored values are invalid.
     pub fn pending_outbox(&self, limit: usize) -> Result<Vec<OutboxMessage>, JournalError> {
+        self.outbox_due_before(limit, i64::MAX)
+    }
+
+    pub(crate) fn due_outbox(&self, limit: usize) -> Result<Vec<OutboxMessage>, JournalError> {
+        self.outbox_due_before(limit, Self::now() as i64)
+    }
+
+    fn outbox_due_before(
+        &self,
+        limit: usize,
+        due_at: i64,
+    ) -> Result<Vec<OutboxMessage>, JournalError> {
         let connection = self.connection.lock().map_err(|_| JournalError::Poisoned)?;
-        let mut statement = connection.prepare("SELECT id, kind, destination, headers_json, body, state FROM ingress_outbox WHERE state IN ('pending','retry') ORDER BY retry_order, created_at, rowid LIMIT ?1")?;
-        let rows = statement.query_map(params![limit as i64], |row| {
+        let mut statement = connection.prepare("SELECT id, kind, destination, headers_json, body, state FROM ingress_outbox WHERE state IN ('pending','retry') AND next_attempt_at<=?2 ORDER BY retry_order, created_at, rowid LIMIT ?1")?;
+        let rows = statement.query_map(params![limit as i64, due_at], |row| {
             Ok(OutboxMessage {
                 id: row.get(0)?,
                 kind: row.get(1)?,
@@ -236,8 +248,8 @@ impl Journal {
         let connection = self.connection.lock().map_err(|_| JournalError::Poisoned)?;
         if state == "retry" {
             connection.execute(
-                "UPDATE ingress_outbox SET state=?2, detail=?3, attempts=attempts+1, retry_order=(SELECT COALESCE(MAX(retry_order),0)+1 FROM ingress_outbox) WHERE id=?1 AND terminal_at IS NULL",
-                params![id, state, detail],
+                "UPDATE ingress_outbox SET state=?2, detail=?3, attempts=attempts+1, next_attempt_at=?4+MIN(60, 1 << MIN(attempts,6)), retry_order=(SELECT COALESCE(MAX(retry_order),0)+1 FROM ingress_outbox) WHERE id=?1 AND terminal_at IS NULL",
+                params![id, state, detail, Self::now() as i64],
             )?;
         } else {
             connection.execute(

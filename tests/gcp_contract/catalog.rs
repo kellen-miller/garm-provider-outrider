@@ -7,6 +7,106 @@ use outrider::{
     policy::{Policy, ProviderLaunchFacts, rank},
 };
 use rust_decimal::Decimal;
+
+#[tokio::test]
+async fn hardware_filters_exclude_machines_before_image_reads() {
+    let server = start_server().await.unwrap();
+    let backend = backend(&server, false).await;
+    let mut request = query("spot");
+    request.profile.vcpu_min = 8;
+    request.profile.vcpu_max = 8;
+    let discovery = backend
+        .catalog(
+            request,
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .unwrap();
+    assert!(discovery.offers.is_empty());
+    assert_eq!(discovery.exclusions.len(), 1);
+    assert_eq!(discovery.exclusions[0].observed_count, 1);
+    assert!(
+        server
+            .requests
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|request| !request.path.contains("/images/"))
+    );
+}
+
+#[tokio::test]
+async fn native_spot_sku_names_price_predefined_compute_without_custom_or_committed_rates() {
+    // Descriptions and selected SKU IDs reflect the native catalog observation.
+    // Prices, region, credential and compute responses are controlled fixtures.
+    let server = start_server_with_routes(MockRoutes {
+        shape: MockShape::NativeSpot,
+        advice_status: 200,
+        advice_body: "{}".to_owned(),
+        instances_status: 200,
+        instances_body: r#"{"items":[]}"#.to_owned(),
+    })
+    .await
+    .expect("native-shaped price fixture");
+    let backend = backend_for_shape(&server, false, MockShape::NativeSpot).await;
+    let mut request = query("spot");
+    request
+        .profile
+        .administrator_limits
+        .allowed_machine_types
+        .insert(
+            "gcp".to_owned(),
+            BTreeSet::from(["e2-standard-8".to_owned()]),
+        );
+    let offers = backend
+        .catalog(
+            request,
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .expect("GCP catalog")
+        .offers;
+    assert_eq!(offers.len(), 1);
+    let quote = backend
+        .quote(
+            &offers[0],
+            Duration::from_secs(3600),
+            Duration::from_secs(600),
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .expect("native-shaped predefined Spot quote");
+    assert_eq!(quote.compute.hourly_rate, Some(Decimal::new(24, 2)));
+    assert!(quote.compute.source.contains("F179-E1EA-D97A"));
+    assert!(quote.compute.source.contains("9B1F-1E62-4061"));
+    assert!(!quote.compute.source.contains("CUSTOM"));
+    assert!(!quote.compute.source.contains("DECOY"));
+    assert_eq!(
+        quote.disk.hourly_rate,
+        Some(Decimal::new(4, 3) / Decimal::from(730u32))
+    );
+
+    let mut on_demand = query("on_demand");
+    on_demand
+        .profile
+        .administrator_limits
+        .allowed_machine_types
+        .insert(
+            "gcp".to_owned(),
+            BTreeSet::from(["e2-standard-8".to_owned()]),
+        );
+    let offers = backend
+        .catalog(
+            on_demand,
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .expect("on-demand catalog")
+        .offers;
+    assert_eq!(offers.len(), 1);
+    assert_quote_rejected(&backend, &offers[0]).await;
+}
+
 #[tokio::test]
 async fn catalog_enforces_profile_account_and_location_without_query_scopes() {
     let server = start_server()

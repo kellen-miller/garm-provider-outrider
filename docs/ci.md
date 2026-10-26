@@ -18,7 +18,7 @@ those module paths.
 The required bootstrap contract runs Bash syntax checks, cloud-init schema
 validation, PowerShell AST parsing, and native macOS `plutil` validation. The
 `check` job runs the full Rust contract suite and all required acceptance cases
-on the `macos-15` arm64 runner. It installs Python 3.13.7 and Go 1.26.2
+on the `macos-26` arm64 runner. It installs Python 3.15.0 and Go 1.27.3
 explicitly; `cargo xtask install-contract-tools` downloads cloud-init 26.2 and
 PowerShell 7.6.7 from pinned upstream artifacts and checks their SHA-256
 digests. The plist check uses Apple's `plutil`; a substitute parser or missing

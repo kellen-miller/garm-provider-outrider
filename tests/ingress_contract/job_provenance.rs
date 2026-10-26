@@ -43,6 +43,16 @@ async fn rejection_check_remote_commit_reconciles_after_restart() {
 
     let recovered = directory.journal().expect("restart journal");
     let restarted = IngressService::new(config, recovered.clone()).expect("restarted service");
+    // Advance only this synthetic receipt's persisted retry deadline. Restart
+    // must preserve the delay rather than immediately repeating the request.
+    rusqlite::Connection::open(directory.path.join("journal.sqlite3"))
+        .expect("journal inspection")
+        .execute(
+            "UPDATE ingress_outbox SET next_attempt_at=0 WHERE id='check:101:201:1:301'",
+            [],
+        )
+        .expect("make synthetic retry due");
+
     assert_eq!(
         restarted
             .process_pending(1)
@@ -86,8 +96,8 @@ async fn retry_limit_one_fairness_and_outbox_poison() {
                 id: id.into(),
                 kind: kind.into(),
                 destination: CONTROLLER_ID.into(),
-                headers_json: "{}".into(),
-                body: b"raw signed event".to_vec(),
+                headers_json: r#"{"x-github-event":"workflow_job"}"#.into(),
+                body: completed_failure_body(),
                 state: "pending".into(),
             })
             .expect("queue outbox message");
@@ -126,7 +136,7 @@ async fn malformed_forward_is_rejected_ahead_of_valid_retry() {
         open_service(&directory, "http://127.0.0.1:1/", "http://127.0.0.1:1/").expect("service");
     for (id, headers) in [
         ("malformed-forward", "not-json"),
-        ("valid-forward", r#"{"x-github-event":"workflow_run"}"#),
+        ("valid-forward", r#"{"x-github-event":"workflow_job"}"#),
     ] {
         journal
             .enqueue_outbox(&OutboxMessage {
@@ -134,7 +144,7 @@ async fn malformed_forward_is_rejected_ahead_of_valid_retry() {
                 kind: "forward".into(),
                 destination: CONTROLLER_ID.into(),
                 headers_json: headers.into(),
-                body: b"signed event".to_vec(),
+                body: completed_failure_body(),
                 state: "pending".into(),
             })
             .expect("queue outbox record");
@@ -542,5 +552,10 @@ async fn poison_no_head_of_line() {
             .as_deref(),
         Some("queued")
     );
-    assert_eq!(journal.pending_outbox(10).expect("forward outbox").len(), 1);
+    assert!(
+        journal
+            .pending_outbox(10)
+            .expect("forward outbox")
+            .is_empty()
+    );
 }

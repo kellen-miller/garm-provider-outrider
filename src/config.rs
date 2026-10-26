@@ -74,6 +74,7 @@ pub struct ConfigPatch {
     pub max_price_age_seconds: Option<u64>,
     pub history: Option<HistorySettings>,
     pub control: Option<ControlSettings>,
+    pub admission: Option<AdmissionSettings>,
     pub provider_bindings: Option<Vec<ProviderBinding>>,
     pub aws_catalog_bindings: Option<Vec<AwsCatalogBinding>>,
     pub azure_catalog_bindings: Option<Vec<AzureCatalogBinding>>,
@@ -161,6 +162,13 @@ pub struct IngressRepository {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
+pub struct AdmissionSettings {
+    pub state_file: std::path::PathBuf,
+    pub max_window_seconds: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct ControlSettings {
     pub listen_address: String,
     pub database_path: String,
@@ -219,10 +227,27 @@ impl ConfigPatch {
 
     fn validate_version(&self) -> Result<(), ConfigError> {
         if self.version == Some(1) {
+            self.validate_admission_settings()?;
             self.validate_effective_prices()
         } else {
             Err(ConfigError::UnsupportedVersion)
         }
+    }
+
+    /// Validate administrator allocation admission without requiring an open window.
+    ///
+    /// # Errors
+    /// Returns an error for a relative state path or a zero maximum window.
+    pub fn validate_admission_settings(&self) -> Result<(), ConfigError> {
+        if self.admission.as_ref().is_some_and(|settings| {
+            !settings.state_file.is_absolute() || settings.max_window_seconds == 0
+        }) {
+            return Err(ConfigError::InvalidProfile(
+                "admission requires an absolute state_file and positive max_window_seconds".into(),
+            ));
+        }
+
+        Ok(())
     }
 
     fn validate_effective_prices(&self) -> Result<(), ConfigError> {
@@ -341,6 +366,7 @@ impl ConfigPatch {
                 || repository.max_price_age_seconds.is_some()
                 || repository.history.is_some()
                 || repository.control.is_some()
+                || repository.admission.is_some()
                 || repository.ingress.is_some()
                 || repository.provider_bindings.is_some()
                 || repository.aws_catalog_bindings.is_some()
