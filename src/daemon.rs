@@ -9,7 +9,7 @@ use axum::{
 };
 
 use hmac::{Hmac, KeyInit, Mac};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::Sha256;
 
@@ -17,7 +17,7 @@ use crate::{
     allocation::{
         AllocationError, AllocationService, ExplainRequest, ExplanationReport, InventoryReport,
     },
-    config::{ConfigPatch, ControlSettings},
+    config::{CentralConfig, ControlSettings, IngressSettings},
     garm::{ProviderRequest, ProviderResponse},
     github::{IngressError, IngressService},
     journal::Journal,
@@ -30,7 +30,7 @@ type AuthMac = Hmac<Sha256>;
 struct DaemonState {
     auth_token: Arc<Vec<u8>>,
     allocation: Arc<AllocationService>,
-    ingress: Arc<IngressService>,
+    configuration_sha256: String,
 }
 
 #[derive(Serialize)]
@@ -43,6 +43,11 @@ struct SafeError {
     error: &'static str,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct ConfigurationStatus {
+    pub configuration_sha256: String,
+}
+
 /// Start the loopback provider daemon and serve health and provider requests.
 ///
 /// # Errors
@@ -50,7 +55,18 @@ struct SafeError {
 /// Returns an error when configuration, journal setup, socket binding, or
 /// server startup fails.
 pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let config = ConfigPatch::from_yaml(&std::fs::read_to_string(config_path)?)?;
+    let environment = std::env::vars_os().collect::<BTreeMap<_, _>>();
+    let authored = std::fs::read_to_string(config_path)?;
+    let configuration_sha256 = hex::encode(<Sha256 as sha2::Digest>::digest(authored.as_bytes()));
+    let mut source = CentralConfig::from_toml(&authored)?;
+    let authentication = source.authentication.take();
+    let webhook_address = source
+        .webhook_listen_address
+        .take()
+        .map(|address| address.parse::<SocketAddr>())
+        .transpose()
+        .map_err(|_| "webhook_listen_address must be a socket address")?;
+    let mut config = source.load_native_configuration(&environment)?;
     let settings = config
         .control
         .as_ref()
@@ -61,9 +77,24 @@ pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>>
         return Err("internal auth token file is empty".into());
     }
 
+    let renewal = if let Some(authentication) = authentication {
+        let ingress_settings = config
+            .ingress
+            .as_ref()
+            .ok_or("ingress settings are required")?;
+        let renewal =
+            crate::authentication::TokenRenewal::connect(authentication, ingress_settings).await?;
+        let resolved = crate::setup::adoption::resolve_identities(ingress_settings).await?;
+        config.ingress = Some(resolved);
+        Some(renewal)
+    } else {
+        None
+    };
+
     let journal = Journal::open(Path::new(&settings.database_path))?;
     let journal = Arc::new(journal);
-    let allocation = Arc::new(AllocationService::connect(config.clone(), journal.clone()).await?);
+    let allocation =
+        Arc::new(AllocationService::connect(config.clone(), journal.clone(), environment).await?);
     let ingress = Arc::new(IngressService::new(config, journal.clone())?);
     let recovery = Arc::new(RecoveryService::new(
         allocation.clone(),
@@ -71,7 +102,34 @@ pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>>
         journal,
     ));
     recovery.startup()?;
-    let app = build_router(token.trim_ascii().to_vec(), allocation, ingress)?;
+    let listener = tokio::net::TcpListener::bind(address).await?;
+    let public_listener = if let Some(address) = webhook_address {
+        Some(tokio::net::TcpListener::bind(address).await?)
+    } else {
+        None
+    };
+    let public_app = build_webhook_router(ingress.clone());
+    let app = build_router(
+        token.trim_ascii().to_vec(),
+        allocation,
+        ingress,
+        configuration_sha256,
+    )?;
+    if let Some(mut renewal) = renewal {
+        tokio::spawn(async move {
+            loop {
+                let delay = match renewal.refresh_due().await {
+                    Ok(delay) => delay,
+                    Err(error) => {
+                        eprintln!("outrider authentication: {error}");
+                        renewal.report().next_refresh_in
+                    }
+                };
+                tokio::time::sleep(delay).await;
+            }
+        });
+    }
+
     tokio::spawn(async move {
         loop {
             if recovery.iteration(32).await.is_err() {
@@ -80,8 +138,14 @@ pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>>
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
     });
-    let listener = tokio::net::TcpListener::bind(address).await?;
-    axum::serve(listener, app).await?;
+    if let Some(public_listener) = public_listener {
+        tokio::try_join!(async { axum::serve(listener, app).await }, async {
+            axum::serve(public_listener, public_app).await
+        })?;
+    } else {
+        axum::serve(listener, app).await?;
+    }
+
     Ok(())
 }
 
@@ -91,10 +155,11 @@ pub async fn serve(config_path: &Path) -> Result<(), Box<dyn std::error::Error>>
 /// Returns an error when control settings, token, timeout, transport, response
 /// status, response size, or report JSON is invalid.
 pub async fn explain_remote(
-    config: &ConfigPatch,
+    settings: &ControlSettings,
+    ingress: &IngressSettings,
     request: ExplainRequest,
 ) -> Result<ExplanationReport, Box<dyn std::error::Error>> {
-    control_request(config, "explain", &request, 1_000_000).await
+    control_request(settings, ingress, "explain", &request, 1_000_000).await
 }
 
 /// Collect native VM/disk/address metadata through the authenticated loopback daemon.
@@ -102,30 +167,35 @@ pub async fn explain_remote(
 /// # Errors
 /// Returns an error if authentication, any native collection, or bounded transport fails.
 pub async fn inventory_remote(
-    config: &ConfigPatch,
+    settings: &ControlSettings,
+    ingress: &IngressSettings,
 ) -> Result<InventoryReport, Box<dyn std::error::Error>> {
-    control_request(config, "inventory", &(), 32 * 1024 * 1024).await
+    control_request(settings, ingress, "inventory", &(), 32 * 1024 * 1024).await
+}
+
+/// Identify the configuration actually loaded by the authenticated daemon.
+///
+/// # Errors
+/// Returns an error when authenticated control transport or response validation fails.
+pub async fn configuration_status_remote(
+    settings: &ControlSettings,
+    ingress: &IngressSettings,
+) -> Result<ConfigurationStatus, Box<dyn std::error::Error>> {
+    control_request(settings, ingress, "status", &(), 1024).await
 }
 
 async fn control_request<Request: serde::Serialize, Report: serde::de::DeserializeOwned>(
-    config: &ConfigPatch,
+    settings: &ControlSettings,
+    ingress: &IngressSettings,
     operation: &str,
     request: &Request,
     max_bytes: usize,
 ) -> Result<Report, Box<dyn std::error::Error>> {
-    let settings = config
-        .control
-        .as_ref()
-        .ok_or("control settings are required")?;
     let address = validate_settings(settings)?;
     let token = std::fs::read(&settings.auth_token_file)?;
     if token.trim_ascii().is_empty() {
         return Err("internal auth token file is empty".into());
     }
-    let ingress = config
-        .ingress
-        .as_ref()
-        .ok_or("ingress settings are required")?;
     let bootstrap_seconds = u64::from(ingress.bootstrap_timeout_minutes)
         .checked_mul(60)
         .ok_or("analysis timeout is invalid")?;
@@ -168,22 +238,36 @@ pub fn build_router(
     auth_token: Vec<u8>,
     allocation: Arc<AllocationService>,
     ingress: Arc<IngressService>,
+    configuration_sha256: String,
 ) -> Result<Router, &'static str> {
-    if auth_token.is_empty() {
-        return Err("internal auth token is required");
+    if auth_token.is_empty()
+        || configuration_sha256.len() != 64
+        || !configuration_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit())
+    {
+        return Err("internal auth token and source configuration digest are required");
     }
     let state = DaemonState {
         auth_token: Arc::new(auth_token),
         allocation,
-        ingress,
+        configuration_sha256,
     };
     Ok(Router::new()
-        .route("/health", get(health))
-        .route("/v1/webhooks/github", post(github_webhook))
         .route("/v1/provider", post(provider))
         .route("/v1/explain", post(explain))
         .route("/v1/inventory", post(inventory))
-        .with_state(state))
+        .route("/v1/status", post(configuration_status))
+        .with_state(state)
+        .merge(build_webhook_router(ingress)))
+}
+
+/// Public ingress contains no provider/control routes or bearer credentials.
+pub fn build_webhook_router(ingress: Arc<IngressService>) -> Router {
+    Router::new()
+        .route("/health", get(health))
+        .route("/v1/webhooks/github", post(github_webhook))
+        .with_state(ingress)
 }
 
 fn validate_settings(settings: &ControlSettings) -> Result<SocketAddr, &'static str> {
@@ -211,6 +295,24 @@ fn validate_settings(settings: &ControlSettings) -> Result<SocketAddr, &'static 
 
 async fn health() -> Json<HealthResponse> {
     Json(HealthResponse { status: "ready" })
+}
+
+async fn configuration_status(
+    State(state): State<DaemonState>,
+    headers: HeaderMap,
+) -> Result<Json<ConfigurationStatus>, (StatusCode, Json<SafeError>)> {
+    if !authorized(&headers, &state.auth_token) {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(SafeError {
+                error: "unauthorized",
+            }),
+        ));
+    }
+
+    Ok(Json(ConfigurationStatus {
+        configuration_sha256: state.configuration_sha256,
+    }))
 }
 
 async fn inventory(
@@ -337,7 +439,7 @@ async fn explain(
 }
 
 async fn github_webhook(
-    State(state): State<DaemonState>,
+    State(ingress): State<Arc<IngressService>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> StatusCode {
@@ -356,7 +458,7 @@ async fn github_webhook(
                 .map(|value| (name.as_str().to_owned(), value.to_owned()))
         })
         .collect::<BTreeMap<_, _>>();
-    match state.ingress.intake(
+    match ingress.intake(
         header("x-github-event"),
         header("x-github-delivery"),
         header("x-hub-signature-256"),

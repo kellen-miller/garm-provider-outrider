@@ -1,0 +1,83 @@
+# Synthetic example. Use no cloud credentials or real account identifiers.
+cost_horizon_seconds = 86400
+default_policy = "economy"
+default_purchasing = "on_demand"
+max_price_age_seconds = 3600
+version = 1
+
+[control]
+auth_token_file = ".local/provider-token"
+database_path = ".local/outrider.sqlite3"
+listen_address = "127.0.0.1:9191"
+provider_timeout_seconds = 900
+
+[defaults]
+accounts = ["synthetic-account"]
+architecture = "amd64"
+capabilities = ["docker"]
+image = "ubuntu-24"
+local_scratch_gib = 0
+locations = ["us-east-1"]
+memory_gib_max = 16
+memory_gib_min = 8
+os = "linux"
+vcpu_max = 8
+vcpu_min = 4
+
+[defaults.boot_disk]
+class = "gp3"
+size_gib = 40
+
+[defaults.machine_types]
+aws = ["m7i.large"]
+
+[limits]
+allowed_accounts = ["synthetic-account"]
+allowed_architectures = ["amd64"]
+allowed_capabilities = ["docker"]
+allowed_clouds = ["aws"]
+allowed_gpu_models = []
+allowed_gpu_vendors = []
+allowed_images = ["ubuntu-24"]
+allowed_locations = ["us-east-1"]
+allowed_os = ["linux"]
+allowed_purchasing = [
+    "on_demand",
+    "spot",
+]
+max_allocations_account = 100
+max_allocations_controller = 1000
+max_allocations_pool = 25
+max_boot_disk_gib = 1024
+max_boot_disk_iops = 100000
+max_boot_disk_throughput_mib_s = 1000
+max_gpu_count = 8
+max_gpu_memory_gib = 256
+max_local_scratch_gib = 512
+max_memory_gib = 256
+max_total_cost = 1000
+max_vcpu = 32
+
+[limits.allowed_machine_families]
+
+[limits.allowed_machine_types]
+aws = [
+    "m7i.large",
+    "m7i.xlarge",
+]
+
+[policies.economy.missing_data]
+action = "reject"
+
+[policies.economy.strategy]
+max_price_age_seconds = 600
+strategy = "economy"
+
+[profiles.linux-large]
+memory_gib_max = 16
+memory_gib_min = 16
+vcpu_max = 8
+vcpu_min = 8
+
+[profiles.linux-large.machine_types]
+aws = ["m7i.xlarge"]

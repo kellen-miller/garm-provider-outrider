@@ -79,7 +79,7 @@ async fn central_effective_price_changes_cross_cloud_create_winner_and_explains_
         .and_then(|prices| prices.first())
         .is_none_or(|price| price.scope != negotiated_scope)
     {
-        return Err("Explain scope changed during central YAML round trip".into());
+        return Err("Explain scope changed during central TOML round trip".into());
     }
     scenario.restart_with_config(reloaded_config).await?;
     let snapshot_id = scenario.send_signed_event(ROUTING_LABEL, 281).await?;

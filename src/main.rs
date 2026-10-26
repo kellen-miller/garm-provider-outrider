@@ -7,10 +7,10 @@ use std::{
 };
 
 use clap::{Parser, Subcommand};
-use outrider::{config::ConfigPatch, label::RoutingRequest};
+use outrider::{config::CentralConfig, label::RoutingRequest};
 
 #[derive(Parser)]
-#[command(name = "outrider", version, about = "Multi-cloud GARM runner provider")]
+#[command(name = "outrider", version = env!("OUTRIDER_BUILD_VERSION"), about = "Multi-cloud GARM runner provider")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -18,6 +18,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    BuildInfo,
+    Install(outrider::installation::InstallOptions),
+    Setup(outrider::setup::SetupOptions),
+    Doctor(outrider::setup::DoctorOptions),
     Validate {
         #[arg(long)]
         config: PathBuf,
@@ -103,8 +107,43 @@ fn main() -> ExitCode {
 
 fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
+        Command::Install(options) => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&outrider::installation::install(&options)?)?
+            );
+        }
+
+        Command::Setup(options) => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&outrider::setup::setup(&options)?)?
+            );
+        }
+
+        Command::Doctor(options) => {
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()?;
+            let report = runtime.block_on(outrider::setup::doctor(&options))?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+        }
+
+        Command::BuildInfo => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "version": env!("OUTRIDER_BUILD_VERSION"),
+                    "source_revision": env!("OUTRIDER_SOURCE_REVISION"),
+                    "host": env!("OUTRIDER_BUILD_HOST"),
+                    "dirty": env!("OUTRIDER_BUILD_DIRTY") == "true",
+                })
+            );
+        }
+
         Command::Validate { config, profile } => {
-            let patch = ConfigPatch::from_yaml(&fs::read_to_string(config)?)?;
+            let patch = CentralConfig::from_toml(&fs::read_to_string(config)?)?;
+            let patch = patch.load_native_configuration(&std::env::vars_os().collect())?;
             patch.normalize_profile(None, &profile, None)?;
             println!("valid: profile {profile}");
         }
@@ -114,12 +153,19 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             profile,
             snapshot,
         } => {
-            let patch = ConfigPatch::from_yaml(&fs::read_to_string(config)?)?;
+            let patch = CentralConfig::from_toml(&fs::read_to_string(config)?)?;
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()?;
             let report = runtime.block_on(outrider::daemon::explain_remote(
-                &patch,
+                patch
+                    .control
+                    .as_ref()
+                    .ok_or("control settings are required")?,
+                patch
+                    .ingress
+                    .as_ref()
+                    .ok_or("ingress settings are required")?,
                 outrider::allocation::ExplainRequest {
                     profile,
                     snapshot_id: snapshot,
@@ -129,11 +175,20 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Command::Inventory { config } => {
-            let patch = ConfigPatch::from_yaml(&fs::read_to_string(config)?)?;
+            let patch = CentralConfig::from_toml(&fs::read_to_string(config)?)?;
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()?;
-            let report = runtime.block_on(outrider::daemon::inventory_remote(&patch))?;
+            let report = runtime.block_on(outrider::daemon::inventory_remote(
+                patch
+                    .control
+                    .as_ref()
+                    .ok_or("control settings are required")?,
+                patch
+                    .ingress
+                    .as_ref()
+                    .ok_or("ingress settings are required")?,
+            ))?;
             println!("{}", serde_json::to_string_pretty(&report)?);
         }
 

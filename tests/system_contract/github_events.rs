@@ -211,7 +211,7 @@ pub(super) async fn dependency_request(
             response(StatusCode::OK, json!({"sha":SHA}))
         }
         ("GET", path)
-            if path.starts_with("/repos/base-owner/base-repo/contents/.outrider.yml?") =>
+            if path.starts_with("/repos/base-owner/base-repo/contents/.outrider.toml?") =>
         {
             response(StatusCode::NOT_FOUND, json!({"message":"not found"}))
         }

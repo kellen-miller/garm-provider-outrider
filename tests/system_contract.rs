@@ -1,3 +1,7 @@
+#[path = "fixtures/native_central.rs"]
+mod native_central;
+use native_central::{load_fixture_central, serialize_native_central};
+
 use std::{
     collections::{BTreeMap, BTreeSet},
     ffi::OsString,
@@ -92,3 +96,5 @@ mod price_provenance;
 use cross_cloud_cleanup::*;
 #[path = "system_contract/explain_deadlines.rs"]
 mod explain_deadlines;
+#[path = "system_contract/native_configuration.rs"]
+mod native_configuration;

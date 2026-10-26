@@ -1,0 +1,230 @@
+# Synthetic authored policy. Replace identifiers, hashes and facts.
+# Native provider paths and cloud scopes come from GARM/provider TOML.
+cost_horizon_seconds = 86400
+default_policy = "economy"
+default_purchasing = "on_demand"
+max_price_age_seconds = 3600
+version = 1
+# Containers may expose signed webhooks separately; provider/control stays loopback.
+# webhook_listen_address = "0.0.0.0:8080"
+
+# Daemon-owned renewal; reference protected existing credentials, never inline secrets.
+[authentication]
+github_app_id = 1
+github_installation_id = 1
+github_private_key_file = "/etc/outrider/github-app.pem"
+garm_credentials_file = "/etc/outrider/garm-credentials.json"
+
+[[aws_catalog_bindings]]
+account_id = "aws-synthetic"
+id = "aws-catalog"
+pricing_location = "US East (N. Virginia)"
+provider_binding_id = "aws-main"
+
+[aws_catalog_bindings.images.linux-ci]
+architecture = "amd64"
+capabilities = []
+cloud_init = true
+ec2_launch_agent = false
+image_id = "ami-synthetic"
+os = "linux"
+windows_license_included = false
+
+[aws_catalog_bindings.locations.us-east-1]
+availability_zone = "us-east-1a"
+security_group_ids = ["sg-synthetic"]
+
+[aws_catalog_bindings.storage_classes]
+standard = "gp3"
+
+[[azure_catalog_bindings]]
+id = "azure-catalog"
+provider_binding_id = "azure-main"
+
+[azure_catalog_bindings.accelerator_facts]
+
+[azure_catalog_bindings.images.linux-ci]
+capabilities = ["cloud-init"]
+image_id = "synthetic-publisher:synthetic-offer:synthetic-sku:1.0.0"
+licensing = "no_additional_software_charge"
+licensing_source = "synthetic image metadata"
+minimum_os_disk_gib = 30
+minimum_os_disk_source = "synthetic image metadata"
+
+[azure_catalog_bindings.locations.eastus]
+
+[azure_catalog_bindings.storage_classes]
+standard = "StandardSSD_LRS"
+
+[control]
+auth_token_file = "/var/lib/outrider/control.token"
+database_path = "/var/lib/outrider/outrider.sqlite3"
+listen_address = "127.0.0.1:9191"
+provider_timeout_seconds = 900
+
+[defaults]
+accounts = [
+    "aws-synthetic",
+    "azure-synthetic",
+    "gcp-synthetic",
+]
+architecture = "amd64"
+capabilities = []
+image = "linux-ci"
+local_scratch_gib = 0
+locations = [
+    "us-east-1",
+    "eastus",
+    "us-central1",
+]
+memory_gib_max = 8
+memory_gib_min = 4
+os = "linux"
+purchasing = "on_demand"
+vcpu_max = 2
+vcpu_min = 2
+
+[defaults.boot_disk]
+class = "standard"
+size_gib = 40
+
+[defaults.machine_types]
+aws = ["m7i.large"]
+azure = ["Standard_D2s_v5"]
+gcp = ["e2-standard-2"]
+
+[garm]
+config_file = "/etc/outrider/garm.toml"
+
+[[gcp_catalog_bindings]]
+capacity_advice_enabled = false
+external_ip_billing_sku = "synthetic-ip-sku"
+id = "gcp-catalog"
+provider_binding_id = "gcp-main"
+
+[gcp_catalog_bindings.accelerator_facts]
+
+[gcp_catalog_bindings.disk_performance.standard]
+base_iops = 3000
+base_throughput_mib_s = 0
+iops_per_gib = 6
+maximum_iops = 80000
+maximum_throughput_mib_s = 1200
+source = "synthetic disk facts"
+throughput_per_gib_mib_s = 0.12
+
+[gcp_catalog_bindings.images.linux-ci]
+architecture = "amd64"
+capabilities = ["cloud-init"]
+capabilities_source = "synthetic image metadata"
+image_id = "projects/synthetic/global/images/linux"
+license_free_source = "synthetic license fact"
+os = "linux"
+os_source = "synthetic image metadata"
+
+[gcp_catalog_bindings.images.linux-ci.license_facts]
+
+[gcp_catalog_bindings.machine_facts.e2-standard-2]
+source = "synthetic machine facts"
+
+[gcp_catalog_bindings.storage_billing_skus]
+standard = "synthetic-storage-sku"
+
+[gcp_catalog_bindings.storage_classes]
+standard = "pd-balanced"
+
+[ingress]
+allocation_timeout_seconds = 600
+bootstrap_timeout_minutes = 30
+controller_id = ""
+# setup derives the local origin from native GARM apiserver settings when empty.
+garm_api_origin = ""
+garm_token_file = "/var/lib/outrider/tokens/garm.token"
+github_api_origin = "https://api.github.com/"
+github_token_file = "/var/lib/outrider/tokens/github.token"
+max_dynamic_pools = 20
+max_runners_per_pool = 10
+pool_flavor = "outrider-synthetic"
+pool_image = "outrider-synthetic"
+pool_ttl_seconds = 3600
+provider_name = "outrider"
+runner_prefix = "outrider"
+timeout_margin_seconds = 60
+webhook_max_bytes = 1048576
+
+[ingress.repositories."owner/repository"]
+allow_forks = false
+garm_repository_id = ""
+webhook_secret_file = "/etc/outrider/webhook-owner-repository"
+
+[limits]
+allowed_accounts = [
+    "aws-synthetic",
+    "azure-synthetic",
+    "gcp-synthetic",
+]
+allowed_architectures = ["amd64"]
+allowed_capabilities = []
+allowed_clouds = [
+    "aws",
+    "azure",
+    "gcp",
+]
+allowed_gpu_models = []
+allowed_gpu_vendors = []
+allowed_images = ["linux-ci"]
+allowed_locations = [
+    "us-east-1",
+    "eastus",
+    "us-central1",
+]
+allowed_os = ["linux"]
+allowed_purchasing = [
+    "on_demand",
+    "spot",
+]
+max_allocations_account = 30
+max_allocations_controller = 100
+max_allocations_pool = 10
+max_boot_disk_gib = 1024
+max_boot_disk_iops = 100000
+max_boot_disk_throughput_mib_s = 1000
+max_gpu_count = 8
+max_gpu_memory_gib = 256
+max_local_scratch_gib = 512
+max_memory_gib = 256
+max_total_cost = 1000
+max_vcpu = 32
+
+[limits.allowed_machine_families]
+
+[limits.allowed_machine_types]
+aws = ["m7i.large"]
+azure = ["Standard_D2s_v5"]
+gcp = ["e2-standard-2"]
+
+[policies.economy.missing_data]
+action = "reject"
+
+[policies.economy.strategy]
+max_price_age_seconds = 600
+strategy = "economy"
+
+[profiles.default]
+
+[[providers]]
+cloud = "aws"
+name = "aws-main"
+
+[[providers]]
+cloud = "azure"
+name = "azure-main"
+
+[[providers]]
+cloud = "gcp"
+name = "gcp-main"
+
+[reruns]
+actions_write_permission = false
+enabled = false
+max_per_run = 1

@@ -281,13 +281,13 @@ impl GitHubClient {
             return Err(GitHubError::Contents);
         }
         let path = format!(
-            "repos/{}/{}/contents/.outrider.yml?ref={sha}",
+            "repos/{}/{}/contents/.outrider.toml?ref={sha}",
             path_component(&repository.owner.login),
             path_component(&repository.name)
         );
         let response = self.request(&path).await?;
         if response.status() == StatusCode::NOT_FOUND {
-            return Ok("version: 1\n".to_owned());
+            return Ok("version = 1\n".to_owned());
         }
         let content: ContentsResponse = response
             .error_for_status()

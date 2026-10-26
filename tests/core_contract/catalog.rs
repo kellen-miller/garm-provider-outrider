@@ -1,4 +1,4 @@
-use super::config::central_patch;
+use super::config::{central_patch, load_central_toml};
 use std::collections::BTreeMap;
 use std::io;
 
@@ -7,170 +7,175 @@ use outrider::{config::ConfigPatch, label::RoutingRequest};
 #[test]
 fn effective_prices_are_strict_central_only_and_non_overlapping() {
     let scope = r#"
-      cloud: aws
-      configured_account: build-account
-      native_account: "123456789012"
-      configured_location: east-ci
-      native_location: us-east-1
-      binding_id: aws-east
-      machine_type: c7i.large
-      os: linux
-      architecture: amd64
-      image_alias: ubuntu-24
-      resolved_image: ami-0123456789abcdef0
-      purchasing: on_demand
-      vcpu: 2
-      memory_gib: 4
-      gpu_count: 0
-      boot_disk_class: gp3
-      boot_disk_gib: 30
-      boot_disk_iops: 3000
-      boot_disk_throughput_mib_s: 125
-      local_scratch_gib: 0
-      launch_facts:
-        cloud: aws
-        facts:
-          availability_zone: us-east-1a
-          subnet_id: subnet-123
-          security_group_ids: []
-          map_public_ip_on_launch: false
-          resolved_image_id: ami-0123456789abcdef0
-          windows_license_included: false
-          root_device_name: /dev/sda1
-          minimum_root_volume_gib: 30
+architecture = "amd64"
+binding_id = "aws-east"
+boot_disk_class = "gp3"
+boot_disk_gib = 30
+boot_disk_iops = 3000
+boot_disk_throughput_mib_s = 125
+cloud = "aws"
+configured_account = "build-account"
+configured_location = "east-ci"
+gpu_count = 0
+image_alias = "ubuntu-24"
+local_scratch_gib = 0
+machine_type = "c7i.large"
+memory_gib = 4
+native_account = "123456789012"
+native_location = "us-east-1"
+os = "linux"
+purchasing = "on_demand"
+resolved_image = "ami-0123456789abcdef0"
+vcpu = 2
+
+[launch_facts]
+cloud = "aws"
+
+[launch_facts.facts]
+availability_zone = "us-east-1a"
+map_public_ip_on_launch = false
+minimum_root_volume_gib = 30
+resolved_image_id = "ami-0123456789abcdef0"
+root_device_name = "/dev/sda1"
+security_group_ids = []
+subnet_id = "subnet-123"
+windows_license_included = false
 "#;
     let reported_scope: outrider::allocation::FinancialPriceScope =
-        serde_yaml_ng::from_str(scope).unwrap();
+        toml_edit::de::from_str(scope).unwrap();
     let report_json = serde_json::to_value(&reported_scope).unwrap();
-    let copied_scope = serde_yaml_ng::to_string(&report_json)
+    let copied_scope = toml_edit::ser::to_string_pretty(&report_json)
         .unwrap()
         .lines()
-        .map(|line| format!("      {line}\n"))
+        .map(|line| {
+            if let Some(table) = line.strip_prefix('[') {
+                format!("[effective_prices.scope.{table}\n")
+            } else {
+                format!("{line}\n")
+            }
+        })
         .collect::<String>();
     let record = |id: &str, component: &str, from: u64, until: u64| {
         format!(
-            "  - id: \"{id}\"\n    scope:\n{copied_scope}    component: {component}\n    currency: USD\n    hourly_rate: \"0.42\"\n    source: vendor agreement\n    reference: agreement-section-4\n    observed_at_unix_seconds: 1792600000\n    valid_from_unix_seconds: {from}\n    valid_until_unix_seconds: {until}\n",
+            "[[effective_prices]]\nid = \"{id}\"\ncomponent = \"{component}\"\ncurrency = \"USD\"\nhourly_rate = \"0.42\"\nsource = \"vendor agreement\"\nreference = \"agreement-section-4\"\nobserved_at_unix_seconds = 1792600000\nvalid_from_unix_seconds = {from}\nvalid_until_unix_seconds = {until}\n[effective_prices.scope]\n{copied_scope}",
         )
     };
-    let valid_yaml = format!(
-        "version: 1\neffective_prices:\n{}",
+    let valid_toml = format!(
+        "version = 1\n{}",
         record("price-compute", "compute", 1792800000, 1800480000)
     );
-    let central = ConfigPatch::from_yaml(&valid_yaml).unwrap();
+    let central = load_central_toml(&valid_toml).unwrap();
     assert!(central.effective_prices.is_some());
-    assert_effective_price_schema_matches(&report_json, &valid_yaml);
-    assert_effective_price_decimal_contract(&valid_yaml, &report_json);
-    let blank_source = valid_yaml.replace("source: vendor agreement", "source: '   '");
-    assert!(ConfigPatch::from_yaml(&blank_source).is_err());
+    assert_effective_price_schema_matches(&report_json, &valid_toml);
+    assert_effective_price_decimal_contract(&valid_toml, &report_json);
+    let blank_source = valid_toml.replace("source = \"vendor agreement\"", "source = '   '");
+    assert!(load_central_toml(&blank_source).is_err());
     assert_effective_price_schema_rejects(&blank_source);
-    let controlled_reference = valid_yaml.replace(
-        "reference: agreement-section-4",
-        "reference: \"bad\\u0001value\"",
+    let controlled_reference = valid_toml.replace(
+        "reference = \"agreement-section-4\"",
+        "reference = \"bad\\u0001value\"",
     );
-    assert!(ConfigPatch::from_yaml(&controlled_reference).is_err());
+    assert!(load_central_toml(&controlled_reference).is_err());
     assert_effective_price_schema_rejects(&controlled_reference);
-    let repository = ConfigPatch::from_yaml(&valid_yaml).unwrap();
-    assert!(matches!(
-        central.normalize_profile(Some(&repository), "build", None),
-        Err(outrider::config::ConfigError::ForbiddenOverride(_))
-    ));
+    assert!(ConfigPatch::from_toml(&valid_toml).is_err());
 
     let overlap = format!(
-        "version: 1\neffective_prices:\n{}{}",
+        "version = 1\n{}{}",
         record("price-compute-a", "compute", 1792800000, 1800480000),
         record("price-compute-b", "compute", 1800000000, 1805000000),
     );
-    assert!(ConfigPatch::from_yaml(&overlap).is_err());
+    assert!(load_central_toml(&overlap).is_err());
     let adjacent = format!(
-        "version: 1\neffective_prices:\n{}{}",
+        "version = 1\n{}{}",
         record("price-compute-a", "compute", 1792800000, 1800480000),
         record("price-compute-b", "compute", 1800480000, 1805000000),
     );
-    assert!(ConfigPatch::from_yaml(&adjacent).is_ok());
+    assert!(load_central_toml(&adjacent).is_ok());
     let different_components_overlap = format!(
-        "version: 1\neffective_prices:\n{}{}",
+        "version = 1\n{}{}",
         record("price-compute", "compute", 1792800000, 1800480000),
         record("price-disk", "disk", 1792800000, 1800480000),
     );
-    assert!(ConfigPatch::from_yaml(&different_components_overlap).is_ok());
+    assert!(load_central_toml(&different_components_overlap).is_ok());
     let duplicate_id = format!(
-        "version: 1\neffective_prices:\n{}{}",
+        "version = 1\n{}{}",
         record("duplicate-id", "compute", 1792800000, 1800480000),
         record("duplicate-id", "disk", 1792800000, 1800480000),
     );
-    assert!(ConfigPatch::from_yaml(&duplicate_id).is_err());
+    assert!(load_central_toml(&duplicate_id).is_err());
     let padded_id = format!(
-        "version: 1\neffective_prices:\n{}",
+        "version = 1\n{}",
         record(" padded-id", "compute", 1792800000, 1800480000),
     );
-    assert!(ConfigPatch::from_yaml(&padded_id).is_err());
+    assert!(load_central_toml(&padded_id).is_err());
     let punctuation_id = format!(
-        "version: 1\neffective_prices:\n{}",
+        "version = 1\n{}",
         record("-leading-id", "compute", 1792800000, 1800480000),
     );
-    assert!(ConfigPatch::from_yaml(&punctuation_id).is_err());
+    assert!(load_central_toml(&punctuation_id).is_err());
     assert_effective_price_schema_rejects(&punctuation_id);
     let oversized_id = format!(
-        "version: 1\neffective_prices:\n{}",
+        "version = 1\n{}",
         record(&"x".repeat(129), "compute", 1792800000, 1800480000),
     );
-    assert!(ConfigPatch::from_yaml(&oversized_id).is_err());
-    let unquoted_rate = valid_yaml.replace("\"0.42\"", "0.42");
-    assert!(ConfigPatch::from_yaml(&unquoted_rate).is_err());
-    let mismatched_launch_facts = valid_yaml.replace("cloud: aws", "cloud: azure");
-    assert!(ConfigPatch::from_yaml(&mismatched_launch_facts).is_err());
+    assert!(load_central_toml(&oversized_id).is_err());
+    let unquoted_rate = valid_toml.replace("\"0.42\"", "0.42");
+    assert!(load_central_toml(&unquoted_rate).is_err());
+    let mismatched_launch_facts = valid_toml.replace("cloud = \"aws\"", "cloud = \"azure\"");
+    assert!(load_central_toml(&mismatched_launch_facts).is_err());
     assert!(
-        ConfigPatch::from_yaml(&valid_yaml.replace("component: compute", "component: network"))
-            .is_err()
+        load_central_toml(
+            &valid_toml.replace("component = \"compute\"", "component = \"network\"")
+        )
+        .is_err()
     );
 }
 
-fn assert_effective_price_decimal_contract(valid_yaml: &str, report_json: &serde_json::Value) {
+fn assert_effective_price_decimal_contract(valid_toml: &str, report_json: &serde_json::Value) {
     for rate in [
         "6.1234567890123456789012345678",
         "69.123456789012345678901234567",
         "6000000000000000000000000000.1",
     ] {
-        let exact_rate = valid_yaml.replace("\"0.42\"", &format!("\"{rate}\""));
-        assert!(ConfigPatch::from_yaml(&exact_rate).is_ok());
+        let exact_rate = valid_toml.replace("\"0.42\"", &format!("\"{rate}\""));
+        assert!(load_central_toml(&exact_rate).is_ok());
         assert_effective_price_schema_matches(report_json, &exact_rate);
     }
 
-    let exact_scale_rate = valid_yaml.replace("\"0.42\"", "\"0.0000000000000000000000000001\"");
-    assert!(ConfigPatch::from_yaml(&exact_scale_rate).is_ok());
+    let exact_scale_rate = valid_toml.replace("\"0.42\"", "\"0.0000000000000000000000000001\"");
+    assert!(load_central_toml(&exact_scale_rate).is_ok());
     assert_effective_price_schema_matches(report_json, &exact_scale_rate);
-    let maximum_decimal_rate = valid_yaml.replace("\"0.42\"", "\"79228162514264337593543950334\"");
-    assert!(ConfigPatch::from_yaml(&maximum_decimal_rate).is_ok());
+    let maximum_decimal_rate = valid_toml.replace("\"0.42\"", "\"79228162514264337593543950334\"");
+    assert!(load_central_toml(&maximum_decimal_rate).is_ok());
     assert_effective_price_schema_matches(report_json, &maximum_decimal_rate);
     let maximum_fractional_rate =
-        valid_yaml.replace("\"0.42\"", "\"7.9228162514264337593543950335\"");
-    assert!(ConfigPatch::from_yaml(&maximum_fractional_rate).is_ok());
+        valid_toml.replace("\"0.42\"", "\"7.9228162514264337593543950335\"");
+    assert!(load_central_toml(&maximum_fractional_rate).is_ok());
     assert_effective_price_schema_matches(report_json, &maximum_fractional_rate);
     let fractional_maximum_plus_one =
-        valid_yaml.replace("\"0.42\"", "\"7.9228162514264337593543950336\"");
-    assert!(ConfigPatch::from_yaml(&fractional_maximum_plus_one).is_err());
+        valid_toml.replace("\"0.42\"", "\"7.9228162514264337593543950336\"");
+    assert!(load_central_toml(&fractional_maximum_plus_one).is_err());
     assert_effective_price_schema_rejects(&fractional_maximum_plus_one);
-    let overprecision_rate = valid_yaml.replace("\"0.42\"", "\"0.00000000000000000000000000001\"");
-    assert!(ConfigPatch::from_yaml(&overprecision_rate).is_err());
+    let overprecision_rate = valid_toml.replace("\"0.42\"", "\"0.00000000000000000000000000001\"");
+    assert!(load_central_toml(&overprecision_rate).is_err());
     assert_effective_price_schema_rejects(&overprecision_rate);
-    let overflow_rate = valid_yaml.replace("\"0.42\"", "\"79228162514264337593543950336\"");
-    assert!(ConfigPatch::from_yaml(&overflow_rate).is_err());
+    let overflow_rate = valid_toml.replace("\"0.42\"", "\"79228162514264337593543950336\"");
+    assert!(load_central_toml(&overflow_rate).is_err());
     assert_effective_price_schema_rejects(&overflow_rate);
-    let fractional_overflow = valid_yaml.replace("\"0.42\"", "\"9.9999999999999999999999999999\"");
-    assert!(ConfigPatch::from_yaml(&fractional_overflow).is_err());
+    let fractional_overflow = valid_toml.replace("\"0.42\"", "\"9.9999999999999999999999999999\"");
+    assert!(load_central_toml(&fractional_overflow).is_err());
     assert_effective_price_schema_rejects(&fractional_overflow);
 }
 
-fn assert_effective_price_schema_rejects(central_config_yaml: &str) {
+fn assert_effective_price_schema_rejects(central_config_toml: &str) {
     let schema = outrider::config::json_schema();
     let Ok(validator) = jsonschema::validator_for(&schema) else {
         panic!("effective price config schema did not compile");
     };
-    let Ok(yaml_value) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(central_config_yaml)
-    else {
-        panic!("invalid-rate test configuration was not valid YAML");
+    let Ok(toml_value) = toml_edit::de::from_str::<serde_json::Value>(central_config_toml) else {
+        panic!("invalid-rate test configuration was not valid TOML");
     };
-    let Ok(config_json) = serde_json::to_value(yaml_value) else {
+    let Ok(config_json) = serde_json::to_value(toml_value) else {
         panic!("invalid-rate test configuration was not JSON representable");
     };
     assert!(!validator.is_valid(&config_json));
@@ -178,7 +183,7 @@ fn assert_effective_price_schema_rejects(central_config_yaml: &str) {
 
 fn assert_effective_price_schema_matches(
     report_json: &serde_json::Value,
-    central_config_yaml: &str,
+    central_config_toml: &str,
 ) {
     let schema = outrider::config::json_schema();
     assert_eq!(
@@ -258,11 +263,10 @@ fn assert_effective_price_schema_matches(
     let Ok(validator) = jsonschema::validator_for(&schema) else {
         panic!("effective price config schema did not compile");
     };
-    let Ok(yaml_value) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(central_config_yaml)
-    else {
-        panic!("Explain scope central config was not valid YAML");
+    let Ok(toml_value) = toml_edit::de::from_str::<serde_json::Value>(central_config_toml) else {
+        panic!("Explain scope central config was not valid TOML");
     };
-    let Ok(config_json) = serde_json::to_value(yaml_value) else {
+    let Ok(config_json) = serde_json::to_value(toml_value) else {
         panic!("Explain scope central config was not JSON representable");
     };
     assert!(validator.is_valid(&config_json));
@@ -287,7 +291,7 @@ fn assert_effective_price_schema_matches(
 #[test]
 fn azure_catalog_binding_is_central_only() {
     let central = central_patch().unwrap();
-    let mut repository = ConfigPatch::from_yaml("version: 1\nprofiles:\n  build: {}\n").unwrap();
+    let mut repository = ConfigPatch::from_toml("version = 1\n\n[profiles.build]\n").unwrap();
     repository.azure_catalog_bindings = Some(Vec::new());
 
     assert!(matches!(
@@ -298,15 +302,15 @@ fn azure_catalog_binding_is_central_only() {
     let schema = outrider::config::json_schema();
     assert_eq!(
         schema["properties"]["azure_catalog_bindings"]["items"]["$ref"],
-        "#/$defs/AzureCatalogBinding"
+        "#/$defs/AzureCatalogSource"
     );
     assert!(
-        schema["$defs"]["AzureCatalogBinding"]["required"]
+        schema["$defs"]["AzureCatalogSource"]["required"]
             .as_array()
             .is_some_and(|required| required.iter().any(|field| field == "accelerator_facts"))
     );
     assert_eq!(
-        schema["$defs"]["AzureCatalogBinding"]["properties"]["accelerator_facts"]["additionalProperties"]
+        schema["$defs"]["AzureCatalogSource"]["properties"]["accelerator_facts"]["additionalProperties"]
             ["$ref"],
         "#/$defs/AzureAcceleratorFacts"
     );
@@ -330,7 +334,7 @@ fn azure_catalog_binding_is_central_only() {
 #[test]
 fn gcp_catalog_binding_is_central_only() {
     let central = central_patch().unwrap();
-    let mut repository = ConfigPatch::from_yaml("version: 1\nprofiles:\n  build: {}\n").unwrap();
+    let mut repository = ConfigPatch::from_toml("version = 1\n\n[profiles.build]\n").unwrap();
     repository.gcp_catalog_bindings = Some(Vec::new());
 
     assert!(matches!(
@@ -341,10 +345,10 @@ fn gcp_catalog_binding_is_central_only() {
     let schema = outrider::config::json_schema();
     assert_eq!(
         schema["properties"]["gcp_catalog_bindings"]["items"]["$ref"],
-        "#/$defs/GcpCatalogBinding"
+        "#/$defs/GcpCatalogSource"
     );
     assert_eq!(
-        schema["$defs"]["GcpCatalogBinding"]["properties"]["capacity_advice_enabled"]["default"],
+        schema["$defs"]["GcpCatalogSource"]["properties"]["capacity_advice_enabled"]["default"],
         false
     );
 }

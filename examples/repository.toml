@@ -1,0 +1,5 @@
+# Synthetic repository overlay. Central limits remain authoritative.
+version = 1
+
+[profiles.linux-large]
+accounts = ["synthetic-account"]

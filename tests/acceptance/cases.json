@@ -27,7 +27,9 @@
         "restart::duplicate_restart",
         "restart::exclusive_daemon",
         "restart::malformed_and_redaction",
-        "tombstones::provider_disconnect_delete_tombstone"
+        "tombstones::provider_disconnect_delete_tombstone",
+        "public_ingress::public_listener_exposes_only_health_and_signed_webhooks",
+        "public_ingress::online_doctor_rejects_a_daemon_running_an_older_config"
       ]
     },
     {
@@ -154,6 +156,17 @@
         "startup_cleanup::restart_retained_cleanup",
         "startup_cleanup::observation_provenance",
         "startup_cleanup::historical_policy_inputs_after_restart"
+      ]
+    },
+    {
+      "id": "installation",
+      "target": "installation_contract",
+      "required_tests": [
+        "installed_setup_repeats_with_its_own_native_registration",
+        "install_preserves_authored_config_and_secret_and_repeats_exactly",
+        "changed_bundle_and_unmanaged_prefix_preserve_existing_files",
+        "traversal_duplicate_unknown_and_missing_members_are_rejected",
+        "rollback_restores_adopted_empty_state_and_removes_only_new_output"
       ]
     },
     {

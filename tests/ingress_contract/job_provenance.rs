@@ -313,10 +313,10 @@ async fn immutable_event_commit_matrix() {
                 .repository_config(&verified.base_repository, sha)
                 .await
                 .expect("exact SHA config"),
-            "version: 1\n"
+            "version = 1\n"
         );
         let expected_content_path =
-            format!("/repos/base-owner/base-repo/contents/.outrider.yml?ref={sha}");
+            format!("/repos/base-owner/base-repo/contents/.outrider.toml?ref={sha}");
         assert!(
             server
                 .requests()

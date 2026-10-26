@@ -252,6 +252,8 @@ async fn provider_request() -> Result<(), ProviderFailure> {
     };
 
     let client = Client::builder()
+        .no_proxy()
+        .retry(reqwest::retry::never())
         .timeout(connection.timeout)
         .redirect(reqwest::redirect::Policy::none())
         .build()
@@ -284,7 +286,7 @@ fn daemon_request_failure(error: reqwest::Error, fallback: &'static str) -> Prov
 
 fn write_metadata_response(command: &str, version: &str) -> Result<bool, ProviderFailure> {
     let output = match command {
-        "GetVersion" => env!("CARGO_PKG_VERSION").as_bytes().to_vec(),
+        "GetVersion" => env!("OUTRIDER_BUILD_VERSION").as_bytes().to_vec(),
         "GetSupportedInterfaceVersions" if version == "v0.1.1" => {
             br#"["v0.1.0","v0.1.1"]"#.to_vec()
         }
@@ -320,7 +322,7 @@ fn provider_connection(
 ) -> Result<ProviderConnection, ProviderFailure> {
     let configuration = std::fs::read_to_string(config_path)
         .map_err(|_| ProviderFailure::Message("cannot read provider configuration".into()))?;
-    let configuration = crate::config::ConfigPatch::from_yaml(&configuration)
+    let configuration = crate::config::CentralConfig::from_toml(&configuration)
         .map_err(|_| ProviderFailure::Message("invalid provider configuration".into()))?;
     let settings = configuration
         .control

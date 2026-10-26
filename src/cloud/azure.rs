@@ -1,3 +1,5 @@
+use crate::providers::configuration::AzureChildConfiguration;
+
 pub use billing::disk_meter_tier;
 
 use std::{
@@ -82,41 +84,6 @@ pub struct AzureSettings {
     pub management_endpoint: String,
     pub retail_endpoint: String,
 }
-
-#[derive(Deserialize)]
-struct AzureChildConfiguration {
-    credentials: AzureChildCredentials,
-    location: String,
-    #[serde(default)]
-    disable_isolated_networks: bool,
-    #[serde(default)]
-    vnet_subnet_id: String,
-    #[serde(default)]
-    use_ephemeral_storage: bool,
-}
-
-#[derive(Deserialize)]
-struct AzureChildCredentials {
-    subscription_id: String,
-    #[serde(default)]
-    client_options: BTreeMap<String, serde_json::Value>,
-    #[serde(default)]
-    service_principal: Option<AzureServicePrincipal>,
-    #[serde(default)]
-    workload_identity: Option<AzureUnsupportedIdentity>,
-    #[serde(default)]
-    managed_identity: Option<AzureUnsupportedIdentity>,
-}
-
-#[derive(Deserialize)]
-struct AzureServicePrincipal {
-    tenant_id: String,
-    client_id: String,
-    client_secret: String,
-}
-
-#[derive(Deserialize)]
-struct AzureUnsupportedIdentity {}
 
 #[derive(Deserialize)]
 struct AzureSkuPage {

@@ -361,8 +361,11 @@ pub(crate) fn seed_job_and_assignment_for_attempt(
     interruption_at: Option<&str>,
     assignment: RerunAssignmentFixture<'_>,
 ) -> String {
-    let mut central = ConfigPatch::from_yaml(include_str!("../../examples/central.yaml"))
-        .unwrap_or_else(|_| panic!("load valid central snapshot config"));
+    let mut central = outrider::config::CentralConfig::from_toml(include_str!(
+        "../../examples/config-minimal.toml"
+    ))
+    .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
+    .unwrap_or_else(|_| panic!("load valid central snapshot config"));
     central.ingress = Some(settings.clone());
     let mut document = super::allocation_harness::snapshot_document(central, assignment.source_id);
     document.base_repository = RepositoryRef {

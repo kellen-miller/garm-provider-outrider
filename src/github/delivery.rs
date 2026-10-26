@@ -507,7 +507,7 @@ impl IngressService {
                 "The administrator dynamic pool limit was reached",
             ));
         }
-        let repo_yaml = self
+        let repo_toml = self
             .github
             .repository_config(&verified.base_repository, &verified.run.head_sha)
             .await
@@ -517,7 +517,7 @@ impl IngressService {
                     "Repository configuration is unavailable at the verified commit",
                 ),
             })?;
-        let repository = ConfigPatch::from_yaml(&repo_yaml)
+        let repository = ConfigPatch::from_toml(&repo_toml)
             .map_err(|_| SnapshotFailure::Rejected("Repository configuration is invalid"))?;
         let overrides = request
             .job_overrides()
