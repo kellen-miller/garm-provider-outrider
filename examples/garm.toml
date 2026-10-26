@@ -6,7 +6,7 @@ provider_type = "external"
 [provider.external]
 interface_version = "v0.1.0"
 provider_executable = "/opt/outrider/bin/outrider"
-config_file = "/etc/outrider/central.toml"
+config_file = "/etc/outrider/config.toml"
 environment_variables = []
 
 [[provider]]

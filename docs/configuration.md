@@ -1,17 +1,18 @@
 # Configuration
 
-The daemon reads one central TOML document. Treat it and every referenced child
+Use `/etc/outrider/config.toml` for administrator configuration and pass its
+path with `--config`. Treat it and every referenced child
 provider file as an immutable run revision: write new files, calculate their
 SHA-256 digests, then restart the single daemon. Every allocation retains its
 resolved profile and provider/catalog/configuration fingerprints for lifecycle
 calls and cleanup.
 
-Start from [`examples/central-runtime.toml`](../examples/central-runtime.toml).
+Start from [`examples/config.toml`](../examples/config.toml).
 It shows control settings, hard limits, policy, defaults, provider references,
 all three cloud catalogs, and GitHub/GARM ingress in one synthetic file. Its
 paths, hashes, IDs, account facts, images, network values, and pricing facts are
 placeholders; replace them with values verified in the real accounts.
-[`central.toml`](../examples/central.toml) is only a small normalization
+[`config-minimal.toml`](../examples/config-minimal.toml) is only a small normalization
 example and has no provider bindings, cloud catalogs, or ingress.
 
 The exported installation JSON Schema describes the central document.
@@ -21,7 +22,7 @@ parser rejects administrator settings before profile normalization.
 Run profile normalization with:
 
 ```sh
-outrider validate --config /etc/outrider/central.toml --profile default
+outrider validate --config /etc/outrider/config.toml --profile default
 ```
 
 This command parses TOML, rejects unknown fields, reads selected native GARM

@@ -13,7 +13,8 @@ async fn explain_remote_bounds_chunked_body_and_uses_analysis_deadline()
     fs::create_dir(&fixture)?;
     let token_path = fixture.join("daemon.token");
     fs::write(&token_path, "explanation-transport-token")?;
-    let central_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/central.toml");
+    let central_path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/config-minimal.toml");
     let mut config =
         outrider::config::CentralConfig::from_toml(&fs::read_to_string(central_path)?)?
             .load_native_configuration(&BTreeMap::new())?;

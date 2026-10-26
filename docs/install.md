@@ -56,7 +56,7 @@ description = "Outrider loopback placement provider"
 [provider.external]
 interface_version = "v0.1.0"
 provider_executable = "/opt/outrider/bin/outrider"
-config_file = "/etc/outrider/central.toml"
+config_file = "/etc/outrider/config.toml"
 environment_variables = []
 ```
 
@@ -91,7 +91,7 @@ for the prior process to exit.
 
 ## Live setup
 
-Replace all synthetic values in [`central-runtime.toml`](../examples/central-runtime.toml),
+Replace all synthetic values in [`config.toml`](../examples/config.toml),
 create real provider configs, calculate their SHA-256 digests, and confirm the
 actual accounts, network placements, image capabilities, machine facts,
 storage classes, and prices. `outrider validate` reads native registrations and

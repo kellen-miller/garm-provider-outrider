@@ -123,12 +123,11 @@ fn native_sources_own_paths_scopes_and_environment_without_retaining_secrets()
 #[test]
 fn authored_schema_and_parser_reject_duplicate_native_authority()
 -> Result<(), Box<dyn std::error::Error>> {
-    let source: Value =
-        toml_edit::de::from_str(include_str!("../../examples/central-runtime.toml"))?;
+    let source: Value = toml_edit::de::from_str(include_str!("../../examples/config.toml"))?;
     let schema = outrider::config::json_schema();
     let validator = jsonschema::validator_for(&schema)?;
     assert!(validator.is_valid(&source));
-    CentralConfig::from_toml(include_str!("../../examples/central.toml"))?;
+    CentralConfig::from_toml(include_str!("../../examples/config-minimal.toml"))?;
     assert!(schema["properties"].get("provider_bindings").is_none());
     assert!(schema["$defs"].get("ProviderBinding").is_none());
     for (table, field, value) in [

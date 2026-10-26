@@ -233,13 +233,12 @@ fn quote_age_rejects_future_required_observations_and_ignores_included_markers()
 
 #[test]
 fn precedence_replace_lists() {
-    outrider::config::CentralConfig::from_toml(include_str!("../../examples/central-runtime.toml"))
-        .unwrap();
+    outrider::config::CentralConfig::from_toml(include_str!("../../examples/config.toml")).unwrap();
 
     let example_central = load_central_toml(
         &std::fs::read_to_string(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/examples/central.toml"
+            "/examples/config-minimal.toml"
         ))
         .unwrap(),
     )

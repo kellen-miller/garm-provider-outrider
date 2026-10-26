@@ -617,10 +617,11 @@ pub(super) async fn assert_quote_rejected(backend: &GcpBackend, offer: &CatalogO
 }
 
 pub(super) fn query(purchasing: &str) -> CatalogQuery {
-    let patch =
-        outrider::config::CentralConfig::from_toml(include_str!("../../examples/central.toml"))
-            .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
-            .unwrap_or_else(|_| panic!("central config"));
+    let patch = outrider::config::CentralConfig::from_toml(include_str!(
+        "../../examples/config-minimal.toml"
+    ))
+    .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
+    .unwrap_or_else(|_| panic!("central config"));
     let mut profile = patch
         .normalize_profile(None, "linux-large", None)
         .unwrap_or_else(|_| panic!("central profile"))

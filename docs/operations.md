@@ -104,8 +104,8 @@ retained repository/job snapshot, including its frozen profile and catalog pins,
 after checking snapshot eligibility and current hard limits.
 
 ```sh
-outrider explain --config /etc/outrider/central.toml --profile linux-large
-outrider explain --config /etc/outrider/central.toml --snapshot SNAPSHOT_ID
+outrider explain --config /etc/outrider/config.toml --profile linux-large
+outrider explain --config /etc/outrider/config.toml --snapshot SNAPSHOT_ID
 ```
 
 Explain sends an authenticated loopback request to the daemon. It performs the
@@ -127,7 +127,7 @@ child stderr, bootstrap labels, and opaque provider pins.
 Collect native VM, disk and allocated IP metadata through the same daemon:
 
 ```sh
-outrider inventory --config /etc/outrider/central.toml
+outrider inventory --config /etc/outrider/config.toml
 ```
 
 Inventory uses each connected current or retained catalog's verified credentials.

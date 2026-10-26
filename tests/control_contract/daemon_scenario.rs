@@ -234,10 +234,11 @@ pub(super) fn build_test_services(
         supported_architectures: BTreeSet::from(["amd64".to_owned()]),
         purchasing_capabilities: BTreeSet::from([PurchasingCapability::OnDemand]),
     };
-    let mut config =
-        outrider::config::CentralConfig::from_toml(include_str!("../../examples/central.toml"))
-            .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
-            .map_err(io::Error::other)?;
+    let mut config = outrider::config::CentralConfig::from_toml(include_str!(
+        "../../examples/config-minimal.toml"
+    ))
+    .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
+    .map_err(io::Error::other)?;
     config.control = Some(ControlSettings {
         listen_address: address.to_owned(),
         database_path: database.display().to_string(),

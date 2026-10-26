@@ -294,7 +294,7 @@ pub(super) fn cli_with_provider_metadata(arguments: &[&str]) -> Output {
         .env("GARM_CONTROLLER_ID", "routing-check")
         .env(
             "GARM_PROVIDER_CONFIG_FILE",
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/central-runtime.toml"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/config.toml"),
         )
         .output()
         .unwrap_or_else(|error| panic!("run Outrider CLI with provider metadata: {error}"))

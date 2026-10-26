@@ -605,10 +605,11 @@ pub(crate) fn allocation_binding(directory: &JournalFixture, mode: &str) -> Prov
 }
 
 pub(crate) fn allocation_central(binding: &ProviderBinding, image_id: &str) -> ConfigPatch {
-    let mut config =
-        outrider::config::CentralConfig::from_toml(include_str!("../../../examples/central.toml"))
-            .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
-            .unwrap_or_else(|_| panic!("central allocation config"));
+    let mut config = outrider::config::CentralConfig::from_toml(include_str!(
+        "../../../examples/config-minimal.toml"
+    ))
+    .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
+    .unwrap_or_else(|_| panic!("central allocation config"));
     config.history = Some(outrider::config::HistorySettings {
         window_seconds: 3600,
         sampling_interval_seconds: 1,
