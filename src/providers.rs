@@ -14,7 +14,9 @@ use tokio::{
     time::{Instant, timeout_at},
 };
 
+mod native_garm;
 mod process;
+pub use native_garm::{NativeGarmError, NativeProviderRegistration, load_native_garm_providers};
 use process::run_process;
 
 use crate::garm::{ProviderInstance, ProviderRequest};
@@ -172,7 +174,7 @@ impl ProviderRegistry {
             for binding in bindings {
                 if !valid_binding_metadata(&binding)
                     || binding.inherited_environment.iter().any(|name| {
-                        name.starts_with("GARM_")
+                        name.starts_with("GARM")
                             || name.is_empty()
                             || name.bytes().any(|byte| byte == b'=' || byte == 0)
                     })
