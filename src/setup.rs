@@ -332,3 +332,6 @@ fn merge_registration(
     providers.push(expected.clone());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;
