@@ -1,14 +1,19 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
+    sync::Arc,
     time::Duration,
 };
 
-use outrider::cloud::{CloudCatalog, CloudError};
+use outrider::{
+    cloud::{CloudCatalog, CloudError, azure::AzureBackend},
+    policy::ProviderLaunchFacts,
+};
 use rust_decimal::Decimal;
 
 use super::cloud_server::{
-    MockResponse, backend, changed_retail_page, image_response, irrelevant_retail_page,
-    large_retail_page, profile, query, retail_response, sku, start_server,
+    MockResponse, TestCredential, backend, changed_retail_page, child_config, image_response,
+    irrelevant_retail_page, large_retail_page, premium_backend, profile, query, retail_response,
+    settings, sku, start_server,
 };
 
 #[tokio::test]
@@ -26,7 +31,7 @@ async fn retail_snapshot_bounds_multi_offer_paging_and_keeps_exact_prices() {
     ])
     .await
     .unwrap_or_else(|_| panic!("snapshot mock server"));
-    let backend = backend(&server).await;
+    let backend = premium_backend(&server).await;
     let mut request_profile = profile();
     request_profile.purchasing_models = BTreeSet::from(["on_demand".to_owned(), "spot".to_owned()]);
     let offers = backend
@@ -116,14 +121,17 @@ async fn retail_snapshot_bounds_multi_offer_paging_and_keeps_exact_prices() {
         .filter(|request| request.path.starts_with("/api/retail/prices"))
         .collect::<Vec<_>>();
     assert_eq!(retail.len(), 2);
+    let decoded =
+        urlencoding::decode(&retail[0].path).unwrap_or_else(|_| panic!("valid query encoding"));
     assert!(
-        retail[0].path.contains(
-            "$filter=(serviceName%20eq%20%27Virtual%20Machines%27%20or%20serviceName%20eq%20%27Storage%27)%20and%20armRegionName%20eq%20%27eastus%27"
-        ),
-        "unexpected Retail filter: {}",
-        retail[0].path
+        decoded
+            .contains("serviceName eq 'Storage' and (productName eq 'Standard HDD Managed Disks'")
     );
-    assert!(!retail[0].path.contains("Virtual%20Network"));
+    assert!(decoded.contains("productName eq 'Standard SSD Managed Disks'"));
+    assert!(decoded.contains("productName eq 'Premium SSD Managed Disks'"));
+    assert!(decoded.contains("serviceName eq 'Virtual Network' and productName eq 'IP Addresses'"));
+    assert!(decoded.contains("armRegionName eq 'eastus' and priceType eq 'Consumption'"));
+    assert!(retail[0].path.contains("IP%20Addresses"));
 }
 
 #[tokio::test]
@@ -424,7 +432,7 @@ async fn provider_launch_defaults_and_quote() {
             .unwrap_or_else(|| panic!("quoted disk price is present"))
             .disk
             .hourly_rate,
-        Some(Decimal::new(3, 0) / Decimal::from(730))
+        None
     );
     let mut tampered = offer.clone();
     tampered
@@ -583,4 +591,129 @@ async fn provider_launch_defaults_and_quote() {
             panic!("quote: {error:?}; requests: {paths:?}");
         });
     assert_eq!(quote.compute.hourly_rate, Some(Decimal::new(10, 2)));
+}
+
+#[tokio::test]
+async fn standard_public_ip_selection_and_requote_match_child_network() {
+    for shared_subnet in [false, true] {
+        let server = start_server(vec![
+            image_response(),
+            MockResponse {
+                status: 200,
+                body: serde_json::json!({"value":[sku("Standard_D2s_v3")]}).to_string(),
+            },
+            retail_response(),
+            image_response(),
+        ])
+        .await
+        .unwrap_or_else(|_| panic!("public IP mock server"));
+        let path = std::env::temp_dir().join(format!(
+            "outrider-azure-public-quote-{}-{shared_subnet}.toml",
+            std::process::id()
+        ));
+        let subnet = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/network/providers/Microsoft.Network/virtualNetworks/build/subnets/runners";
+        let mut bytes = child_config();
+        if shared_subnet {
+            let network =
+                format!("disable_isolated_networks = true\nvnet_subnet_id = \"{subnet}\"\n");
+            bytes.splice(0..0, network.bytes());
+        }
+
+        std::fs::write(&path, bytes).unwrap_or_else(|_| panic!("write synthetic child config"));
+        let mut settings = settings(&server.endpoint, path.clone());
+        let location = settings
+            .locations
+            .get_mut("eastus")
+            .unwrap_or_else(|| panic!("configured location"));
+        location.public_ip_sku = Some("Standard".to_owned());
+        location.vnet_subnet_id = shared_subnet.then(|| subnet.to_owned());
+        let backend = AzureBackend::with_clients(
+            settings,
+            reqwest::Client::new(),
+            Arc::new(TestCredential),
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .unwrap_or_else(|_| panic!("qualified Standard IPv4 child binding"));
+        let mut profile = profile();
+        profile.purchasing_models = BTreeSet::from(["on_demand".to_owned()]);
+        let offers = backend
+            .catalog(
+                query(profile),
+                tokio::time::Instant::now() + Duration::from_secs(5),
+            )
+            .await
+            .unwrap_or_else(|_| panic!("public IP catalog"))
+            .offers;
+        assert_eq!(offers.len(), 1);
+        let offer = &offers[0];
+        assert_eq!(
+            offer.selection.source_revision,
+            "10659879c5d91979c7f077439bd78e17622452a6"
+        );
+        assert_eq!(offer.selection.approved_extras["allocate_public_ip"], true);
+        let ProviderLaunchFacts::Azure(facts) = &offer.launch_facts else {
+            panic!("Azure launch facts");
+        };
+        assert_eq!(facts.public_ip_sku.as_deref(), Some("Standard"));
+        let quote = backend
+            .quote(
+                offer,
+                Duration::from_secs(3600),
+                Duration::from_secs(600),
+                tokio::time::Instant::now() + Duration::from_secs(5),
+            )
+            .await
+            .unwrap_or_else(|_| panic!("retained Standard public IP quote"));
+        assert_eq!(quote.public_address.hourly_rate, Some(Decimal::new(5, 3)));
+        assert!(!quote.public_address.included_in_compute);
+        let mut wrong_sku = offer.clone();
+        let ProviderLaunchFacts::Azure(facts) = &mut wrong_sku.launch_facts else {
+            panic!("Azure launch facts");
+        };
+        facts.public_ip_sku = Some("Basic".to_owned());
+        let mut wrong_revision = offer.clone();
+        wrong_revision.selection.source_revision =
+            "395847a0bec078c5dd88b31f54f0025f63b662c6".to_owned();
+        let mut wrong_allocation = offer.clone();
+        wrong_allocation
+            .selection
+            .approved_extras
+            .insert("allocate_public_ip".to_owned(), serde_json::json!(false));
+        for changed in [wrong_sku, wrong_revision, wrong_allocation] {
+            assert!(
+                backend
+                    .quote(
+                        &changed,
+                        Duration::from_secs(3600),
+                        Duration::from_secs(600),
+                        tokio::time::Instant::now() + Duration::from_secs(5),
+                    )
+                    .await
+                    .is_err(),
+                "SKU, revision, or allocation changed since selection"
+            );
+        }
+
+        {
+            let requests = server
+                .requests
+                .lock()
+                .unwrap_or_else(|_| panic!("request lock"));
+            assert_eq!(requests.len(), 4, "tampering rejects before additional I/O");
+            let filter =
+                urlencoding::decode(&requests[2].path).unwrap_or_else(|_| panic!("Retail query"));
+            assert!(
+                filter
+                    .contains("serviceName eq 'Virtual Network' and productName eq 'IP Addresses'")
+            );
+        }
+
+        server
+            .task
+            .await
+            .unwrap_or_else(|_| panic!("server task"))
+            .unwrap_or_else(|_| panic!("server"));
+        std::fs::remove_file(path).unwrap_or_else(|_| panic!("remove synthetic child config"));
+    }
 }

@@ -258,6 +258,7 @@ impl Journal {
         Self::migrate_cleanup_retries(&mut connection)?;
         Self::migrate_cleanup_resolutions(&mut connection)?;
         Self::migrate_retention(&mut connection)?;
+        Self::migrate_outbox_retries(&mut connection)?;
 
         Ok(Self {
             connection: Mutex::new(connection),
@@ -294,7 +295,7 @@ impl Journal {
                  CREATE INDEX IF NOT EXISTS interruption_events_allocation ON interruption_events(allocation_id, occurred_at);
                  UPDATE schema_version SET version=8;",
             )?;
-        } else if !matches!(version, 8..=15) {
+        } else if !matches!(version, 8..=16) {
             return Err(rusqlite::Error::InvalidQuery.into());
         }
         Ok(())
@@ -338,7 +339,7 @@ impl Journal {
                  UPDATE schema_version SET version=9;",
             )?;
             transaction.commit()?;
-        } else if !matches!(version, 9..=15) {
+        } else if !matches!(version, 9..=16) {
             return Err(rusqlite::Error::InvalidQuery.into());
         }
         Ok(())
@@ -373,7 +374,7 @@ impl Journal {
                  UPDATE schema_version SET version=10;",
             )?;
             transaction.commit()?;
-        } else if !matches!(version, 10..=15) {
+        } else if !matches!(version, 10..=16) {
             return Err(rusqlite::Error::InvalidQuery.into());
         }
         let version: u32 =
@@ -385,7 +386,7 @@ impl Journal {
                  UPDATE schema_version SET version=11;",
             )?;
             transaction.commit()?;
-        } else if !matches!(version, 11..=15) {
+        } else if !matches!(version, 11..=16) {
             return Err(rusqlite::Error::InvalidQuery.into());
         }
         Ok(())
@@ -406,7 +407,7 @@ impl Journal {
                  UPDATE schema_version SET version=12;",
             )?;
             transaction.commit()?;
-        } else if !matches!(version, 12..=15) {
+        } else if !matches!(version, 12..=16) {
             return Err(rusqlite::Error::InvalidQuery.into());
         }
         Ok(())
@@ -430,7 +431,7 @@ impl Journal {
                  UPDATE schema_version SET version=13;",
             )?;
             transaction.commit()?;
-        } else if !matches!(version, 13..=15) {
+        } else if !matches!(version, 13..=16) {
             return Err(rusqlite::Error::InvalidQuery.into());
         }
         Ok(())
@@ -461,9 +462,36 @@ impl Journal {
                  UPDATE schema_version SET version=14;",
             )?;
             transaction.commit()?;
-        } else if !matches!(version, 14..=15) {
+        } else if !matches!(version, 14..=16) {
             return Err(rusqlite::Error::InvalidQuery.into());
         }
+        Ok(())
+    }
+
+    fn migrate_outbox_retries(connection: &mut Connection) -> Result<(), JournalError> {
+        let version: u32 =
+            connection.query_row("SELECT version FROM schema_version", [], |row| row.get(0))?;
+        if version == 15 {
+            let transaction = connection.transaction()?;
+            let exists: bool = transaction.query_row(
+                "SELECT EXISTS(SELECT 1 FROM pragma_table_info('ingress_outbox') WHERE name='next_attempt_at')",
+                [],
+                |row| row.get(0),
+            )?;
+            if !exists {
+                transaction.execute(
+                    "ALTER TABLE ingress_outbox ADD COLUMN next_attempt_at INTEGER NOT NULL DEFAULT 0",
+                    [],
+                )?;
+            }
+
+            transaction.execute_batch(
+                "CREATE INDEX IF NOT EXISTS ingress_outbox_due ON ingress_outbox(state, next_attempt_at, retry_order);
+                 UPDATE schema_version SET version=16;",
+            )?;
+            transaction.commit()?;
+        }
+
         Ok(())
     }
 

@@ -9,6 +9,12 @@ Windows amd64 targets when run on that same host. A target binary is not
 interchangeable with a host binary. Runner OS/architecture is selected
 separately and described in [limits](limits.md).
 
+Outrider owns the install script for its snapshot-backed pools. After validating
+the allocation request, it replaces GARM's incoming `runner_install_template`
+with its generated script. Templates manually set on these pools are also
+replaced. Pre-install scripts, extra context, and unknown bootstrap options
+remain unsupported; configure runners through Outrider profiles instead.
+
 The manifest's `darwin/arm64` hashes identify only observed local artifacts.
 They are not Linux or Windows hashes and do not qualify those hosts.
 
@@ -91,3 +97,69 @@ normalization of the selected profile against central limits. It does not
 prove the central configuration can serve provider Create requests or verify
 binding files, hashes, binaries, cloud credentials, catalogs, ingress
 connectivity, or GARM registration. Complete live qualification separately.
+
+## Bounded administrator admission
+
+For a live qualification window, add an administrator-only gate to the central YAML:
+
+```yaml
+admission:
+  state_file: /var/lib/outrider/admission.json
+  max_window_seconds: 1800
+```
+
+Omitting `admission` selects normal, unbounded product operation. With the gate
+configured, missing, unreadable, invalid, expired, or insecure state closes new
+allocations. Daemon restart never reopens a window. Repository configuration
+cannot override this setting. The daemon reads the current state file at every
+admission boundary; no restart or background timer is required.
+
+The administrator writes this exact version 1 JSON contract, with integer Unix
+seconds and no additional fields:
+
+```json
+{"version":1,"opened_at_unix":1792760400,"expires_at_unix":1792762200}
+```
+
+Admission is open only when `opened_at_unix <= now < expires_at_unix` and the
+positive duration is at most `max_window_seconds`. Future opening times are
+closed. Explicit closed state is `{"version":1,"opened_at_unix":0,"expires_at_unix":0}`;
+removing the file also closes admission. Replace the file atomically with a
+same-directory rename. Keep the directory and file owned by root or the daemon's
+effective user, without group/world write permission; use directory mode `0700`
+and file mode `0600` (or directory `0750` and file `0640` when root grants
+the daemon group read access).
+Every path component must be a real directory, never a symlink, and satisfy the
+same ownership/write checks. Use the canonical absolute path. State must be a
+regular file with one hard link, at most 4096 bytes. Non-Unix hosts fail closed
+when the gate is configured.
+
+The current administrator gate applies before allocation reservation, after
+catalog waits, immediately before dispatch, and at the final child-process
+spawn after asynchronous pin/version validation. Retained snapshots cannot
+bypass it. Pool creation/enabling and queued Outrider job forwarding are also
+gated. Signed deliveries remain durable and retryable while closed; an
+administrator closure produces no workflow-author rejection check. Completion,
+in-progress, and unrelated webhook forwarding continue. Existing-instance
+idempotent create results, reads, list, lifecycle operations, callbacks, and
+cleanup remain available after expiry. Closure does not terminate an existing
+instance or a create already accepted by a child/cloud. The check is a
+point-in-time dispatch boundary, not a cloud transaction: expiry or administrator
+closure after the final check cannot recall an operation already dispatched.
+
+Azure Retail pricing requests include only VM sizes qualified against native
+inventory and profile limits, plus supported managed-disk/IP products. Profiles
+can specify exact sizes or resource/family constraints. A narrower cached VM scope cannot satisfy a broader
+request. Throttled pages honor numeric `Retry-After` seconds, with at most three
+retries per page within the original analysis deadline. Missing/invalid delays
+or incomplete/stale snapshots reject the request. Concurrent refreshes share
+one complete snapshot; cache retention uses completion time without resetting
+the source price age.
+
+Azure disk prices use the exact LRS capacity meter; shared-mount and ZRS meters
+cannot substitute for it. Premium SSD capacity quotes include its fixed disk
+charge. Standard HDD/SSD I/O transaction usage is not modeled, so their complete
+disk component remains unknown and allocation policy rejects it unless covered
+by an explicit administrator financial-price override. Map Azure boot-disk
+aliases to `Premium_LRS` for current complete native quotes. See
+[Microsoft's managed disk billing FAQ](https://learn.microsoft.com/azure/virtual-machines/faq-for-disks).

@@ -6,7 +6,7 @@ impl IngressService {
         let headers: ForwardHeaders =
             serde_json::from_str(&delivery.headers_json).map_err(|_| false)?;
         if delivery.event != "workflow_job" {
-            return self.enqueue_forward(delivery, &headers).map_err(|_| true);
+            return Ok(());
         }
         let event: WorkflowJobEvent = serde_json::from_slice(&delivery.body).map_err(|_| false)?;
         if event.repository.id != delivery.repository_id {
@@ -19,7 +19,7 @@ impl IngressService {
             .filter(|label| label.to_ascii_lowercase().starts_with("outrider"))
             .collect::<Vec<_>>();
         if tagged.is_empty() {
-            return self.enqueue_forward(delivery, &headers).map_err(|_| true);
+            return Ok(());
         }
         if tagged.len() != 1 || event.workflow_job.labels.len() != 1 {
             self.enqueue_rejection_check(
@@ -138,6 +138,10 @@ impl IngressService {
                 .await?;
             return Ok(());
         }
+        if !crate::admission::allocation_is_open(self.config.admission.as_ref()) {
+            return Err(true);
+        }
+
         let snapshot = match self.prepare_snapshot(&request, &verified).await {
             Ok(snapshot) => snapshot,
             Err(SnapshotFailure::Dependency) => return Err(true),
@@ -175,6 +179,7 @@ impl IngressService {
                 &self.journal,
                 RepositoryPoolRequest {
                     snapshot: &snapshot,
+                    admission: self.config.admission.as_ref(),
                 },
             )
             .await
@@ -200,6 +205,7 @@ impl IngressService {
                     self.enqueue_forward(delivery, &headers).map_err(|_| true)?;
                 }
             }
+            Err(PoolError::AdmissionClosed) => return Err(true),
             Err(PoolError::UnsupportedOs) => {
                 self.enqueue_rejection_check(
                     &verified.base_repository,
@@ -374,30 +380,62 @@ impl IngressService {
         Ok(submission == RerunSubmission::Acknowledged)
     }
 
-    pub(super) async fn forward_admission_is_current(
+    pub(super) fn forward_allocation_is_open(&self, message: &OutboxMessage) -> bool {
+        let Ok(headers) = serde_json::from_str::<ForwardHeaders>(&message.headers_json) else {
+            return true;
+        };
+        if headers.0.get("x-github-event").map(String::as_str) != Some("workflow_job") {
+            return true;
+        }
+
+        let Ok(event) = serde_json::from_slice::<WorkflowJobEvent>(&message.body) else {
+            return true;
+        };
+        if event.workflow_job.status != "queued"
+            || !event
+                .workflow_job
+                .labels
+                .iter()
+                .any(|label| label.starts_with("outrider:"))
+        {
+            return true;
+        }
+
+        crate::admission::allocation_is_open(self.config.admission.as_ref())
+    }
+
+    pub(super) async fn forward_job_is_current(
         &self,
         message: &OutboxMessage,
     ) -> Result<bool, bool> {
         let headers: ForwardHeaders =
             serde_json::from_str(&message.headers_json).map_err(|_| false)?;
         if headers.0.get("x-github-event").map(String::as_str) != Some("workflow_job") {
-            return Ok(true);
+            return Err(false);
         }
         let event: WorkflowJobEvent = serde_json::from_slice(&message.body).map_err(|_| false)?;
-        if event.workflow_job.status != "queued" {
-            return Ok(true);
-        }
         let tokens = event
             .workflow_job
             .labels
             .iter()
             .filter(|label| label.starts_with("outrider:"))
             .collect::<Vec<_>>();
-        if tokens.len() != 1 {
-            return Ok(true);
+        if tokens.len() != 1 || event.workflow_job.labels.len() != 1 {
+            return Err(false);
         }
         let request = RoutingRequest::parse(tokens[0]).map_err(|_| false)?;
         let attempt = event.workflow_job.run_attempt.ok_or(false)?;
+        if request.repository_id != event.repository.id
+            || request.run_id != event.workflow_job.run_id
+            || request.run_attempt != attempt
+        {
+            return Err(false);
+        }
+
+        if event.workflow_job.status != "queued" {
+            return Ok(true);
+        }
+
         let snapshot = self
             .journal
             .pool_snapshot(event.repository.id, tokens[0])

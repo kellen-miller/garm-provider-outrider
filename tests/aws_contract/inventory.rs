@@ -67,6 +67,39 @@ async fn binding_account_region_mismatch() {
 }
 
 #[tokio::test]
+async fn unrestricted_inventory_keeps_page_size() {
+    let server = start_aws_contract_server(vec![
+        identity_xml(),
+        xml_response(image_xml()),
+        xml_response(subnet_xml()),
+        xml_response("<DescribeInstanceTypesResponse/>"),
+        xml_response("<DescribeInstanceTypeOfferingsResponse/>"),
+    ])
+    .await
+    .unwrap();
+    let backend = aws_backend(&server.endpoint).await.unwrap();
+    let mut profile = resolved_profile().unwrap().profile;
+    profile.machine_types.clear();
+    let discovery = backend
+        .catalog(
+            CatalogQuery {
+                clouds: vec!["aws".to_owned()],
+                accounts: vec!["synthetic-account".to_owned()],
+                locations: vec!["us-east-1".to_owned()],
+                profile,
+            },
+            tokio::time::Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .unwrap();
+    assert!(discovery.offers.is_empty());
+    let requests = server.requests.lock().unwrap();
+    assert!(requests[3].body.contains("MaxResults=100"));
+    assert!(!requests[3].body.contains("InstanceType.1="));
+    server.task.abort();
+}
+
+#[tokio::test]
 async fn paginated_inventory_prices() {
     let price_case: serde_json::Value = serde_json::from_str(include_str!(
         "../acceptance/fixtures/aws-price-components.json"
@@ -192,6 +225,8 @@ fn assert_paginated_catalog_requests(requests: &[CapturedAwsRequest]) {
     assert!(requests[4].body.contains("NextToken=types-next"));
     assert!(requests[6].body.contains("NextToken=offers-next"));
     assert!(requests[3].body.contains("InstanceType.1=m7i.xlarge"));
+    assert!(!requests[3].body.contains("MaxResults="));
+    assert!(!requests[4].body.contains("MaxResults="));
     assert!(
         requests[9]
             .target

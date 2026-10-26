@@ -51,7 +51,7 @@ impl GcpBackend {
                     candidate: CapacityCandidate {
                         machine_types: vec![machine.name.clone()],
                         guest_accelerators: Vec::new(),
-                        disks: if machine.bundled_local_ssds.is_empty() {
+                        disks: if machine.bundled_local_ssds.is_none() {
                             Vec::new()
                         } else {
                             vec![CapacityDisk {
@@ -216,6 +216,36 @@ impl GcpBackend {
         self.settings.purchasing_capabilities.contains(purchasing)
     }
 
+    pub(super) fn machine_architecture(
+        &self,
+        machine: &GcpMachineType,
+    ) -> Result<Option<String>, CloudError> {
+        let native = machine
+            .architecture
+            .as_deref()
+            .map(canonical_architecture)
+            .transpose()?;
+        let attested = self
+            .settings
+            .machine_facts
+            .get(&machine.name)
+            .and_then(|facts| facts.architecture.as_deref())
+            .map(canonical_architecture)
+            .transpose()?;
+        if native
+            .as_ref()
+            .zip(attested.as_ref())
+            .is_some_and(|(native, attested)| native != attested)
+        {
+            return Err(failure(
+                "configuration",
+                "GCP native and attested machine architectures conflict",
+            ));
+        }
+
+        Ok(native.or(attested))
+    }
+
     pub(super) async fn catalog_machine_facts(
         &self,
         machine: &GcpMachineType,
@@ -229,31 +259,9 @@ impl GcpBackend {
             .get(&profile.image)
             .ok_or_else(|| failure("configuration", "GCP image alias is not bound"))?
             .clone();
-        let (image_resource, _) = self.image(&image, deadline).await?;
-        if image_resource.status != "READY"
-            || image_resource_id(&image_resource.self_link).as_deref()
-                != Some(image.image_id.as_str())
-            || image_resource.licenses.iter().collect::<BTreeSet<_>>()
-                != image.license_facts.keys().collect::<BTreeSet<_>>()
-        {
-            exclusion_counts
-                .record("image readiness, identity, or license declarations do not match");
-            return Ok(None);
-        }
-        let Some(image_architecture) = image_resource.architecture.as_deref() else {
-            exclusion_counts.record("image lacks native architecture facts");
-            return Ok(None);
-        };
-        let Some(machine_architecture) = machine.architecture.as_deref() else {
-            exclusion_counts.record("machine type lacks native architecture facts");
-            return Ok(None);
-        };
         let memory_gib = Decimal::from(machine.memory_mb) / Decimal::from(1024u32);
         let family = machine.name.split('-').next().unwrap_or_default();
-        if canonical_architecture(&image_architecture.to_ascii_lowercase())? != profile.architecture
-            || canonical_architecture(&machine_architecture.to_ascii_lowercase())?
-                != profile.architecture
-            || image.architecture != profile.architecture
+        if image.architecture != profile.architecture
             || image.os != profile.os
             || machine.guest_cpus < profile.vcpu_min
             || machine.guest_cpus > profile.vcpu_max
@@ -283,6 +291,37 @@ impl GcpBackend {
             exclusion_counts.record("machine or image does not meet requested platform, compute, family, capability, or GPU bounds");
             return Ok(None);
         }
+
+        let Some(machine_architecture) = self.machine_architecture(machine)? else {
+            exclusion_counts.record("machine type lacks native or attested architecture facts");
+            return Ok(None);
+        };
+        if machine_architecture != profile.architecture {
+            exclusion_counts.record("machine architecture does not meet requested platform");
+            return Ok(None);
+        }
+
+        let (image_resource, _) = self.image(&image, deadline).await?;
+        if image_resource.status != "READY"
+            || image_resource_id(&image_resource.self_link).as_deref()
+                != Some(image.image_id.as_str())
+            || image_resource.licenses.iter().collect::<BTreeSet<_>>()
+                != image.license_facts.keys().collect::<BTreeSet<_>>()
+        {
+            exclusion_counts
+                .record("image readiness, identity, or license declarations do not match");
+            return Ok(None);
+        }
+
+        let Some(image_architecture) = image_resource.architecture.as_deref() else {
+            exclusion_counts.record("image lacks native architecture facts");
+            return Ok(None);
+        };
+        if canonical_architecture(image_architecture)? != profile.architecture {
+            exclusion_counts.record("image architecture does not meet requested platform");
+            return Ok(None);
+        }
+
         let minimum_disk_gib = image_resource
             .disk_size_gb
             .as_deref()

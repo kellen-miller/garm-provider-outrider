@@ -266,6 +266,9 @@ impl AllocationService {
         config: ConfigPatch,
         journal: Arc<Journal>,
     ) -> Result<Self, AllocationError> {
+        config
+            .validate_admission_settings()
+            .map_err(|_| AllocationError::Configuration)?;
         let limits = config
             .limits
             .clone()
@@ -474,6 +477,9 @@ impl AllocationService {
         provider_registry: ProviderRegistry,
         process_environment: BTreeMap<OsString, OsString>,
     ) -> Result<Self, AllocationError> {
+        config
+            .validate_admission_settings()
+            .map_err(|_| AllocationError::Configuration)?;
         let limits = config
             .limits
             .clone()

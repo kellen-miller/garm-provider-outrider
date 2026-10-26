@@ -361,7 +361,7 @@ impl AwsBackend {
                             .collect()
                     }))
                     .set_next_token(type_token.clone())
-                    .max_results(100)
+                    .set_max_results(requested_types.is_none().then_some(100))
                     .send(),
             )
             .await

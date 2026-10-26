@@ -98,6 +98,12 @@ fn protocol(command: &str, mode: &str, configuration: &Configuration) -> Result<
     }
 
     if command == "GetVersion" {
+        if mode == "admission_version_barrier" {
+            let marker = variable("OUTRIDER_MARKER")
+                .ok_or_else(|| anyhow::anyhow!("admission marker required"))?;
+            wait_barrier(Path::new(&marker), Duration::from_millis(10))?;
+        }
+
         print!(
             "{}",
             if mode == "version_mismatch" {

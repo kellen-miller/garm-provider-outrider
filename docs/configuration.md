@@ -113,8 +113,15 @@ Custom Script Extension that reads `C:/AzureData/CustomData.bin` and runs it
 with PowerShell; the GCP child uses the Windows
 `sysprep-specialize-script-ps1` metadata key. Verify the selected image runs
 the relevant guest consumer; OS metadata by itself does not prove bootstrap
-execution. See the [pinned Azure implementation](https://github.com/kellen-miller/garm-provider-azure/blob/395847a0bec078c5dd88b31f54f0025f63b662c6/internal/spec/spec.go#L42)
+execution. See the [pinned Azure implementation](https://github.com/kellen-miller/garm-provider-azure/blob/10659879c5d91979c7f077439bd78e17622452a6/internal/spec/spec.go#L42)
 and [pinned GCP implementation](https://github.com/kellen-miller/garm-provider-gcp/blob/98a362f5319928099b942a668c5a17a34170066a/internal/client/gcp.go#L39).
+
+Azure `public_ip_sku` may be omitted to disable public IP allocation, or set to
+exactly `Standard` with the qualified child revision in the manifest. The child
+creates a Regional static IPv4 address when `allocate_public_ip` is selected;
+Outrider includes its separate Retail charge. Other SKUs and older child
+revisions are rejected. Catalog location and subnet must match the child
+configuration and its isolated or shared-network mode.
 
 Rust reads cloud APIs for catalogs, prices, and observations. Pinned GARM
 executables perform create, start, stop, delete, and guest bootstrap delivery.

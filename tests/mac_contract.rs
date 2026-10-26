@@ -148,6 +148,7 @@ async fn provider_capability_gate() -> Result<(), Box<dyn std::error::Error>> {
             "aws-child",
             &request,
             Some(&requirements),
+            None,
             tokio::time::Instant::now() + std::time::Duration::from_secs(2),
         )
         .await;

@@ -210,7 +210,7 @@ async fn pinned_process_configuration() {
     );
     assert!(matches!(
         required(registry
-            .invoke("aws-test-account-us-test-1", &request("GetVersion"), None, deadline())
+            .invoke("aws-test-account-us-test-1", &request("GetVersion"), None, None, deadline())
             .await),
         ProviderResult::Version(version) if version == "fixture-build-1"
     ));
@@ -267,6 +267,7 @@ async fn pinned_process_configuration() {
                 &changed_binding.id,
                 &request("CreateInstance"),
                 Some(&requirements()),
+                None,
                 deadline(),
             )
             .await,
@@ -309,6 +310,7 @@ async fn pinned_process_configuration() {
                 &changed_binary.id,
                 &request("CreateInstance"),
                 Some(&requirements()),
+                None,
                 deadline(),
             )
             .await,
@@ -334,6 +336,7 @@ async fn pinned_process_configuration() {
                 &mismatch_binding.id,
                 &request("CreateInstance"),
                 Some(&requirements()),
+                None,
                 deadline()
             )
             .await,
@@ -356,7 +359,7 @@ async fn pinned_process_configuration() {
     let unknown = request("GetConfigJSONSchema");
     assert!(matches!(
         unknown_registry
-            .invoke(&unknown_binding.id, &unknown, None, deadline())
+            .invoke(&unknown_binding.id, &unknown, None, None, deadline())
             .await,
         Err(ProviderError::Local(LocalFailure::UnsupportedRequest))
     ));
@@ -378,6 +381,7 @@ async fn pinned_process_configuration() {
                 &unsupported_binding.id,
                 &request("CreateInstance"),
                 Some(&unsupported),
+                None,
                 deadline()
             )
             .await,
@@ -402,6 +406,7 @@ async fn pinned_process_configuration() {
                 &boundary_binding.id,
                 &mismatched,
                 Some(&requirements()),
+                None,
                 deadline()
             )
             .await,
@@ -417,6 +422,7 @@ async fn pinned_process_configuration() {
                 &boundary_binding.id,
                 &mismatched,
                 Some(&requirements()),
+                None,
                 deadline()
             )
             .await,
@@ -432,6 +438,7 @@ async fn pinned_process_configuration() {
                 &boundary_binding.id,
                 &mismatched,
                 Some(&requirements()),
+                None,
                 deadline()
             )
             .await,
@@ -447,6 +454,7 @@ async fn pinned_process_configuration() {
                 &boundary_binding.id,
                 &mismatched,
                 Some(&requirements()),
+                None,
                 deadline()
             )
             .await,
@@ -471,6 +479,7 @@ async fn bootstrap_wire_and_clean_environment() {
                 &binding.id,
                 &request("CreateInstance"),
                 Some(&requirements()),
+                None,
                 deadline(),
             )
             .await,
@@ -510,6 +519,7 @@ async fn stock_result_shapes_and_null_inventory() {
                     &binding.id,
                     &request(command),
                     Some(&requirements()),
+                    None,
                     deadline(),
                 )
                 .await,
@@ -540,6 +550,7 @@ async fn stock_result_shapes_and_null_inventory() {
                     &binding.id,
                     &request(command),
                     Some(&requirements()),
+                    None,
                     deadline(),
                 )
                 .await,
@@ -562,6 +573,7 @@ async fn stock_result_shapes_and_null_inventory() {
                         &binding.id,
                         &request(command),
                         Some(&requirements()),
+                        None,
                         deadline()
                     )
                     .await
@@ -589,6 +601,7 @@ async fn opaque_failure_and_redaction() {
                     &binding.id,
                     &request(command),
                     Some(&requirements()),
+                    None,
                     deadline(),
                 )
                 .await,
@@ -609,6 +622,7 @@ async fn opaque_failure_and_redaction() {
                     &binding.id,
                     &request("CreateInstance"),
                     Some(&requirements()),
+                    None,
                     deadline(),
                 )
                 .await,
@@ -629,6 +643,7 @@ async fn opaque_failure_and_redaction() {
                 &binding.id,
                 &request("CreateInstance"),
                 Some(&requirements()),
+                None,
                 deadline(),
             )
             .await,
@@ -655,6 +670,7 @@ async fn bounded_process_io_and_deadline() {
                 &binding.id,
                 &huge_request,
                 Some(&requirements()),
+                None,
                 deadline()
             )
             .await,
@@ -673,6 +689,7 @@ async fn bounded_process_io_and_deadline() {
                     &binding.id,
                     &request("CreateInstance"),
                     Some(&requirements()),
+                    None,
                     deadline(),
                 )
                 .await,
@@ -695,6 +712,7 @@ async fn bounded_process_io_and_deadline() {
                 &binding.id,
                 &large_bootstrap,
                 Some(&requirements()),
+                None,
                 Instant::now() + Duration::from_millis(300),
             )
             .await,
@@ -712,6 +730,7 @@ async fn bounded_process_io_and_deadline() {
             .invoke(
                 &binding.id,
                 &request("GetVersion"),
+                None,
                 None,
                 Instant::now() - Duration::from_millis(1)
             )
@@ -735,6 +754,7 @@ async fn bounded_process_io_and_deadline() {
                 &binding_id,
                 &request("GetInstance"),
                 Some(&requirements()),
+                None,
                 deadline(),
             )
             .await
@@ -765,3 +785,6 @@ async fn bounded_process_io_and_deadline() {
         Some(libc::ESRCH)
     );
 }
+
+#[path = "provider_contract/administrator_admission.rs"]
+mod administrator_admission;
