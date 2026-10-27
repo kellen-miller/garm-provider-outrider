@@ -366,7 +366,7 @@ pub(super) async fn handle_request(
                     value
                         if value
                             == format!(
-                                "/repos/base-owner/base-repo/contents/.outrider.yml?ref={sha}"
+                                "/repos/base-owner/base-repo/contents/.outrider.toml?ref={sha}"
                             ) =>
                     {
                         (404, json!({"message":"not found"}))

@@ -1,32 +1,73 @@
 # Configuration
 
-The daemon reads one central YAML document. Treat it and every referenced child
+Use `/etc/outrider/config.toml` for administrator configuration and pass its
+path with `--config`. Treat it and every referenced child
 provider file as an immutable run revision: write new files, calculate their
 SHA-256 digests, then restart the single daemon. Every allocation retains its
 resolved profile and provider/catalog/configuration fingerprints for lifecycle
 calls and cleanup.
 
-Start from [`examples/central-runtime.yaml`](../examples/central-runtime.yaml).
-It shows control settings, hard limits, policy, defaults, provider bindings,
+Start from [`examples/config.toml`](../examples/config.toml).
+It shows control settings, hard limits, policy, defaults, provider references,
 all three cloud catalogs, and GitHub/GARM ingress in one synthetic file. Its
 paths, hashes, IDs, account facts, images, network values, and pricing facts are
 placeholders; replace them with values verified in the real accounts.
-[`central.yaml`](../examples/central.yaml) is only a small normalization
+[`config-minimal.toml`](../examples/config-minimal.toml) is only a small normalization
 example and has no provider bindings, cloud catalogs, or ingress.
+
+The exported installation JSON Schema describes the central document.
+Repository `.outrider.toml` files accept only `version` and `profiles`; their
+parser rejects administrator settings before profile normalization.
+
+For packaged installations, configure provider `name` and `cloud`, then run
+`outrider setup`. It fills binary/configuration hashes, source versions and
+default Linux amd64 qualification fields from the verified package. Explicit
+platform qualification settings remain available for other runner platforms.
+Changing an established pin requires a new immutable configuration revision;
+setup preserves the previous one for allocation cleanup.
+
+`[authentication]` contains `github_app_id`, `github_installation_id`,
+`github_private_key_file` and `garm_credentials_file`. The last file is protected
+JSON containing the existing GARM administrator's `username` and `password`.
+The daemon owns managed token files and renews them before expiry; there is no
+external renewal timer. Authentication settings never enter allocation snapshots.
+GARM cannot export the original App key or webhook secret through its API.
+
+Repository entries may initially use `owner/repository` keys and empty
+`garm_repository_id`; an empty `ingress.controller_id` also enables discovery.
+The daemon verifies existing GARM/GitHub identities and resolves numeric IDs in
+memory before accepting work. It does not create repositories, replace their
+credentials, change controller URLs or rewrite authored configuration.
+
+`webhook_listen_address` optionally opens a second listener with only `/health`
+and signed `/v1/webhooks/github`. Containers can use `0.0.0.0:8080` while
+`control.listen_address` stays loopback-only. Provider, explanation and inventory
+routes are absent from the public listener.
+
+After editing configuration, restart the daemon before running `doctor --online`.
+Doctor checks the running daemon's loaded configuration digest and rejects stale
+configuration before reporting live selection results.
+
+Catalog and price discovery uses live APIs with the configured freshness rules.
+Outrider ships no catalog snapshots. Missing API facts require explicit operator
+input or a documented safe configuration default; missing prices never become zero.
 
 Run profile normalization with:
 
 ```sh
-outrider validate --config /etc/outrider/central.yaml --profile default
+outrider validate --config /etc/outrider/config.toml --profile default
 ```
 
-This command parses the YAML, rejects unknown fields, and normalizes the named
-profile against central defaults and limits. It does not check whether the
-config is complete enough to serve, whether files/hashes/binaries exist or
-match, whether cloud credentials or catalog facts are valid, whether GARM or
-GitHub is reachable, or whether a guest can bootstrap. `serve` performs runtime
-initialization and requires the full daemon configuration and reachable
-services.
+This command parses TOML, rejects unknown fields, reads selected native GARM
+and provider files, checks provider configuration hashes and supported auth,
+then normalizes the profile against central limits. It makes no cloud calls.
+It does not prove credentials can authenticate, catalogs match live APIs,
+services are reachable, or guests can bootstrap. `serve` connects the catalogs
+and validates the full daemon configuration before accepting work.
+
+Central and repository documents accept TOML only. Use `version = 1`; omit an
+optional setting instead of assigning `null`. Required workflow and cloud-init
+documents keep their YAML syntax; API payloads and journal snapshots keep JSON.
 
 GARM's external-provider `config_file` must point to this same full central
 configuration. Create requires ingress allocation and bootstrap timeout
@@ -41,7 +82,7 @@ Other provider lifecycle commands continue to use
 1. Central limits define hard ceilings and allowed clouds, accounts, locations,
    machine types, images, operating systems, architectures, capabilities, and
    purchasing modes.
-2. A repository's `.outrider.yml` can select a named profile and replace
+2. A repository's `.outrider.toml` can select a named profile and replace
    permitted selector lists. Central limits remain authoritative.
 3. A job token selects a profile and supplies only explicitly configured,
    canonical overrides. Repository files cannot set credentials, bindings,
@@ -92,20 +133,40 @@ durable, definitive failed-create outcomes. Zero observed failures is valid
 only when all dispatched outcomes in the window are qualified successes;
 success-only samples cannot hide unknown outcomes.
 
-## Provider bindings and catalogs
+## Native providers and catalogs
 
-A `provider_bindings[]` entry owns the child executable and its provider config
-path/digest, source revision, expected `GetVersion`, account/location, runner
-OS/architecture support, and purchasing capabilities. `interface_version`
-belongs to GARM's external-provider registration, not this central binding.
-The GARM-facing Outrider config points to the daemon's loopback address and
-auth-token file. Cloud credentials remain in each delegated provider's config
-or an explicitly allowed credential file, with permissions limited to the
-daemon account.
+Set `[garm].config_file` to the absolute native GARM configuration path.
+Each `[[providers]]` entry selects its exact native `provider.name` and records
+Outrider's hashes, source revision, expected version, OS/architecture support,
+and purchasing capabilities. GARM owns executable/configuration paths,
+interface versions and environment prefix selectors. See
+[`examples/garm.toml`](../examples/garm.toml). Central configuration rejects
+copies of those native registration fields.
 
-Each `*_catalog_bindings[]` entry maps a provider binding to account and
-location facts, images, storage classes, network placement, and provider
-specific pricing/licensing/performance facts. The Linux bootstrap gate
+Native AWS TOML supplies region and subnet; central policy keeps the expected
+AWS account ID, pricing geography, availability zone and security groups.
+Native Azure TOML supplies subscription, location and network mode/subnet;
+its subscription becomes the account identity. Native GCP TOML supplies
+project and zone; Outrider derives its pricing region from that zone.
+Each `*_catalog_bindings[]` entry references the selected native name through
+`provider_binding_id`, then supplies image, storage, licensing, performance
+and launch policy facts that native TOML does not contain.
+
+Supported authentication remains AWS static credentials, Azure service
+principal, and an explicit absolute GCP service-account key file. Native
+credentials stay in protected provider files. Outrider does not copy them
+into central configuration, snapshots or parser errors.
+
+Native environment selectors are prefixes, including GARM's empty-prefix
+behavior. Outrider expands them once against the daemon's startup environment;
+GARM's own environment does not supply missing daemon variables. Snapshots
+retain selected variable names only. Restore any required names before
+restarting cleanup; missing retained names fail closed. Values stay in memory.
+
+Outrider limits apply to Outrider-managed pools. GARM administrators can create
+direct native-provider pools outside Outrider's policy and ownership.
+
+The Linux bootstrap gate
 requires the selected image to attest `cloud-init` or `cloud_init` for each
 cloud. The AWS adapter separately requires `ec2_launch_agent` for Windows.
 Azure and GCP Windows do not use that Linux gate: the Azure child installs a

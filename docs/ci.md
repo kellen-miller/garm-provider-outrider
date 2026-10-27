@@ -44,14 +44,15 @@ Each PowerShell validator uses a cache inside its temporary fixture directory.
 Parallel validators therefore avoid the shared startup cache implicated in
 [PowerShell issue 26528](https://github.com/PowerShell/PowerShell/issues/26528).
 
-The `Linux host contracts` job runs on Ubuntu 24.04. It uses the pinned shared
-Rust action for formatting, Clippy, and all-feature builds, then `cargo xtask check-linux-contracts` runs the
+The `Linux host contracts` job runs on Ubuntu 26.04. It uses the pinned shared
+Rust action for formatting and Clippy, then `cargo xtask check-linux-contracts` compiles and runs the
 library tests and Linux-supported contract targets with locked, all-feature
 Cargo commands. The
 target set covers configuration and cost rules, child-process isolation and
 deadlines, provider protocols, read-only AWS/Azure/GCP behavior, signed ingress,
 allocation and recovery, SQLite journal locking and cleanup, and the macOS
 capability and cost calculations. Selected `system_contract` cases exercise the
+native provider authority, snapshot secrecy, authored-field rejection,
 live daemon, authenticated explanation, effective-price winner changes,
 retained snapshots, signed cleanup, and the tagged GARM v0.1.0 wrapper process.
 
@@ -71,10 +72,11 @@ build checks its exact Go version, source origin, commit, license digest,
 provider version, and host-specific binary digest. It does not contact a cloud
 account.
 
-`outrider validate --config FILE --profile NAME` parses the central YAML and
-normalizes the selected profile against administrator limits. It does not
-validate runtime completeness, files, hashes, credentials, catalog freshness,
-GitHub/GARM connectivity, or guest execution.
+`outrider validate --config FILE --profile NAME` parses central TOML, resolves
+selected native GARM/provider files, verifies provider configuration hashes
+and supported auth, then normalizes the selected profile. It does not prove
+cloud authentication, catalog freshness, binary versions, GitHub/GARM
+connectivity, or guest execution.
 
 Local tests, synthetic HTTP contracts, source inspection, and offline provider
 `GetVersion` checks do not prove hosted CI success, a live cloud allocation,

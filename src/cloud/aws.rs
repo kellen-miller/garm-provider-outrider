@@ -1,3 +1,5 @@
+use crate::providers::configuration::AwsChildConfiguration;
+
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
@@ -75,30 +77,6 @@ pub struct AwsSettings {
     pub binary_sha256: String,
     pub configuration_sha256: String,
     pub provider_configuration_path: PathBuf,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct AwsChildConfiguration {
-    credentials: AwsChildCredentials,
-    subnet_id: String,
-    region: String,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct AwsChildCredentials {
-    credential_type: String,
-    #[serde(rename = "static")]
-    static_credentials: Option<AwsStaticCredentials>,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct AwsStaticCredentials {
-    access_key_id: String,
-    secret_access_key: String,
-    session_token: Option<String>,
 }
 
 pub struct AwsBackend {

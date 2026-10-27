@@ -20,8 +20,8 @@ use outrider::{
     allocation::{AllocationService, ConnectedCatalog, catalog_configuration_fingerprint},
     cloud::aws::AwsBackend,
     config::{
-        AwsCatalogBinding, AwsImageBinding, AwsNetworkBinding, ConfigPatch, ControlSettings,
-        IngressRepository, IngressSettings,
+        AwsCatalogBinding, AwsImageBinding, AwsNetworkBinding, ControlSettings, IngressRepository,
+        IngressSettings,
     },
     daemon::build_router,
     github::IngressService,
@@ -49,10 +49,12 @@ impl TestDirectory {
             .duration_since(UNIX_EPOCH)
             .map_err(io::Error::other)?
             .as_nanos();
-        let path = std::env::temp_dir().join(format!(
-            "outrider-control-{}-{nonce}-{count}",
-            std::process::id()
-        ));
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join(format!(
+                "outrider-control-{}-{nonce}-{count}",
+                std::process::id()
+            ));
         fs::create_dir_all(&path)?;
         Ok(Self { path })
     }
@@ -234,8 +236,11 @@ pub(super) fn build_test_services(
         supported_architectures: BTreeSet::from(["amd64".to_owned()]),
         purchasing_capabilities: BTreeSet::from([PurchasingCapability::OnDemand]),
     };
-    let mut config = ConfigPatch::from_yaml(include_str!("../../examples/central.yaml"))
-        .map_err(io::Error::other)?;
+    let mut config = outrider::config::CentralConfig::from_toml(include_str!(
+        "../../examples/config-minimal.toml"
+    ))
+    .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
+    .map_err(io::Error::other)?;
     config.control = Some(ControlSettings {
         listen_address: address.to_owned(),
         database_path: database.display().to_string(),
@@ -299,13 +304,16 @@ pub(super) fn build_test_services(
         )]),
         storage_classes: BTreeMap::from([("gp3".to_owned(), "gp3".to_owned())]),
     }]);
-    let config_path = directory.path().join("daemon.yaml");
+    let config_path = directory.path().join("daemon.toml");
     let mut config_value = serde_json::to_value(&config).map_err(io::Error::other)?;
     remove_null_values(&mut config_value);
     fs::write(
         &config_path,
-        serde_json::to_string(&config_value).map_err(io::Error::other)?,
+        super::serialize_native_central(&config_value)
+            .map_err(|error| io::Error::other(error.to_string()))?,
     )?;
+    let config = super::load_fixture_central(&config_path)
+        .map_err(|error| io::Error::other(error.to_string()))?;
 
     let aws_catalog = config
         .aws_catalog_bindings
@@ -388,8 +396,13 @@ pub(super) fn build_test_services(
         .map_err(io::Error::other)?,
     );
     let ingress = Arc::new(IngressService::new(config, journal).map_err(io::Error::other)?);
-    let app = build_router(INNER_TOKEN.as_bytes().to_vec(), allocation, ingress)
-        .map_err(io::Error::other)?;
+    let app = build_router(
+        INNER_TOKEN.as_bytes().to_vec(),
+        allocation,
+        ingress,
+        hex::encode(Sha256::digest(fs::read(&config_path)?)),
+    )
+    .map_err(io::Error::other)?;
     Ok((config_path, app))
 }
 

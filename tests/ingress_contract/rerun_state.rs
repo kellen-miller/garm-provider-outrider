@@ -36,7 +36,7 @@ async fn common_run_triggers_use_authenticated_run_sha() {
             .await
             .expect("config at exact run SHA");
         assert!(server.requests().iter().any(|request| {
-            request.path == format!("/repos/base-owner/base-repo/contents/.outrider.yml?ref={SHA}")
+            request.path == format!("/repos/base-owner/base-repo/contents/.outrider.toml?ref={SHA}")
         }));
 
         let mut inconsistent_run = push_run();

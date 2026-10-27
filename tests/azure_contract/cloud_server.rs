@@ -16,7 +16,7 @@ use outrider::{
         CatalogQuery,
         azure::{AzureBackend, AzureImage, AzureLocation, AzureSettings},
     },
-    config::{AzureImageLicensing, ConfigPatch, RunnerProfile},
+    config::{AzureImageLicensing, RunnerProfile},
 };
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -287,8 +287,11 @@ pub(super) async fn backend_with_storage_and_licensing(
 }
 
 pub(super) fn profile() -> RunnerProfile {
-    let mut central = ConfigPatch::from_yaml(include_str!("../../examples/central.yaml"))
-        .unwrap_or_else(|_| panic!("central config"));
+    let mut central = outrider::config::CentralConfig::from_toml(include_str!(
+        "../../examples/config-minimal.toml"
+    ))
+    .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
+    .unwrap_or_else(|_| panic!("central config"));
     let limits = central.limits.as_mut().unwrap_or_else(|| panic!("limits"));
     limits.allowed_clouds.insert("azure".to_owned());
     limits.allowed_accounts.insert("build-account".to_owned());

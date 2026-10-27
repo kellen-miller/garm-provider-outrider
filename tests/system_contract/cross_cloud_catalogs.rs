@@ -115,7 +115,7 @@ pub(super) async fn cross_cloud_services(
     let _azure_broad_offer = quoted_catalog_offer(
         &azure_backend,
         "azure",
-        "build-account",
+        "11111111-1111-4111-8111-111111111111",
         "east-ci",
         broad_profile.clone(),
         deadline,
@@ -187,9 +187,9 @@ pub(super) async fn cross_cloud_services(
 
 pub(super) fn system_child_environment() -> Vec<String> {
     vec![
+        "OUTRIDER_CREATE_BARRIER".to_owned(),
         "OUTRIDER_FIXTURE_MODE".to_owned(),
         "OUTRIDER_RECORD".to_owned(),
-        "OUTRIDER_CREATE_BARRIER".to_owned(),
     ]
 }
 
@@ -273,7 +273,7 @@ pub(super) fn configure_cross_cloud_limits(
         BTreeSet::from(["aws".to_owned(), "azure".to_owned(), "gcp".to_owned()]);
     limits.allowed_accounts = BTreeSet::from([
         "synthetic-account".to_owned(),
-        "build-account".to_owned(),
+        "11111111-1111-4111-8111-111111111111".to_owned(),
         "system-project".to_owned(),
     ]);
     limits.allowed_locations = BTreeSet::from([
@@ -309,7 +309,7 @@ pub(super) fn configure_cross_cloud_profiles(
         "vcpu_min":8,"vcpu_max":8,"memory_gib_min":16,"memory_gib_max":32,
         "machine_types":{"aws":["m7i.xlarge"],"azure":["Standard_D8s_v5"],"gcp":["n2-standard-8"]},
         "machine_families":{"aws":["m7i"],"azure":["Dsv5"],"gcp":["n2"]},
-        "accounts":["synthetic-account","build-account","system-project"],"locations":["east-ci","eastus","us-central1"],
+        "accounts":["synthetic-account","11111111-1111-4111-8111-111111111111","system-project"],"locations":["east-ci","eastus","us-central1"],
         "boot_disk":{"class":"gp3","size_gib":40},"capabilities":["docker"]
     }))?);
     profiles.insert("linux-gcp".to_owned(), serde_json::from_value(json!({
@@ -320,7 +320,7 @@ pub(super) fn configure_cross_cloud_profiles(
     }))?);
     profiles.insert("linux-azure".to_owned(), serde_json::from_value(json!({
         "vcpu_min":8,"vcpu_max":8,"memory_gib_min":16,"memory_gib_max":32,
-        "machine_types":{"aws":[],"azure":["Standard_D8s_v5"],"gcp":[]},"accounts":["build-account"],"locations":["east-ci"],
+        "machine_types":{"aws":[],"azure":["Standard_D8s_v5"],"gcp":[]},"accounts":["11111111-1111-4111-8111-111111111111"],"locations":["east-ci"],
         "machine_families":{"aws":[],"azure":["Dsv5"],"gcp":[]},
         "boot_disk":{"class":"gp3","size_gib":40},"capabilities":["docker"]
     }))?);

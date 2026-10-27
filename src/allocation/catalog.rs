@@ -265,6 +265,7 @@ impl AllocationService {
     pub async fn connect(
         config: ConfigPatch,
         journal: Arc<Journal>,
+        process_environment: BTreeMap<std::ffi::OsString, std::ffi::OsString>,
     ) -> Result<Self, AllocationError> {
         config
             .validate_admission_settings()
@@ -294,7 +295,6 @@ impl AllocationService {
         if bindings.is_empty() {
             return Err(AllocationError::Configuration);
         }
-        let process_environment = std::env::vars_os().collect::<BTreeMap<_, _>>();
         let provider_registry = ProviderRegistry::new(
             bindings,
             process_environment.clone(),

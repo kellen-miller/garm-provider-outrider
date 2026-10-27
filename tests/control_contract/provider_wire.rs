@@ -122,16 +122,16 @@ pub(super) fn write_provider_config(
 ) -> io::Result<PathBuf> {
     let token_path = directory.path().join("token");
     let config = directory.path().join(format!(
-        "config-{}.yaml",
+        "config-{}.toml",
         NEXT_DIRECTORY.fetch_add(1, Ordering::Relaxed)
     ));
     fs::write(&token_path, INNER_TOKEN)?;
     fs::write(
         &config,
         format!(
-            "version: 1\ncontrol:\n  listen_address: {address}\n  database_path: {}\n  auth_token_file: {}\n  provider_timeout_seconds: {timeout_seconds}\ningress:\n  github_api_origin: https://github.invalid\n  github_token_file: /unused\n  garm_api_origin: https://garm.invalid\n  garm_token_file: /unused\n  controller_id: controller-test\n  provider_name: outrider\n  pool_flavor: synthetic\n  pool_image: synthetic\n  runner_prefix: runner\n  max_dynamic_pools: 1\n  max_runners_per_pool: 1\n  allocation_timeout_seconds: 600\n  bootstrap_timeout_minutes: 20\n  timeout_margin_seconds: 30\n  pool_ttl_seconds: 3600\n  webhook_max_bytes: 1048576\n  repositories: {{}}\n",
-            directory.path().join("journal.sqlite3").display(),
-            token_path.display()
+            "version = 1\n[control]\nlisten_address = {address:?}\ndatabase_path = {:?}\nauth_token_file = {:?}\nprovider_timeout_seconds = {timeout_seconds}\n[ingress]\ngithub_api_origin = 'https://github.invalid'\ngithub_token_file = '/unused'\ngarm_api_origin = 'https://garm.invalid'\ngarm_token_file = '/unused'\ncontroller_id = 'controller-test'\nprovider_name = 'outrider'\npool_flavor = 'synthetic'\npool_image = 'synthetic'\nrunner_prefix = 'runner'\nmax_dynamic_pools = 1\nmax_runners_per_pool = 1\nallocation_timeout_seconds = 600\nbootstrap_timeout_minutes = 20\ntimeout_margin_seconds = 30\npool_ttl_seconds = 3600\nwebhook_max_bytes = 1048576\n[ingress.repositories]\n",
+            directory.path().join("journal.sqlite3").to_string_lossy(),
+            token_path.to_string_lossy()
         ),
     )?;
     Ok(config)

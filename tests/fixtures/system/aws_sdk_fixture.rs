@@ -592,11 +592,11 @@ pub(crate) fn allocation_binding(directory: &JournalFixture, mode: &str) -> Prov
         source_revision: "0123456789abcdef0123456789abcdef01234567".to_owned(),
         expected_version: "fixture-build-1".to_owned(),
         inherited_environment: vec![
-            "OUTRIDER_FIXTURE_MODE".to_owned(),
-            "OUTRIDER_RECORD".to_owned(),
-            "OUTRIDER_LIFECYCLE_LOG".to_owned(),
             "OUTRIDER_CREATE_BARRIER".to_owned(),
+            "OUTRIDER_FIXTURE_MODE".to_owned(),
+            "OUTRIDER_LIFECYCLE_LOG".to_owned(),
             "OUTRIDER_NATIVE_LOCATOR".to_owned(),
+            "OUTRIDER_RECORD".to_owned(),
         ],
         supported_os: BTreeSet::from(["linux".to_owned()]),
         supported_architectures: BTreeSet::from(["amd64".to_owned()]),
@@ -605,8 +605,11 @@ pub(crate) fn allocation_binding(directory: &JournalFixture, mode: &str) -> Prov
 }
 
 pub(crate) fn allocation_central(binding: &ProviderBinding, image_id: &str) -> ConfigPatch {
-    let mut config = ConfigPatch::from_yaml(include_str!("../../../examples/central.yaml"))
-        .unwrap_or_else(|_| panic!("central allocation config"));
+    let mut config = outrider::config::CentralConfig::from_toml(include_str!(
+        "../../../examples/config-minimal.toml"
+    ))
+    .and_then(|source| source.load_native_configuration(&std::collections::BTreeMap::new()))
+    .unwrap_or_else(|_| panic!("central allocation config"));
     config.history = Some(outrider::config::HistorySettings {
         window_seconds: 3600,
         sampling_interval_seconds: 1,

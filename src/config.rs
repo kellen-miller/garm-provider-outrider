@@ -19,15 +19,22 @@ pub use profiles::{
 pub use schema::{extra_specs_json_schema, json_schema};
 
 mod bindings;
+mod catalog_source;
+mod central;
+pub use catalog_source::{
+    AwsCatalogSource, AwsNetworkSource, AzureCatalogSource, AzureNetworkSource, GcpCatalogSource,
+};
+pub use central::{CentralConfig, GarmSource, ProviderSource};
+mod document;
 mod profiles;
 mod schema;
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum ConfigError {
-    #[error("invalid YAML: {0}")]
-    Yaml(String),
-    #[error("null is not a valid value at {0}")]
-    Null(String),
+    #[error("invalid TOML: {0}")]
+    Toml(String),
+    #[error("native configuration: {0}")]
+    Native(String),
     #[error("unknown field {0}")]
     UnknownField(String),
     #[error("profile {0} is missing")]
@@ -177,169 +184,6 @@ pub struct ControlSettings {
 }
 
 impl ConfigPatch {
-    /// Parse and validate a provider YAML configuration.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error for malformed YAML, null values, unknown policy
-    /// fields, or an unsupported version.
-    pub fn from_yaml(yaml: &str) -> Result<Self, ConfigError> {
-        let value: serde_yaml_ng::Value =
-            serde_yaml_ng::from_str(yaml).map_err(|error| ConfigError::Yaml(error.to_string()))?;
-        Self::reject_null(&value, "$".to_owned())?;
-        Self::reject_unknown_policy_fields(&value)?;
-        let patch: Self = serde_yaml_ng::from_value(value)
-            .map_err(|error| ConfigError::Yaml(error.to_string()))?;
-        patch.validate_version()?;
-        Ok(patch)
-    }
-
-    fn reject_unknown_policy_fields(value: &serde_yaml_ng::Value) -> Result<(), ConfigError> {
-        let policies_key = serde_yaml_ng::Value::String("policies".to_owned());
-        let Some(policies) = value
-            .as_mapping()
-            .and_then(|mapping| mapping.get(&policies_key))
-            .and_then(serde_yaml_ng::Value::as_mapping)
-        else {
-            return Ok(());
-        };
-
-        for (name, definition) in policies {
-            let name = name.as_str().unwrap_or("?");
-            let Some(definition) = definition.as_mapping() else {
-                continue;
-            };
-
-            for (field, nested_value) in definition {
-                let field = field.as_str().unwrap_or("?");
-                if !["strategy", "missing_data"].contains(&field) {
-                    return Err(ConfigError::UnknownField(format!(
-                        "policies.{name}.{field}"
-                    )));
-                }
-
-                reject_unknown_policy_variant_fields(name, field, nested_value)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn validate_version(&self) -> Result<(), ConfigError> {
-        if self.version == Some(1) {
-            self.validate_admission_settings()?;
-            self.validate_effective_prices()
-        } else {
-            Err(ConfigError::UnsupportedVersion)
-        }
-    }
-
-    /// Validate administrator allocation admission without requiring an open window.
-    ///
-    /// # Errors
-    /// Returns an error for a relative state path or a zero maximum window.
-    pub fn validate_admission_settings(&self) -> Result<(), ConfigError> {
-        if self.admission.as_ref().is_some_and(|settings| {
-            !settings.state_file.is_absolute() || settings.max_window_seconds == 0
-        }) {
-            return Err(ConfigError::InvalidProfile(
-                "admission requires an absolute state_file and positive max_window_seconds".into(),
-            ));
-        }
-
-        Ok(())
-    }
-
-    fn validate_effective_prices(&self) -> Result<(), ConfigError> {
-        let Some(prices) = &self.effective_prices else {
-            return Ok(());
-        };
-        let mut ids = BTreeSet::new();
-        for price in prices {
-            let id = price.id.trim();
-            if id.is_empty()
-                || id != price.id
-                || id.len() > 128
-                || id
-                    .as_bytes()
-                    .first()
-                    .is_none_or(|byte| !byte.is_ascii_alphanumeric())
-                || !id
-                    .bytes()
-                    .all(|byte| byte.is_ascii_alphanumeric() || b"._:-".contains(&byte))
-                || !ids.insert(id.to_owned())
-            {
-                return Err(ConfigError::InvalidProfile(
-                    "effective price IDs must be unique bounded identifiers".to_owned(),
-                ));
-            }
-            if price.currency != "USD"
-                || price.hourly_rate < rust_decimal::Decimal::ZERO
-                || price.valid_from_unix_seconds >= price.valid_until_unix_seconds
-                || !matches!(
-                    (price.scope.cloud.as_str(), &price.scope.launch_facts),
-                    ("aws", crate::policy::ExplanationLaunchFacts::Aws { .. })
-                        | ("azure", crate::policy::ExplanationLaunchFacts::Azure { .. })
-                        | ("gcp", crate::policy::ExplanationLaunchFacts::Gcp { .. })
-                )
-            {
-                return Err(ConfigError::InvalidProfile(format!(
-                    "effective price {} has invalid currency, rate, or validity interval",
-                    price.id
-                )));
-            }
-            for evidence in [&price.source, &price.reference] {
-                if evidence.trim().is_empty()
-                    || evidence.chars().count() > 256
-                    || evidence.chars().any(char::is_control)
-                {
-                    return Err(ConfigError::InvalidProfile(format!(
-                        "effective price {} has invalid evidence metadata",
-                        price.id
-                    )));
-                }
-            }
-        }
-        for (index, price) in prices.iter().enumerate() {
-            if prices[index + 1..].iter().any(|other| {
-                price.scope == other.scope
-                    && price.component == other.component
-                    && price.valid_from_unix_seconds < other.valid_until_unix_seconds
-                    && other.valid_from_unix_seconds < price.valid_until_unix_seconds
-            }) {
-                return Err(ConfigError::InvalidProfile(format!(
-                    "effective price {} overlaps another price for the same scope and component",
-                    price.id
-                )));
-            }
-        }
-        Ok(())
-    }
-
-    fn reject_null(value: &serde_yaml_ng::Value, path: String) -> Result<(), ConfigError> {
-        match value {
-            serde_yaml_ng::Value::Null => Err(ConfigError::Null(path)),
-            serde_yaml_ng::Value::Sequence(values) => {
-                for (index, child) in values.iter().enumerate() {
-                    Self::reject_null(child, format!("{path}[{index}]"))?;
-                }
-
-                Ok(())
-            }
-
-            serde_yaml_ng::Value::Mapping(values) => {
-                for (key, child) in values {
-                    let name = key.as_str().unwrap_or("?");
-                    Self::reject_null(child, format!("{path}.{name}"))?;
-                }
-
-                Ok(())
-            }
-
-            _ => Ok(()),
-        }
-    }
-
     /// Merge central defaults with a named profile and permitted job overrides.
     ///
     /// # Errors
@@ -689,62 +533,4 @@ fn validate_machine_allowlists(
     }
 
     Ok(())
-}
-
-fn reject_unknown_policy_variant_fields(
-    name: &str,
-    field: &str,
-    value: &serde_yaml_ng::Value,
-) -> Result<(), ConfigError> {
-    let Some(nested) = value.as_mapping() else {
-        return Ok(());
-    };
-
-    let allowed = policy_variant_fields(field, nested);
-    for nested_field in nested.keys() {
-        let nested_field = nested_field.as_str().unwrap_or("?");
-        if !allowed.contains(&nested_field) {
-            return Err(ConfigError::UnknownField(format!(
-                "policies.{name}.{field}.{nested_field}"
-            )));
-        }
-    }
-
-    Ok(())
-}
-
-fn policy_variant_fields(field: &str, nested: &serde_yaml_ng::Mapping) -> &'static [&'static str] {
-    let tag = if field == "strategy" {
-        "strategy"
-    } else {
-        "action"
-    };
-
-    let tag_value = nested
-        .get(serde_yaml_ng::Value::String(tag.to_owned()))
-        .and_then(serde_yaml_ng::Value::as_str);
-    match (field, tag_value) {
-        ("strategy", Some("economy")) => &["strategy", "max_price_age_seconds"],
-        ("strategy", Some("continuity")) => {
-            &["strategy", "max_observation_age_seconds", "min_samples"]
-        }
-
-        ("strategy", Some("weighted")) => &[
-            "strategy",
-            "cost_weight",
-            "failure_weight",
-            "interruption_weight",
-            "latency_weight",
-            "cost_scale",
-            "interruption_scale",
-            "latency_scale",
-            "min_samples",
-            "max_observation_age_seconds",
-            "max_price_age_seconds",
-        ],
-        ("strategy", Some("ordered")) => &["strategy", "identities"],
-        ("missing_data", Some("reject")) => &["action"],
-        ("missing_data", Some("fallback")) => &["action", "policy"],
-        _ => &[],
-    }
 }
