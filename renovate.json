@@ -2,5 +2,14 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>kellen-miller/.github:renovate-config"
+  ],
+  "packageRules": [
+    {
+      "description": "Keep the cloud-init validator runtime on its supported Python minor; allow patch updates.",
+      "matchDepNames": [
+        "python"
+      ],
+      "allowedVersions": "<3.16"
+    }
   ]
 }

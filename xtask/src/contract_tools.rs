@@ -12,8 +12,11 @@ pub fn install(output: &Path) -> Result<()> {
         "native validator installation requires macOS arm64"
     );
     ensure!(
-        process::run(Command::new("python3").arg("--version"))?.trim() == "Python 3.15.0",
-        "cloud-init requires Python 3.15.0"
+        process::run(Command::new("python3").arg("--version"))?
+            .trim()
+            .strip_prefix("Python 3.15.")
+            .is_some_and(|patch| patch.parse::<u64>().is_ok()),
+        "cloud-init requires Python 3.15.x"
     );
     fs::create_dir_all(output)?;
     let output = output.canonicalize()?;
