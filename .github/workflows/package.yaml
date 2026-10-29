@@ -38,7 +38,7 @@ jobs:
       contents: read
       actions: read
       pull-requests: read
-    uses: kellen-miller/ci/.github/workflows/pr-artifact-build.yaml@896ed8d9028877a8b80818ea151325ea9898323a
+    uses: kellen-miller/ci/.github/workflows/pr-artifact-build.yaml@aac24776009ea1ba9042ae3bb8b84f9bf463b951
     with:
       source-paths: '["Cargo.toml","Cargo.lock","build.rs","rust-toolchain.toml","src/**","tests/**","xtask/**","providers/**","packaging/**","templates/**","examples/**","scripts/**","LICENSE","LICENSES/**","NOTICE",".cargo/**",".github/workflows/package.yaml"]'
       artifacts: '["outrider-linux-amd64","outrider-linux-amd64-image"]'
