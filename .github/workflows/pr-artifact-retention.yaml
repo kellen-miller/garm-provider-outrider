@@ -1,0 +1,27 @@
+name: PR artifact retention
+on:
+  workflow_run:
+    workflows:
+      - '*'
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Preview deletions
+        type: boolean
+        default: true
+permissions:
+  contents: read
+  actions: write
+  pull-requests: read
+concurrency:
+  group: pr-artifact-retention
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'pull_request'
+    uses: kellen-miller/ci/.github/workflows/pr-artifact-cleanup.yaml@896ed8d9028877a8b80818ea151325ea9898323a
+    with:
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      include-failed: false
