@@ -29,7 +29,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - id: release
-        uses: kellen-miller/ci/.github/actions/release@1edef8bc9492ec29052f26cc32e21e1fdeb73373 # v1.0.1
+        uses: kellen-miller/ci/.github/actions/release@7cb397821439001322396a1b022cfa47dbe3a553 # v1.0.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           dry-run: 'true'
@@ -74,7 +74,7 @@ jobs:
           path: ~/.cache/outrider-provider-builds
           key: outrider-providers-linux-amd64-go1.27.3-${{ hashFiles('providers/manifest.json') }}
       - name: Build static deployable binaries
-        uses: kellen-miller/ci/.github/actions/rust-check@1edef8bc9492ec29052f26cc32e21e1fdeb73373 # v1.0.1
+        uses: kellen-miller/ci/.github/actions/rust-check@7cb397821439001322396a1b022cfa47dbe3a553 # v1.0.3
         env:
           CARGO_BUILD_TARGET: x86_64-unknown-linux-musl
           CC_x86_64_unknown_linux_musl: musl-gcc
@@ -113,7 +113,7 @@ jobs:
           cp packaging/Dockerfile "$RUNNER_TEMP/outrider-image/Dockerfile"
           cp -a "$PACKAGE" "$RUNNER_TEMP/outrider-image/package"
       - name: Build container with shared CI
-        uses: kellen-miller/ci/.github/actions/docker-publish-core@1edef8bc9492ec29052f26cc32e21e1fdeb73373 # v1.0.1
+        uses: kellen-miller/ci/.github/actions/docker-publish-core@7cb397821439001322396a1b022cfa47dbe3a553 # v1.0.3
         with:
           image: ghcr.io/${{ github.repository }}
           tags: type=raw,value=smoke-${{ github.run_id }}
@@ -179,7 +179,7 @@ jobs:
           name: outrider-linux-amd64-image
           path: ${{ runner.temp }}/release-image
       - id: release
-        uses: kellen-miller/ci/.github/actions/release@1edef8bc9492ec29052f26cc32e21e1fdeb73373 # v1.0.1
+        uses: kellen-miller/ci/.github/actions/release@7cb397821439001322396a1b022cfa47dbe3a553 # v1.0.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           first-release-version: '0.1.0'

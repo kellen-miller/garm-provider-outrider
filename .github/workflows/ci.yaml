@@ -17,7 +17,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.15.1'
+          python-version: '3.15.2'
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: '1.27.3'
@@ -47,7 +47,7 @@ jobs:
         with:
           go-version: '1.27.3'
           cache-dependency-path: tests/fixtures/**/go.sum
-      - uses: kellen-miller/ci/.github/actions/rust-check@1edef8bc9492ec29052f26cc32e21e1fdeb73373 # v1.0.1
+      - uses: kellen-miller/ci/.github/actions/rust-check@7cb397821439001322396a1b022cfa47dbe3a553 # v1.0.3
         with:
           toolchain: '1.99.1'
           checks: fmt clippy
