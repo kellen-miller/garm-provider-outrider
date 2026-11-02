@@ -303,7 +303,6 @@ impl CloudCatalog for AwsBackend {
                     continue;
                 }
 
-                let provider = self.instance_from_model(instance)?;
                 if reservation
                     .owner_id()
                     .is_some_and(|owner_id| owner_id != self.settings.account_id)
@@ -311,7 +310,7 @@ impl CloudCatalog for AwsBackend {
                     return Err(failure(
                         "ownership",
                         "AWS instance reservation belongs to another account",
-                        vec![provider.identity],
+                        vec![identity.clone()],
                     ));
                 }
 
@@ -319,6 +318,7 @@ impl CloudCatalog for AwsBackend {
                     continue;
                 }
 
+                let provider = self.instance_from_model(instance)?;
                 provider_instance = Some(provider);
                 break;
             }
@@ -395,7 +395,6 @@ impl CloudCatalog for AwsBackend {
                         continue;
                     }
 
-                    let provider = self.instance_from_model(instance)?;
                     if reservation
                         .owner_id()
                         .is_some_and(|owner_id| owner_id != self.settings.account_id)
@@ -403,14 +402,17 @@ impl CloudCatalog for AwsBackend {
                         return Err(failure(
                             "ownership",
                             "AWS instance reservation belongs to another account",
-                            vec![provider.identity],
+                            vec![],
                         ));
                     }
 
-                    if aws_instance_is_terminated(instance) {
+                    if aws_instance_is_terminated(instance)
+                        && instance.instance_id().is_some_and(|id| !id.is_empty())
+                    {
                         continue;
                     }
 
+                    let provider = self.instance_from_model(instance)?;
                     if scope
                         .resource_name
                         .as_ref()
