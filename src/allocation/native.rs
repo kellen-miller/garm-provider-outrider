@@ -116,6 +116,27 @@ impl AllocationService {
                 resolution.identity = Some(observed.identity);
             }
         }
+
+        // EC2 can expose the instance before its boot disk and network
+        // mappings. Wait before freezing an identity used by cleanup.
+        if let Some(identity) = resolution.identity.as_ref()
+            && identity.cloud == "aws"
+        {
+            let dependencies = &identity.dependency_ids;
+            if !dependencies.keys().any(|key| key.starts_with("volume:"))
+                || !dependencies
+                    .keys()
+                    .any(|key| key.starts_with("network-interface:"))
+                || (offer.candidate.purchasing == "spot"
+                    && !dependencies.contains_key("aws:spot-instance-request"))
+            {
+                resolution
+                    .first_rejection
+                    .get_or_insert("launch-dependencies");
+                resolution.identity = None;
+            }
+        }
+
         Ok(resolution)
     }
 
