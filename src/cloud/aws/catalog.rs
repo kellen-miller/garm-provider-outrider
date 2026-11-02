@@ -1,4 +1,5 @@
 use super::billing::assemble_price_quote;
+use super::identity::aws_instance_is_terminated;
 
 use super::{
     AwsBackend, AwsCatalogLocation, AwsQuotedPrices, BTreeMap, BTreeSet, CatalogOffer,
@@ -313,6 +314,11 @@ impl CloudCatalog for AwsBackend {
                         vec![provider.identity],
                     ));
                 }
+
+                if aws_instance_is_terminated(instance) {
+                    continue;
+                }
+
                 provider_instance = Some(provider);
                 break;
             }
@@ -399,6 +405,10 @@ impl CloudCatalog for AwsBackend {
                             "AWS instance reservation belongs to another account",
                             vec![provider.identity],
                         ));
+                    }
+
+                    if aws_instance_is_terminated(instance) {
+                        continue;
                     }
 
                     if scope

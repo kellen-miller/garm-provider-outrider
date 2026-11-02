@@ -196,15 +196,29 @@ pub(super) fn describe_instances_response(
                 .and_then(|line| serde_json::from_str::<Value>(line).ok())
         })
         .and_then(|record| record["command"].as_str().map(str::to_owned));
-    if lifecycle_state.as_deref() == Some("DeleteInstance") {
-        return "<DescribeInstancesResponse/>".to_owned();
-    }
-    let instance_state = if lifecycle_state.as_deref() == Some("StopInstance") {
+    let instance_state = if lifecycle_state.as_deref() == Some("DeleteInstance") {
+        "terminated"
+    } else if lifecycle_state.as_deref() == Some("StopInstance") {
         "stopped"
     } else {
         "running"
     };
-    let state_code = if instance_state == "stopped" { 80 } else { 16 };
+    let state_code = match instance_state {
+        "terminated" => 48,
+        "stopped" => 80,
+        _ => 16,
+    };
+    let boot_disk = "<blockDeviceMapping><item><deviceName>/dev/xvda</deviceName><ebs><volumeId>vol-123</volumeId></ebs></item></blockDeviceMapping>";
+    let ambiguous_dependencies = inspection_mode.load(Ordering::Relaxed) == 6;
+    let disk = if ambiguous_dependencies
+        || inspection_mode
+            .compare_exchange(5, 0, Ordering::Relaxed, Ordering::Relaxed)
+            .is_ok()
+    {
+        ""
+    } else {
+        boot_disk
+    };
     let spot_identity = if spot {
         if is_second {
             "<instanceLifecycle>spot</instanceLifecycle><spotInstanceRequestId>sir-observed-2</spotInstanceRequestId>"
@@ -214,8 +228,18 @@ pub(super) fn describe_instances_response(
     } else {
         ""
     };
+    let instance = format!(
+        "<item><instanceId>{native_id}</instanceId><imageId>oldAMI</imageId><instanceType>m7i.xlarge</instanceType><subnetId>subnet-123</subnetId>{spot_identity}{disk}<networkInterfaceSet><item><networkInterfaceId>eni-123</networkInterfaceId></item></networkInterfaceSet><placement><availabilityZone>us-east-1a</availabilityZone></placement><instanceState><code>{state_code}</code><name>{instance_state}</name></instanceState><tagSet><item><key>Name</key><value>{name}</value></item><item><key>GARM_CONTROLLER_ID</key><value>{controller}</value></item><item><key>GARM_POOL_ID</key><value>{pool}</value></item></tagSet></item>"
+    );
+    let duplicate = if ambiguous_dependencies {
+        instance
+            .replace(native_id, "i-synthetic-004")
+            .replace("</subnetId>", &format!("</subnetId>{boot_disk}"))
+    } else {
+        String::new()
+    };
     format!(
-        "<DescribeInstancesResponse><reservationSet><item><ownerId>synthetic-account</ownerId><instancesSet><item><instanceId>{native_id}</instanceId><imageId>oldAMI</imageId><instanceType>m7i.xlarge</instanceType><subnetId>subnet-123</subnetId>{spot_identity}<placement><availabilityZone>us-east-1a</availabilityZone></placement><instanceState><code>{state_code}</code><name>{instance_state}</name></instanceState><tagSet><item><key>Name</key><value>{name}</value></item><item><key>GARM_CONTROLLER_ID</key><value>{controller}</value></item><item><key>GARM_POOL_ID</key><value>{pool}</value></item></tagSet></item></instancesSet></item></reservationSet></DescribeInstancesResponse>"
+        "<DescribeInstancesResponse><reservationSet><item><ownerId>synthetic-account</ownerId><instancesSet>{instance}{duplicate}</instancesSet></item></reservationSet></DescribeInstancesResponse>"
     )
 }
 

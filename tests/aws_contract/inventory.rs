@@ -16,6 +16,47 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 #[tokio::test]
+async fn terminated_instances_are_absent_from_native_lifecycle() {
+    for state in ["terminated", "shutting-down", "stopped", "running"] {
+        let instance = instance_item_xml(
+            "i-0123456789abcdef0",
+            "runner-1",
+            Some("controller-1"),
+            Some("pool-1"),
+            "subnet-123",
+            "us-east-1a",
+        )
+        .replace("<name>running</name>", &format!("<name>{state}</name>"));
+        let xml = instances_xml(&[instance], None);
+        let server =
+            start_aws_contract_server(vec![identity_xml(), xml_response(&xml), xml_response(&xml)])
+                .await
+                .unwrap();
+        let backend = aws_backend(&server.endpoint).await.unwrap();
+        let inspected = backend
+            .inspect(
+                &aws_identity("i-0123456789abcdef0"),
+                tokio::time::Instant::now() + Duration::from_secs(5),
+            )
+            .await
+            .unwrap();
+        assert_eq!(inspected.is_none(), state == "terminated", "{state}");
+        let listed = backend
+            .list(
+                &OwnershipScope {
+                    controller_id: "controller-1".to_owned(),
+                    resource_name: Some("runner-1".to_owned()),
+                },
+                tokio::time::Instant::now() + Duration::from_secs(5),
+            )
+            .await
+            .unwrap();
+        assert_eq!(listed.is_empty(), state == "terminated", "{state}");
+        server.task.abort();
+    }
+}
+
+#[tokio::test]
 async fn binding_account_region_mismatch() {
     let server = start_aws_contract_server(vec![identity_xml()])
         .await
