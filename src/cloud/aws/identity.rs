@@ -245,6 +245,13 @@ pub(super) fn aws_ownership_tags(instance: &aws_sdk_ec2::types::Instance) -> Vec
         .collect()
 }
 
+pub(super) fn aws_instance_is_terminated(instance: &aws_sdk_ec2::types::Instance) -> bool {
+    matches!(
+        instance.state().and_then(|state| state.name()),
+        Some(aws_sdk_ec2::types::InstanceStateName::Terminated)
+    )
+}
+
 pub(super) fn aws_instance_dependencies(
     instance: &aws_sdk_ec2::types::Instance,
 ) -> BTreeMap<String, String> {

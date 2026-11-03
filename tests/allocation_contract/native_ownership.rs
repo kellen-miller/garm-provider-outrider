@@ -1,6 +1,59 @@
 use super::*;
 
 #[tokio::test]
+async fn incomplete_aws_dependencies_do_not_hide_ambiguous_cleanup_candidates() {
+    let harness = AllocationHarness::new(AllocationHarnessOptions {
+        child_mode: "exit1".to_owned(),
+        ..AllocationHarnessOptions::default()
+    })
+    .await;
+    assert!(
+        harness
+            .service
+            .handle(harness.request.clone())
+            .await
+            .is_err()
+    );
+    harness.native_inspection_mode.store(6, Ordering::Relaxed);
+    let allocation = harness.allocation();
+    let delete = harness.lifecycle_request("DeleteInstance", &allocation.allocation_id);
+    assert!(harness.service.handle(delete).await.is_err());
+    assert!(harness.allocation().native_identity_json.is_none());
+    assert!(
+        !harness
+            .lifecycle_commands()
+            .iter()
+            .any(|command| command == "DeleteInstance")
+    );
+}
+
+#[tokio::test]
+async fn aws_waits_for_boot_disk_before_claiming_native_identity() {
+    let harness = AllocationHarness::new(AllocationHarnessOptions {
+        spot: true,
+        ..AllocationHarnessOptions::default()
+    })
+    .await;
+    harness.native_inspection_mode.store(5, Ordering::Relaxed);
+    harness
+        .service
+        .handle(harness.request.clone())
+        .await
+        .unwrap();
+    let allocation = harness.allocation();
+    let identity: Value =
+        serde_json::from_str(allocation.native_identity_json.as_deref().unwrap()).unwrap();
+    assert_eq!(identity["dependency_ids"]["volume:vol-123"], "vol-123");
+
+    let mut delete = harness.request.clone();
+    delete.command = "DeleteInstance".to_owned();
+    delete.instance_id = Some(allocation.allocation_id);
+    delete.bootstrap = None;
+    harness.service.handle(delete).await.unwrap();
+    assert_eq!(harness.allocation().state, "deleted");
+}
+
+#[tokio::test]
 async fn list_outage_not_empty() {
     let harness = AllocationHarness::new(AllocationHarnessOptions {
         current_max_vcpu: 32,
