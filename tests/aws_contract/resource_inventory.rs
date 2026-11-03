@@ -6,6 +6,40 @@ use tokio::time::Instant;
 use super::cloud_server::{aws_backend, identity_xml, start_aws_contract_server, xml_response};
 
 #[tokio::test]
+async fn terminated_instances_do_not_hide_remaining_disks() {
+    let xml = "<DescribeInstancesResponse><reservationSet><item><ownerId>synthetic-account</ownerId><instancesSet><item><instanceId>i-abc123</instanceId><instanceState><name>terminated</name></instanceState></item><item><instanceId>i-def456</instanceId><instanceState><name>shutting-down</name></instanceState></item></instancesSet></item></reservationSet></DescribeInstancesResponse>";
+    let server = start_aws_contract_server(vec![
+        identity_xml(),
+        xml_response(xml),
+        xml_response("<DescribeVolumesResponse><volumeSet><item><volumeId>vol-abc123</volumeId><status>available</status></item></volumeSet></DescribeVolumesResponse>"),
+    ])
+    .await
+    .unwrap();
+    let backend = aws_backend(&server.endpoint).await.unwrap();
+    let vms = backend
+        .inventory(
+            InventoryKind::VirtualMachine,
+            "controller-1",
+            Instant::now() + Duration::from_secs(3),
+        )
+        .await
+        .unwrap();
+    assert_eq!(vms.resources.len(), 1);
+    assert_eq!(vms.resources[0].id, "i-def456");
+    let disks = backend
+        .inventory(
+            InventoryKind::Disk,
+            "controller-1",
+            Instant::now() + Duration::from_secs(3),
+        )
+        .await
+        .unwrap();
+    assert_eq!(disks.resources.len(), 1);
+    assert_eq!(disks.resources[0].id, "vol-abc123");
+    server.task.abort();
+}
+
+#[tokio::test]
 async fn native_inventory_is_unfiltered_and_strips_tag_values() {
     let responses = [
         (

@@ -1,6 +1,24 @@
 name: Package
 on:
   pull_request:
+    paths:
+      - Cargo.toml
+      - Cargo.lock
+      - build.rs
+      - rust-toolchain.toml
+      - src/**
+      - tests/**
+      - xtask/**
+      - providers/**
+      - packaging/**
+      - templates/**
+      - examples/**
+      - scripts/**
+      - LICENSE
+      - LICENSES/**
+      - NOTICE
+      - .cargo/**
+      - .github/workflows/package.yaml
   push:
     branches: [main]
   workflow_dispatch:
@@ -15,6 +33,15 @@ concurrency:
   group: package-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 jobs:
+  artifact-build:
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    uses: kellen-miller/ci/.github/workflows/pr-artifact-build.yaml@685d166f656b1168ffee39f0b0b176a9329f512e
+    with:
+      source-paths: '["Cargo.toml","Cargo.lock","build.rs","rust-toolchain.toml","src/**","tests/**","xtask/**","providers/**","packaging/**","templates/**","examples/**","scripts/**","LICENSE","LICENSES/**","NOTICE",".cargo/**",".github/workflows/package.yaml"]'
+      artifacts: '["outrider-linux-amd64","outrider-linux-amd64-image"]'
   preview:
     if: github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -29,14 +56,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - id: release
-        uses: kellen-miller/ci/.github/actions/release@1edef8bc9492ec29052f26cc32e21e1fdeb73373 # v1.0.1
+        uses: kellen-miller/ci/.github/actions/release@7cb397821439001322396a1b022cfa47dbe3a553 # v1.0.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           dry-run: 'true'
           first-release-version: '0.1.0'
   package:
-    needs: preview
-    if: always() && (needs.preview.result == 'success' || needs.preview.result == 'skipped')
+    needs: [preview, artifact-build]
+    if: always() && needs.artifact-build.result == 'success' && needs.artifact-build.outputs.build == 'true' && (needs.preview.result == 'success' || needs.preview.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -74,7 +101,7 @@ jobs:
           path: ~/.cache/outrider-provider-builds
           key: outrider-providers-linux-amd64-go1.27.3-${{ hashFiles('providers/manifest.json') }}
       - name: Build static deployable binaries
-        uses: kellen-miller/ci/.github/actions/rust-check@1edef8bc9492ec29052f26cc32e21e1fdeb73373 # v1.0.1
+        uses: kellen-miller/ci/.github/actions/rust-check@7cb397821439001322396a1b022cfa47dbe3a553 # v1.0.3
         env:
           CARGO_BUILD_TARGET: x86_64-unknown-linux-musl
           CC_x86_64_unknown_linux_musl: musl-gcc
@@ -113,7 +140,7 @@ jobs:
           cp packaging/Dockerfile "$RUNNER_TEMP/outrider-image/Dockerfile"
           cp -a "$PACKAGE" "$RUNNER_TEMP/outrider-image/package"
       - name: Build container with shared CI
-        uses: kellen-miller/ci/.github/actions/docker-publish-core@1edef8bc9492ec29052f26cc32e21e1fdeb73373 # v1.0.1
+        uses: kellen-miller/ci/.github/actions/docker-publish-core@7cb397821439001322396a1b022cfa47dbe3a553 # v1.0.3
         with:
           image: ghcr.io/${{ github.repository }}
           tags: type=raw,value=smoke-${{ github.run_id }}
@@ -148,12 +175,14 @@ jobs:
         with:
           name: outrider-linux-amd64
           path: ${{ runner.temp }}/outrider-archives/*
+          overwrite: true
           if-no-files-found: error
           retention-days: 7
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: outrider-linux-amd64-image
           path: ${{ runner.temp }}/outrider-image.tar
+          overwrite: true
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
@@ -179,7 +208,7 @@ jobs:
           name: outrider-linux-amd64-image
           path: ${{ runner.temp }}/release-image
       - id: release
-        uses: kellen-miller/ci/.github/actions/release@1edef8bc9492ec29052f26cc32e21e1fdeb73373 # v1.0.1
+        uses: kellen-miller/ci/.github/actions/release@7cb397821439001322396a1b022cfa47dbe3a553 # v1.0.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           first-release-version: '0.1.0'
@@ -212,3 +241,19 @@ jobs:
           docker load --input "$RUNNER_TEMP/release-image/outrider-image.tar"
           docker tag "$IMAGE:smoke-${{ github.run_id }}" "$IMAGE:$RELEASE_VERSION"
           docker push "$IMAGE:$RELEASE_VERSION"
+  artifact-source:
+    needs: [artifact-build, package]
+    if: github.event_name == 'pull_request' && needs.artifact-build.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          SOURCE: ${{ needs.artifact-build.outputs.source }}
+        run: printf '%s\n' "$SOURCE" > source.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ needs.artifact-build.outputs.source }}
+          path: source.txt
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7

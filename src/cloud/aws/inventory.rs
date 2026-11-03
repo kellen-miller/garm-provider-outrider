@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use aws_sdk_ec2::types::Tag;
 use tokio::time::{Instant, timeout_at};
 
+use super::identity::aws_instance_is_terminated;
 use super::{AwsBackend, CloudError, failure, sdk_failure};
 use crate::cloud::inventory::{
     CloudInventory, InventoryCollection, InventoryKind, InventoryOwnership, InventoryResource,
@@ -57,6 +58,10 @@ impl CloudInventory for AwsBackend {
 
                         for instance in reservation.instances() {
                             let id = required_id(instance.instance_id(), "i-")?;
+                            if aws_instance_is_terminated(instance) {
+                                continue;
+                            }
+
                             let dependencies = instance
                                 .block_device_mappings()
                                 .iter()
