@@ -2,7 +2,7 @@
   "checks": [
     "Acceptance tests (macOS)",
     "Host contracts, formatting and static analysis (Linux)",
-    "Workflow files / Workflow validation",
+    ".github/workflows / Workflow validation",
     "JSCPD scan"
   ]
 }
