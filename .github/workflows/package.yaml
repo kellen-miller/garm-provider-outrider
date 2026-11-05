@@ -1,4 +1,4 @@
-name: Package
+name: Outrider package
 on:
   pull_request:
     paths:
@@ -38,11 +38,12 @@ jobs:
       contents: read
       actions: read
       pull-requests: read
-    uses: kellen-miller/ci/.github/workflows/pr-artifact-build.yaml@685d166f656b1168ffee39f0b0b176a9329f512e
+    uses: kellen-miller/ci/.github/workflows/pr-artifact-build.yaml@c188397b9147dbf21030cf2f3e4fc41bff37358b
     with:
       source-paths: '["Cargo.toml","Cargo.lock","build.rs","rust-toolchain.toml","src/**","tests/**","xtask/**","providers/**","packaging/**","templates/**","examples/**","scripts/**","LICENSE","LICENSES/**","NOTICE",".cargo/**",".github/workflows/package.yaml"]'
       artifacts: '["outrider-linux-amd64","outrider-linux-amd64-image"]'
-  preview:
+    name: PR artifacts
+  release-preview:
     if: github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main'
     runs-on: ubuntu-26.04
     permissions:
@@ -61,9 +62,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           dry-run: 'true'
           first-release-version: '0.1.0'
-  package:
-    needs: [preview, artifact-build]
-    if: always() && needs.artifact-build.result == 'success' && needs.artifact-build.outputs.build == 'true' && (needs.preview.result == 'success' || needs.preview.result == 'skipped')
+    name: Release preview
+  package-build:
+    needs: [release-preview, artifact-build]
+    if: always() && needs.artifact-build.result == 'success' && needs.artifact-build.outputs.build == 'true' && (needs.release-preview.result == 'success' || needs.release-preview.result == 'skipped')
     runs-on: ubuntu-26.04
     timeout-minutes: 90
     env:
@@ -91,7 +93,7 @@ jobs:
       - id: version
         name: Select embedded version
         env:
-          RELEASE_VERSION: ${{ needs.preview.outputs.version }}
+          RELEASE_VERSION: ${{ needs.release-preview.outputs.version }}
         run: |
           version="${RELEASE_VERSION:-$(cargo metadata --locked --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "outrider") | .version')}"
           printf 'OUTRIDER_VERSION=%s\nPACKAGE=%s\nBUNDLE=%s\nARCHIVES=%s\n' "$version" "$RUNNER_TEMP/outrider-package" "$RUNNER_TEMP/outrider-providers" "$RUNNER_TEMP/outrider-archives" >> "$GITHUB_ENV"
@@ -186,9 +188,10 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
-  publish:
-    needs: [preview, package]
-    if: github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main' && needs.preview.outputs.version != ''
+    name: Binary and container build
+  package-publication:
+    needs: [release-preview, package-build]
+    if: github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main' && needs.release-preview.outputs.version != ''
     runs-on: ubuntu-26.04
     permissions:
       contents: write
@@ -218,7 +221,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
-          PACKAGE_VERSION: ${{ needs.package.outputs.version }}
+          PACKAGE_VERSION: ${{ needs.package-build.outputs.version }}
           RELEASE_TAG: ${{ steps.release.outputs.git_tag }}
         run: |
           test "$RELEASE_VERSION" = "$PACKAGE_VERSION"
@@ -235,14 +238,15 @@ jobs:
         env:
           IMAGE: ghcr.io/${{ github.repository }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
-          PACKAGE_VERSION: ${{ needs.package.outputs.version }}
+          PACKAGE_VERSION: ${{ needs.package-build.outputs.version }}
         run: |
           test "$RELEASE_VERSION" = "$PACKAGE_VERSION"
           docker load --input "$RUNNER_TEMP/release-image/outrider-image.tar"
           docker tag "$IMAGE:smoke-${{ github.run_id }}" "$IMAGE:$RELEASE_VERSION"
           docker push "$IMAGE:$RELEASE_VERSION"
-  artifact-source:
-    needs: [artifact-build, package]
+    name: Publish release
+  artifact-provenance:
+    needs: [artifact-build, package-build]
     if: github.event_name == 'pull_request' && needs.artifact-build.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -257,3 +261,4 @@ jobs:
           if-no-files-found: error
           overwrite: true
           retention-days: 7
+    name: Record artifact source

@@ -1,8 +1,8 @@
 {
   "checks": [
-    "check",
-    "Linux host contracts",
-    "GitHub Actions / Workflow validation",
-    "Code duplication (CPD)"
+    "Acceptance tests (macOS)",
+    "Host contracts, formatting and static analysis (Linux)",
+    ".github/workflows / Workflow validation",
+    "JSCPD scan"
   ]
 }
