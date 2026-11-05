@@ -34,9 +34,9 @@ jobs:
         run: |
           export PATH="$RUNNER_TEMP/outrider-contract-tools/bin:$PATH"
           cargo xtask check-acceptance --all
-    name: Outrider / Acceptance tests (macOS)
+    name: Acceptance tests (macOS)
   linux-contracts:
-    name: Outrider / Host contracts, formatting and static analysis (Linux)
+    name: Host contracts, formatting and static analysis (Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

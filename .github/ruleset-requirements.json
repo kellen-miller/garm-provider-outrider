@@ -1,8 +1,8 @@
 {
   "checks": [
-    "Outrider / Acceptance tests (macOS)",
-    "Outrider / Host contracts, formatting and static analysis (Linux)",
-    "GitHub Actions / Workflow validation",
+    "Acceptance tests (macOS)",
+    "Host contracts, formatting and static analysis (Linux)",
+    "Workflow files / Workflow validation",
     "JSCPD scan"
   ]
 }
