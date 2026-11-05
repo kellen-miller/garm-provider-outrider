@@ -379,7 +379,7 @@ through these interfaces.
 
 Reruns are disabled by default. Enabling them requires a finite central
 `reruns.max_per_run` cap and `reruns.actions_write_permission: true`; repository
-and job config cannot enable or expand reruns. A .github/workflows job rerun also
+and job config cannot enable or expand reruns. A GitHub Actions job rerun also
 reruns its dependent jobs, so the cap is per workflow run and the workflow
 should account for that wider execution. Outrider verifies the failed job,
 exact run attempt, assigned runner, and causal interruption evidence before
