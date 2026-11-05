@@ -3,6 +3,6 @@
     "Outrider / Acceptance tests (macOS)",
     "Outrider / Host contracts, formatting and static analysis (Linux)",
     "GitHub Actions / Workflow validation",
-    "Code duplication / JSCPD scan"
+    "JSCPD scan"
   ]
 }

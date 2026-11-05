@@ -62,7 +62,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           dry-run: 'true'
           first-release-version: '0.1.0'
-    name: Outrider package / Release preview
+    name: Release preview
   package-build:
     needs: [release-preview, artifact-build]
     if: always() && needs.artifact-build.result == 'success' && needs.artifact-build.outputs.build == 'true' && (needs.release-preview.result == 'success' || needs.release-preview.result == 'skipped')
@@ -188,7 +188,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
-    name: Outrider package / Binary and container build
+    name: Binary and container build
   package-publication:
     needs: [release-preview, package-build]
     if: github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main' && needs.release-preview.outputs.version != ''
@@ -244,7 +244,7 @@ jobs:
           docker load --input "$RUNNER_TEMP/release-image/outrider-image.tar"
           docker tag "$IMAGE:smoke-${{ github.run_id }}" "$IMAGE:$RELEASE_VERSION"
           docker push "$IMAGE:$RELEASE_VERSION"
-    name: Outrider package / Publish release
+    name: Publish release
   artifact-provenance:
     needs: [artifact-build, package-build]
     if: github.event_name == 'pull_request' && needs.artifact-build.outputs.build == 'true'
@@ -261,4 +261,4 @@ jobs:
           if-no-files-found: error
           overwrite: true
           retention-days: 7
-    name: Outrider package / Record artifact source
+    name: Record artifact source
