@@ -1,14 +1,11 @@
-name: GitHub Actions lint
+name: Code duplication
 on:
   pull_request:
 permissions:
   contents: read
 jobs:
-  lint:
-    name: GitHub Actions
-    uses: kellen-miller/ci/.github/workflows/gh-actions-lint.yaml@7cb397821439001322396a1b022cfa47dbe3a553 # v1.0.3
-  duplication:
-    name: Code duplication (CPD)
+  duplication-analysis:
+    name: Code duplication / Source analysis
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

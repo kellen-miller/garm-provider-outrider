@@ -19,9 +19,10 @@ concurrency:
   group: pr-artifact-retention
   cancel-in-progress: false
 jobs:
-  cleanup:
+  artifact-cleanup:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'pull_request'
-    uses: kellen-miller/ci/.github/workflows/pr-artifact-cleanup.yaml@685d166f656b1168ffee39f0b0b176a9329f512e
+    uses: kellen-miller/ci/.github/workflows/pr-artifact-cleanup.yaml@c188397b9147dbf21030cf2f3e4fc41bff37358b
     with:
       dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
       include-failed: false
+    name: PR artifacts
