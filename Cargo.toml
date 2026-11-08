@@ -46,7 +46,7 @@ bytes = "1"
 http-body-util = "0.1"
 hyper = { version = "1", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["http1", "server", "tokio"] }
-jsonschema = "0.60"
+jsonschema = "0.61"
 
 [profile.dev]
 debug = 0
