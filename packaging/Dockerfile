@@ -1,7 +1,7 @@
 # Build context: Dockerfile beside package/, the verified cargo xtask package output.
 # Linux amd64 manifest fetched from the authoritative gcr.io registry on 2026-10-26;
 # SHA256 of the response body equals its Docker-Content-Digest header.
-FROM gcr.io/distroless/static-debian13:nonroot-amd64@sha256:336e53e9941facdb69b755e6fd2c63f5400abd3b1ba47bb17ebafc2b1547cebd
+FROM gcr.io/distroless/static-debian13:nonroot-amd64@sha256:816dc4d589459a7fe33b8a2e69edb70da56ffad7161f4b415937fa2bfe7e92e8
 
 # The base contains ca-certificates.crt; the product and CGO_ENABLED=0 delegates
 # are static Linux amd64 binaries. No compiler/package manager is needed here.
