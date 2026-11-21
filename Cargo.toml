@@ -23,11 +23,11 @@ google-cloud-compute-v1 = { version = "4.0", default-features = false, features 
 google-cloud-billing-v1 = "1.2"
 hmac = "0.13"
 hex = "0.4"
-jsonwebtoken = { version = "11.1", features = ["rust_crypto"] }
+jsonwebtoken = { version = "12.0", features = ["rust_crypto"] }
 libc = "0.2"
 fs2 = "0.4"
 reqwest = { version = "0.13", features = ["json"] }
-rusqlite = { version = "0.41", features = ["bundled"] }
+rusqlite = { version = "0.43", features = ["bundled"] }
 rust_decimal = { version = "1.37", features = ["serde"] }
 secrecy = "0.10"
 serde = { version = "1", features = ["derive"] }
@@ -46,7 +46,7 @@ bytes = "1"
 http-body-util = "0.1"
 hyper = { version = "1", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["http1", "server", "tokio"] }
-jsonschema = "0.61"
+jsonschema = "0.62"
 
 [profile.dev]
 debug = 0
