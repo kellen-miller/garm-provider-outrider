@@ -11,4 +11,4 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: kellen-miller/ci/.github/actions/code-duplication@91b7a0aefa93f2730a28a690550e748ba3ca61f8 # v2.0.1
+      - uses: kellen-miller/ci/.github/actions/code-duplication@1da6d939258d8afc9aa2021f9b20a61fc76c3468 # v2.1.1
